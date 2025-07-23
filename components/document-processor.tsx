@@ -1,30 +1,22 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useRef, useTransition } from 'react'
 import Link from 'next/link'
+import { updateDocument, deleteDocument, processDocument } from '@/lib/actions/document'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import { DocumentQueue } from '@/components/document-queue'
 import DocumentViewer from '@/components/document-viewer'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DataEditorTab } from './editor-tabs'
 import { FormRenderer } from './form-renderer'
-import { useToast } from './ui/use-toast'
+import { toast } from 'sonner'
 import { Bot, Loader2, CheckCircle, ArrowLeft, Undo2 } from 'lucide-react'
 import { Button } from './ui/button'
 import { useSettings } from '@/hooks/use-settings'
 import { SettingsDialog } from './settings-dialog'
 import { ThemeToggle } from './theme-toggle'
 
-// Define the shape of a document object
-export interface Document {
-  id: string
-  original_filename: string
-  status: 'pending' | 'approved' | 'rejected' | 'processing_failed'
-  uploaded_at: string
-  storage_path: string
-  extracted_data: any
-  schema_snapshot: any
-}
+import type { DocumentSelect as Document } from '@/db/schema/app'
 
 interface DocumentProcessorProps {
   documentType: {
@@ -32,12 +24,12 @@ interface DocumentProcessorProps {
     name: string
     schema: any
   }
+  initialDocuments?: Document[]
 }
 
-export function DocumentProcessor({ documentType }: DocumentProcessorProps) {
-  const { toast } = useToast()
+export function DocumentProcessor({ documentType, initialDocuments = [] }: DocumentProcessorProps) {
   const { model } = useSettings()
-  const [documents, setDocuments] = useState<Document[]>([])
+  const [documents, setDocuments] = useState<Document[]>(initialDocuments)
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null)
   const [formData, setFormData] = useState<any>(null)
   const [viewerFile, setViewerFile] = useState<{ name: string; url: string; type: string } | null>(
@@ -46,34 +38,21 @@ export function DocumentProcessor({ documentType }: DocumentProcessorProps) {
   const [activeTab, setActiveTab] = useState('form')
   const [isProcessing, setIsProcessing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isPending, startTransition] = useTransition()
   const viewerRef = useRef<any>(null)
   const [currentPageImageData, setCurrentPageImageData] = useState<string | null>(null)
 
-  const fetchDocuments = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/documents?documentTypeId=${documentType.id}`)
-      if (!response.ok) throw new Error('Failed to fetch documents')
-      const data = await response.json()
-      setDocuments(data)
-    } catch (error) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch documents.' })
-    }
-  }, [documentType.id, toast])
-
-  useEffect(() => {
-    fetchDocuments()
-  }, [fetchDocuments])
 
   const handleDocumentSelect = (doc: Document | null) => {
     setSelectedDocument(doc)
-    setFormData(doc?.extracted_data || {})
+    setFormData(doc?.extractedData || {})
     if (doc) {
       // Create a URL with the document type ID as a query parameter for the file endpoint
       const fileUrl = `/api/documents/${doc.id}/file?documentTypeId=${documentType.id}`
       setViewerFile({
-        name: doc.original_filename,
+        name: doc.filename,
         url: fileUrl,
-        type: doc.original_filename.endsWith('.pdf') ? 'application/pdf' : 'image/png',
+        type: doc.filename.endsWith('.pdf') ? 'application/pdf' : 'image/png',
       })
     } else {
       setViewerFile(null)
@@ -87,38 +66,33 @@ export function DocumentProcessor({ documentType }: DocumentProcessorProps) {
 
   const handleAiProcessing = async () => {
     if (!selectedDocument) {
-      toast({ variant: 'destructive', title: 'Error', description: 'No document selected.' })
+      toast.error('No document selected.')
       return
     }
 
     setIsProcessing(true)
     try {
-      const response = await fetch(`/api/process-document`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          documentTypeId: documentType.id,
-          documentId: selectedDocument.id,
-          schema: selectedDocument.schema_snapshot || documentType.schema,
-          model: model,
-        }),
-      })
+      // Use Server Action for processing
+      const formData = new FormData()
+      formData.append('documentId', selectedDocument.id.toString())
+      formData.append('documentTypeId', documentType.id)
+      formData.append('schema', JSON.stringify(selectedDocument.schemaSnapshot || documentType.schema))
+      formData.append('model', model)
 
-      const result = await response.json()
-      if (!response.ok) throw new Error(result.error || 'Processing failed')
-
+      const result = await processDocument(formData)
+      
       setFormData(result.data)
       const updatedDoc = {
         ...selectedDocument,
-        extracted_data: result.data,
-        status: 'pending' as const,
+        extractedData: result.data,
+        approvalStatus: 'pending' as const,
       }
       setSelectedDocument(updatedDoc)
       setDocuments(documents.map((d) => (d.id === selectedDocument.id ? updatedDoc : d)))
 
-      toast({ title: 'Success', description: 'Document processed by AI.' })
+      toast.success('Document processed by AI.')
     } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Processing Error', description: error.message })
+      toast.error(`Processing Error: ${error.message}`)
     } finally {
       setIsProcessing(false)
     }
@@ -126,75 +100,55 @@ export function DocumentProcessor({ documentType }: DocumentProcessorProps) {
 
   const handleStatusUpdate = async (status: 'approved' | 'pending') => {
     if (!selectedDocument) return
-    setIsSaving(true)
-    try {
-      const body: any = {
-        extracted_data: formData,
-        status: status,
+    
+    startTransition(async () => {
+      try {
+        const formDataToSubmit = new FormData()
+        formDataToSubmit.append('extractedData', JSON.stringify(formData))
+        formDataToSubmit.append('approvalStatus', status)
+        
+        if (status === 'approved') {
+          formDataToSubmit.append('schemaSnapshot', JSON.stringify(documentType.schema))
+        }
+
+        const updatedDoc = await updateDocument(selectedDocument.id, formDataToSubmit)
+        
+        setSelectedDocument(updatedDoc)
+        setDocuments(documents.map((d) => (d.id === updatedDoc.id ? updatedDoc : d)))
+
+        const message = `Document "${updatedDoc.filename}" status set to ${status}.`
+        if (status === 'approved') {
+          toast.success(`Approved! ${message}`)
+        } else {
+          toast.success(`Status Updated: ${message}`)
+        }
+      } catch (error: any) {
+        toast.error(`Save Error: ${error.message}`)
       }
-      if (status === 'approved') {
-        body.schema_snapshot = documentType.schema
-      }
-
-      const response = await fetch(`/api/documents/${selectedDocument.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-document-type-id': documentType.id,
-        },
-        body: JSON.stringify(body),
-      })
-
-      const updatedDoc = await response.json()
-      if (!response.ok) {
-        throw new Error(
-          updatedDoc.error ||
-            `Failed to ${status === 'approved' ? 'approve' : 'unapprove'} document.`,
-        )
-      }
-
-      setSelectedDocument(updatedDoc as Document)
-      setDocuments(documents.map((d) => (d.id === updatedDoc.id ? (updatedDoc as Document) : d)))
-
-      toast({
-        title: status === 'approved' ? 'Approved!' : 'Status Updated',
-        description: `Document "${updatedDoc.original_filename}" status set to ${status}.`,
-      })
-    } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Save Error',
-        description: error.message,
-      })
-    } finally {
-      setIsSaving(false)
-    }
+    })
   }
 
-  const handleDelete = async (docId: string) => {
-    try {
-      const response = await fetch(`/api/documents/${docId}`, {
-        method: 'DELETE',
-        headers: {
-          'x-document-type-id': documentType.id,
-        },
-      })
+  const handleDelete = async (docId: number) => {
+    startTransition(async () => {
+      try {
+        await deleteDocument(docId)
+        
+        toast.success('Document deleted.')
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to delete document.')
+        // Update state
+        setDocuments((docs) => docs.filter((d) => d.id !== docId))
+        if (selectedDocument?.id === docId) {
+          handleDocumentSelect(null)
+        }
+      } catch (error: any) {
+        toast.error(`Delete Error: ${error.message}`)
       }
+    })
+  }
 
-      toast({ title: 'Success', description: 'Document deleted.' })
-
-      // Update state
-      setDocuments((docs) => docs.filter((d) => d.id !== docId))
-      if (selectedDocument?.id === docId) {
-        handleDocumentSelect(null)
-      }
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Delete Error', description: error.message })
-    }
+  const handleUploadSuccess = () => {
+    // Refresh the page to get updated documents from server
+    window.location.reload()
   }
 
   return (
@@ -209,7 +163,7 @@ export function DocumentProcessor({ documentType }: DocumentProcessorProps) {
         <h1 className="truncate text-xl font-semibold">
           <span className="hidden sm:inline">{documentType.name}: </span>
           <span className="text-muted-foreground font-normal">
-            {selectedDocument?.original_filename || 'No document selected'}
+            {selectedDocument?.filename || 'No document selected'}
           </span>
         </h1>
         <div className="ml-auto flex items-center gap-2">
@@ -225,13 +179,13 @@ export function DocumentProcessor({ documentType }: DocumentProcessorProps) {
             )}
             Process
           </Button>
-          {selectedDocument?.status === 'approved' ? (
+          {selectedDocument?.approvalStatus === 'approved' ? (
             <Button
               onClick={() => handleStatusUpdate('pending')}
-              disabled={isSaving || !selectedDocument}
+              disabled={isPending || !selectedDocument}
               variant="secondary"
             >
-              {isSaving ? (
+              {isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Undo2 className="h-4 w-4" />
@@ -241,9 +195,9 @@ export function DocumentProcessor({ documentType }: DocumentProcessorProps) {
           ) : (
             <Button
               onClick={() => handleStatusUpdate('approved')}
-              disabled={isSaving || !selectedDocument}
+              disabled={isPending || !selectedDocument}
             >
-              {isSaving ? (
+              {isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <CheckCircle className="h-4 w-4" />
@@ -264,7 +218,7 @@ export function DocumentProcessor({ documentType }: DocumentProcessorProps) {
             documents={documents}
             selectedDocument={selectedDocument}
             onSelect={handleDocumentSelect}
-            onUploadSuccess={fetchDocuments}
+            onUploadSuccess={handleUploadSuccess}
             onDelete={handleDelete}
           />
         </ResizablePanel>
@@ -281,7 +235,7 @@ export function DocumentProcessor({ documentType }: DocumentProcessorProps) {
                   <TabsContent value="form" className="space-y-4">
                     <FormRenderer
                       key={selectedDocument.id}
-                      schema={selectedDocument.schema_snapshot || documentType.schema}
+                      schema={selectedDocument.schemaSnapshot || documentType.schema}
                       data={formData || {}}
                       onChange={handleDataChange}
                     />

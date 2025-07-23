@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { createDocumentType, getDocumentTypes } from '@/lib/filesystem'
-// import { isAuthenticated } from "@/lib/auth"
+import { createDocumentType, getDocumentTypes } from '@/lib/drizzle-filesystem'
+import { auth } from '@/lib/auth'
 
 const createDocumentTypeSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -31,8 +31,8 @@ export async function POST(request: Request) {
     const newType = await createDocumentType({
       name,
       schema: cleanSchema,
-      webhook_url: webhook_url || undefined,
-      webhook_method: webhook_method || 'POST',
+      webhookUrl: webhook_url || undefined,
+      webhookMethod: webhook_method || 'POST',
     })
 
     return NextResponse.json(newType, { status: 201 })

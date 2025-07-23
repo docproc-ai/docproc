@@ -2,11 +2,11 @@
 import { useState, useRef, useEffect, useCallback, memo } from 'react'
 
 import { FileText, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
-import { Document, pdfjs, type PDFDocumentProxy } from 'react-pdf'
+import { Document, pdfjs } from 'react-pdf'
 import {
   TransformWrapper,
   TransformComponent,
-  type ReactZoomPanPanPinchRef,
+  type ReactZoomPanPinchRef,
 } from 'react-zoom-pan-pinch'
 import { Button } from '@/components/ui/button'
 
@@ -28,8 +28,8 @@ const DocumentViewerComponent = ({ file, onPageRender }: DocumentViewerProps) =>
   const [isRendering, setIsRendering] = useState(false)
   const [fileUrl, setFileUrl] = useState<string | null>(null)
 
-  const pdfRef = useRef<PDFDocumentProxy | null>(null)
-  const transformWrapperRef = useRef<ReactZoomPanPanPinchRef | null>(null)
+  const pdfRef = useRef<pdfjs.PDFDocumentProxy | null>(null)
+  const transformWrapperRef = useRef<ReactZoomPanPinchRef | null>(null)
 
   useEffect(() => {
     if (!file || !file.url) {
@@ -46,7 +46,7 @@ const DocumentViewerComponent = ({ file, onPageRender }: DocumentViewerProps) =>
     onPageRender?.(null)
   }, [file, onPageRender])
 
-  const onDocumentLoadSuccess = useCallback((pdf: PDFDocumentProxy) => {
+  const onDocumentLoadSuccess = useCallback((pdf: pdfjs.PDFDocumentProxy) => {
     pdfRef.current = pdf
     setNumPages(pdf.numPages)
   }, [])

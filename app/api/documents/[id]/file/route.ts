@@ -1,39 +1,43 @@
 import { NextResponse } from 'next/server'
-import { DocumentsDatabase } from '@/lib/database'
-import { FileStorage } from '@/lib/file-storage'
+import { db } from '@/db'
+import { document } from '@/db/schema'
+import { eq } from 'drizzle-orm'
+import { readFile } from 'fs/promises'
+import { join } from 'path'
+import { getStorageDir } from '@/lib/storage'
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const docsDb = new DocumentsDatabase()
 
-    // Find document by ID directly (no need for documentTypeId with global database)
-    const document = await docsDb.findById(id)
+    // Find document by ID directly
+    const [doc] = await db.select().from(document).where(eq(document.id, parseInt(id)))
 
-    if (!document) {
+    if (!doc) {
       return NextResponse.json({ error: 'Document not found' }, { status: 404 })
     }
 
     // Check if document uses file storage system
-    if (!document.file_path) {
+    if (!doc.storagePath) {
       return NextResponse.json({ error: 'Document file path not found' }, { status: 404 })
     }
 
     let buffer: Buffer
     try {
-      buffer = await FileStorage.readFile(document.file_path)
+      const filePath = join(getStorageDir(), doc.storagePath)
+      buffer = await readFile(filePath)
     } catch (error) {
-      console.error(`Failed to read file from storage: ${document.file_path}`, error)
+      console.error(`Failed to read file from storage: ${doc.storagePath}`, error)
       return NextResponse.json({ error: 'Document file not found on disk' }, { status: 404 })
     }
 
     // Use stored MIME type or determine from filename
-    const contentType = document.mime_type || getContentType(document.original_filename)
+    const contentType = getContentType(doc.filename)
 
     return new NextResponse(buffer, {
       headers: {
         'Content-Type': contentType,
-        'Content-Disposition': `inline; filename="${document.original_filename}"`,
+        'Content-Disposition': `inline; filename="${doc.filename}"`,
         'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
       },
     })

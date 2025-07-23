@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
+import { getDocumentType, updateDocumentType } from '@/lib/actions/document-type'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,19 +16,18 @@ import {
 } from '@/components/ui/select'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { SchemaBuilder, type JsonSchema } from '@/components/schema-builder'
-import { useToast } from '@/components/ui/use-toast'
+import { toast } from 'sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { SchemaEditorTab } from '@/components/editor-tabs'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { SettingsDialog } from '@/components/settings-dialog'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Skeleton } from '@/components/ui/skeleton'
-import { DeleteDocumentTypeButton } from '@/components/delete-document-type-button'
+import { DeleteDocumentTypeDialog } from '@/components/delete-document-type-dialog'
 
 export default function EditDocumentTypePage() {
   const router = useRouter()
   const params = useParams()
-  const { toast } = useToast()
   const id = params.id as string
 
   const [name, setName] = useState('')
@@ -42,28 +42,23 @@ export default function EditDocumentTypePage() {
     const fetchDocumentType = async () => {
       setIsFetching(true)
       try {
-        const response = await fetch(`/api/document-types/${id}`)
-        if (!response.ok) {
-          throw new Error('Failed to fetch document type details.')
+        const data = await getDocumentType(parseInt(id))
+        if (!data) {
+          throw new Error('Document type not found.')
         }
-        const data = await response.json()
         setName(data.name)
-        setWebhookUrl(data.webhook_url || '')
-        setWebhookMethod(data.webhook_method || 'POST')
+        setWebhookUrl(data.webhookUrl || '')
+        setWebhookMethod(data.webhookMethod || 'POST')
         setSchemaText(JSON.stringify(data.schema, null, 2))
       } catch (error: any) {
-        toast({
-          variant: 'destructive',
-          title: 'Error fetching data',
-          description: error.message,
-        })
+        toast.error(`Error fetching data: ${error.message}`)
         router.push('/document-types')
       } finally {
         setIsFetching(false)
       }
     }
     fetchDocumentType()
-  }, [id, router, toast])
+  }, [id, router])
 
   const schema: JsonSchema = useMemo(() => {
     try {
@@ -84,34 +79,18 @@ export default function EditDocumentTypePage() {
   const handleSubmit = async () => {
     setIsLoading(true)
     try {
-      const response = await fetch(`/api/document-types/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          schema,
-          webhook_url: webhookUrl,
-          webhook_method: webhookMethod,
-        }),
-      })
+      const formData = new FormData()
+      formData.append('name', name)
+      formData.append('schema', JSON.stringify(schema))
+      formData.append('webhookUrl', webhookUrl)
+      formData.append('webhookMethod', webhookMethod)
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to update document type.')
-      }
+      await updateDocumentType(parseInt(id), formData)
 
-      toast({
-        title: 'Success!',
-        description: `Document type "${name}" has been updated.`,
-      })
-      router.push('/document-types')
-      router.refresh()
+      toast.success(`Document type "${name}" has been updated.`)
+      // The Server Action handles redirect, so we don't need to call router.push
     } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Uh oh! Something went wrong.',
-        description: error.message,
-      })
+      toast.error(`Something went wrong: ${error.message}`)
     } finally {
       setIsLoading(false)
     }
@@ -164,7 +143,7 @@ export default function EditDocumentTypePage() {
         </Button>
         <h1 className="text-xl font-semibold">Edit Document Type</h1>
         <div className="ml-auto flex items-center gap-2">
-          <DeleteDocumentTypeButton documentTypeId={id} documentTypeName={name} />
+          <DeleteDocumentTypeDialog documentTypeId={id} documentTypeName={name} />
           <Button onClick={handleSubmit} disabled={isLoading || isFetching || !name}>
             {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
             Save Changes

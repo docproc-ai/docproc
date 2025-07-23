@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { createDocumentType } from '@/lib/actions/document-type'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,7 +16,7 @@ import {
 } from '@/components/ui/select'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { SchemaBuilder, type JsonSchema } from '@/components/schema-builder'
-import { useToast } from '@/components/ui/use-toast'
+import { toast } from 'sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { SchemaEditorTab } from '@/components/editor-tabs'
 import { ArrowLeft, Loader2 } from 'lucide-react'
@@ -42,7 +43,6 @@ const initialSchema: JsonSchema = {
 
 export default function NewDocumentTypePage() {
   const router = useRouter()
-  const { toast } = useToast()
   const [name, setName] = useState('')
   const [webhookUrl, setWebhookUrl] = useState('')
   const [webhookMethod, setWebhookMethod] = useState('POST')
@@ -68,34 +68,18 @@ export default function NewDocumentTypePage() {
   const handleSubmit = async () => {
     setIsLoading(true)
     try {
-      const response = await fetch('/api/document-types', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          schema,
-          webhook_url: webhookUrl,
-          webhook_method: webhookMethod,
-        }),
-      })
+      const formData = new FormData()
+      formData.append('name', name)
+      formData.append('schema', JSON.stringify(schema))
+      formData.append('webhookUrl', webhookUrl)
+      formData.append('webhookMethod', webhookMethod)
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to save document type.')
-      }
+      await createDocumentType(formData)
 
-      toast({
-        title: 'Success!',
-        description: `Document type "${name}" has been created.`,
-      })
-      router.push('/document-types')
-      router.refresh()
+      toast.success(`Document type "${name}" has been created.`)
+      // The Server Action handles redirect, so we don't need to call router.push
     } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Uh oh! Something went wrong.',
-        description: error.message,
-      })
+      toast.error(`Something went wrong: ${error.message}`)
     } finally {
       setIsLoading(false)
     }

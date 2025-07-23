@@ -1,8 +1,6 @@
-import { drizzle } from 'drizzle-orm/libsql'
+import { drizzle } from 'drizzle-orm/node-postgres'
 
-export const db = drizzle({
-  schema: './src/db/schema.ts',
-  sqlite: {
-    uri: process.env.DATABASE_URL,
-  },
-})
+if (!process.env.DATABASE_URL)
+  throw new Error('DATABASE_URL is not set in the environment variables')
+
+export const db = drizzle(process.env.DATABASE_URL)

@@ -1,15 +1,16 @@
 'use client'
 
 import type React from 'react'
-import { useState, useRef } from 'react'
+import { useState, useRef, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
 import { UploadCloud, FileText, CheckCircle2, AlertCircle, Loader2, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatDistanceToNow } from 'date-fns'
-import type { Document } from './document-processor'
-import { useToast } from './ui/use-toast'
+import type { DocumentSelect as Document } from '@/db/schema/app'
+import { toast } from 'sonner'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
+import { createDocument } from '@/lib/actions/document'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,7 +29,7 @@ interface DocumentQueueProps {
   selectedDocument: Document | null
   onSelect: (doc: Document) => void
   onUploadSuccess: () => void
-  onDelete: (docId: string) => void
+  onDelete: (docId: number) => void
 }
 
 export function DocumentQueue({
@@ -39,34 +40,34 @@ export function DocumentQueue({
   onUploadSuccess,
   onDelete,
 }: DocumentQueueProps) {
-  const { toast } = useToast()
   const [isUploading, setIsUploading] = useState(false)
   const [hideApproved, setHideApproved] = useState(true)
   const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const [isPending, startTransition] = useTransition()
+
   const handleFilesUpload = async (files: File[]) => {
     if (!files || files.length === 0) return
 
     setIsUploading(true)
-    try {
-      for (const file of files) {
-        const response = await fetch(`/api/documents?documentTypeId=${documentTypeId}`, {
-          method: 'POST',
-          headers: { 'x-vercel-filename': file.name },
-          body: file,
-        })
-        if (!response.ok) {
-          throw new Error(`Failed to upload ${file.name}`)
+    startTransition(async () => {
+      try {
+        for (const file of files) {
+          const formData = new FormData()
+          formData.append('file', file)
+          formData.append('documentTypeId', documentTypeId)
+          
+          await createDocument(formData)
         }
+        toast.success(`${files.length} document(s) uploaded.`)
+        onUploadSuccess()
+      } catch (error: any) {
+        toast.error(`Upload Error: ${error.message}`)
+      } finally {
+        setIsUploading(false)
       }
-      toast({ title: 'Success', description: `${files.length} document(s) uploaded.` })
-      onUploadSuccess()
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Upload Error', description: error.message })
-    } finally {
-      setIsUploading(false)
-    }
+    })
   }
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -105,12 +106,11 @@ export function DocumentQueue({
     }
   }
 
-  const StatusIcon = ({ status }: { status: Document['status'] }) => {
+  const StatusIcon = ({ status }: { status: Document['approvalStatus'] }) => {
     switch (status) {
       case 'approved':
         return <CheckCircle2 className="h-4 w-4 text-green-500" />
       case 'rejected':
-      case 'processing_failed':
         return <AlertCircle className="h-4 w-4 text-red-500" />
       case 'pending':
       default:
@@ -119,7 +119,7 @@ export function DocumentQueue({
   }
 
   const filteredDocuments = documents.filter((doc) => {
-    if (hideApproved && doc.status === 'approved') {
+    if (hideApproved && doc.approvalStatus === 'approved') {
       return false
     }
     return true
@@ -192,11 +192,11 @@ export function DocumentQueue({
                   onClick={() => onSelect(doc)}
                   className="flex flex-1 cursor-pointer items-center gap-3 overflow-hidden p-4"
                 >
-                  <StatusIcon status={doc.status} />
+                  <StatusIcon status={doc.approvalStatus} />
                   <div className="flex-1 overflow-hidden">
-                    <p className="truncate text-sm font-medium">{doc.original_filename}</p>
+                    <p className="truncate text-sm font-medium">{doc.filename}</p>
                     <p className="text-muted-foreground text-xs">
-                      {formatDistanceToNow(new Date(doc.uploaded_at), { addSuffix: true })}
+                      {doc.createdAt ? formatDistanceToNow(new Date(doc.createdAt), { addSuffix: true }) : 'Unknown'}
                     </p>
                   </div>
                 </div>
@@ -214,13 +214,16 @@ export function DocumentQueue({
                     <AlertDialogHeader>
                       <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This will permanently delete the document "{doc.original_filename}" and its
+                        This will permanently delete the document "{doc.filename}" and its
                         data. This action cannot be undone.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => onDelete(doc.id)} variant="destructive">
+                      <AlertDialogAction 
+                        onClick={() => onDelete(doc.id)}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
                         Delete
                       </AlertDialogAction>
                     </AlertDialogFooter>

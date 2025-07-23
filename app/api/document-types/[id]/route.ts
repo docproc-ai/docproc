@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { getDocumentType, updateDocumentType, deleteDocumentType } from '@/lib/filesystem'
+import { getDocumentType, updateDocumentType, deleteDocumentType } from '@/lib/drizzle-filesystem'
 
 const updateDocumentTypeSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -13,7 +13,7 @@ const updateDocumentTypeSchema = z.object({
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const docType = await getDocumentType(id)
+    const docType = await getDocumentType(parseInt(id))
 
     if (!docType) {
       return NextResponse.json({ error: 'Document type not found' }, { status: 404 })
@@ -42,11 +42,11 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const cleanSchema = { ...schema }
     delete cleanSchema.$schema
 
-    const updatedType = await updateDocumentType(id, {
+    const updatedType = await updateDocumentType(parseInt(id), {
       name,
       schema: cleanSchema,
-      webhook_url: webhook_url || undefined,
-      webhook_method: webhook_method || 'POST',
+      webhookUrl: webhook_url || undefined,
+      webhookMethod: webhook_method || 'POST',
     })
 
     if (!updatedType) {
@@ -70,7 +70,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   try {
     // Delete the document type and all its associated documents/files
     // The deleteDocumentType function handles removing the entire directory structure
-    const success = await deleteDocumentType(id)
+    const success = await deleteDocumentType(parseInt(id))
 
     if (!success) {
       return NextResponse.json({ error: 'Document type not found' }, { status: 404 })

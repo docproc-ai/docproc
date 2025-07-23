@@ -12,7 +12,7 @@ import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { SettingsDialog } from '@/components/settings-dialog'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { getDocumentTypes } from '@/lib/filesystem'
+import { getDocumentTypes } from '@/lib/actions/document-type'
 
 // This line forces the page to be rendered dynamically on every request.
 export const dynamic = 'force-dynamic'
@@ -54,7 +54,7 @@ export default async function DocumentTypesPage() {
                       {type.name}
                     </CardTitle>
                     <CardDescription>
-                      Created {formatDistanceToNow(new Date(type.created_at), { addSuffix: true })}
+                      Created {type.createdAt ? formatDistanceToNow(new Date(type.createdAt), { addSuffix: true }) : 'Unknown'}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="flex-grow">

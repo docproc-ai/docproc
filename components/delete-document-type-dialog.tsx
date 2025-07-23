@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { deleteDocumentType } from '@/lib/actions/document-type'
 import { Button } from '@/components/ui/button'
 import {
   AlertDialog,
@@ -14,48 +15,33 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { useToast } from '@/components/ui/use-toast'
+import { toast } from 'sonner'
 import { Trash2, Loader2 } from 'lucide-react'
 
-interface DeleteDocumentTypeButtonProps {
+interface DeleteDocumentTypeDialogProps {
   documentTypeId: string
   documentTypeName: string
 }
 
-export function DeleteDocumentTypeButton({
+export function DeleteDocumentTypeDialog({
   documentTypeId,
   documentTypeName,
-}: DeleteDocumentTypeButtonProps) {
+}: DeleteDocumentTypeDialogProps) {
   const router = useRouter()
-  const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
 
   const handleDelete = async () => {
     setIsLoading(true)
     try {
-      const response = await fetch(`/api/document-types/${documentTypeId}`, {
-        method: 'DELETE',
-      })
+      await deleteDocumentType(parseInt(documentTypeId))
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to delete document type.')
-      }
-
-      toast({
-        title: 'Success!',
-        description: `Document type "${documentTypeName}" and all its documents have been deleted.`,
-      })
+      toast.success(`Document type "${documentTypeName}" and all its documents have been deleted.`)
       setIsOpen(false)
       router.push('/document-types') // Go back to the list after deletion
       router.refresh()
     } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Delete Error',
-        description: error.message,
-      })
+      toast.error(`Delete Error: ${error.message}`)
     } finally {
       setIsLoading(false)
     }

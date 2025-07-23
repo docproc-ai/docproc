@@ -6,7 +6,7 @@ import {
   getDocumentFile,
   saveDocumentData,
   getDocumentType,
-} from '@/lib/filesystem'
+} from '@/lib/drizzle-filesystem'
 import { z } from 'zod'
 
 const updateDocumentSchema = z.object({
@@ -50,13 +50,12 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
     // Save the extracted data and schema snapshot
     if (schema_snapshot) {
-      await saveDocumentData(documentTypeId, documentId, extracted_data, schema_snapshot)
+      await saveDocumentData(parseInt(documentTypeId), parseInt(documentId), extracted_data, schema_snapshot)
     }
 
     // Update document status
-    const updatedDocument = await updateDocument(documentTypeId, documentId, {
-      status,
-      processed_at: new Date().toISOString(),
+    const updatedDocument = await updateDocument(parseInt(documentTypeId), parseInt(documentId), {
+      approvalStatus: status as 'pending' | 'approved' | 'rejected',
     })
 
     if (!updatedDocument) {
@@ -66,12 +65,12 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     // --- Webhook Trigger Logic ---
     if (status === 'approved') {
       try {
-        const docType = await getDocumentType(documentTypeId)
+        const docType = await getDocumentType(parseInt(documentTypeId))
 
-        if (docType && docType.webhook_url) {
-          console.log(`Triggering webhook for document ${id} to ${docType.webhook_url}`)
-          fetch(docType.webhook_url, {
-            method: docType.webhook_method || 'POST',
+        if (docType && docType.webhookUrl) {
+          console.log(`Triggering webhook for document ${id} to ${docType.webhookUrl}`)
+          fetch(docType.webhookUrl, {
+            method: docType.webhookMethod || 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               ...updatedDocument,
@@ -118,7 +117,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       )
     }
 
-    const success = await deleteDocument(documentTypeId, id)
+    const success = await deleteDocument(parseInt(documentTypeId), parseInt(id))
 
     if (!success) {
       return NextResponse.json({ error: 'Document not found' }, { status: 404 })
