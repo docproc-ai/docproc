@@ -34,6 +34,7 @@ data/
 ## File Types
 
 ### 1. Document Types (`config.json`)
+
 Contains the document type definition including schema and webhook configuration.
 
 ```json
@@ -55,6 +56,7 @@ Contains the document type definition including schema and webhook configuration
 ```
 
 ### 2. Document Metadata (`metadata.json`)
+
 Contains document metadata and status information.
 
 ```json
@@ -69,13 +71,14 @@ Contains document metadata and status information.
 ```
 
 ### 3. Document Data (`data.json`)
+
 Contains extracted data and schema snapshot.
 
 ```json
 {
   "extracted_data": {
     "invoice_number": "INV-001",
-    "amount": 1500.00,
+    "amount": 1500.0,
     "date": "2025-01-01"
   },
   "schema_snapshot": {
@@ -91,6 +94,7 @@ Contains extracted data and schema snapshot.
 ```
 
 ### 4. Document Files (`file.{ext}`)
+
 The original uploaded files (PDFs, images, etc.) stored with their original extensions.
 
 ## Environment Variables
@@ -104,18 +108,24 @@ DATA_DIR=./data
 ## API Changes
 
 ### Document Processing
+
 The process-document API now expects:
+
 ```json
 {
   "model": "claude-3-haiku-20240307",
-  "schema": { /* schema object */ },
+  "schema": {
+    /* schema object */
+  },
   "documentTypeId": "invoice",
   "documentId": "doc-001"
 }
 ```
 
 ### Document Operations
+
 Some API endpoints now require additional headers:
+
 - `x-document-type-id`: Required for document-specific operations
 
 ## Migration Steps
@@ -123,22 +133,26 @@ Some API endpoints now require additional headers:
 1. **Backup your existing data** before starting the migration.
 
 2. **Update environment variables**:
+
    ```env
    DATA_DIR=./data
    # Remove DATABASE_URL if you had it
    ```
 
 3. **Install dependencies**:
+
    ```bash
    npm install
    ```
 
 4. **Run migration script** (if you have existing data):
+
    ```bash
    node scripts/migrate-to-filesystem.js
    ```
 
 5. **Test the application**:
+
    ```bash
    npm run dev
    ```
@@ -160,13 +174,17 @@ Some API endpoints now require additional headers:
 ## File Management
 
 ### Backup
+
 Simply copy the entire `data/` directory:
+
 ```bash
 cp -r data/ backup-$(date +%Y%m%d)/
 ```
 
 ### Version Control
+
 You can add the `data/` directory to `.gitignore` for production or include sample data for development:
+
 ```gitignore
 # Ignore production data
 data/
@@ -176,7 +194,9 @@ data/
 ```
 
 ### Cleanup
+
 Remove old or test data:
+
 ```bash
 rm -rf data/document-types/test-type/
 ```
@@ -184,19 +204,25 @@ rm -rf data/document-types/test-type/
 ## Troubleshooting
 
 ### Permission Issues
+
 Ensure the application has write permissions to the data directory:
+
 ```bash
 chmod -R 755 data/
 ```
 
 ### Missing Files
+
 If documents appear in the UI but files are missing, check:
+
 1. File permissions
 2. Correct DATA_DIR environment variable
 3. File paths in metadata.json
 
 ### Performance
+
 For large numbers of documents, consider:
+
 1. Regular cleanup of old/processed documents
 2. Archiving completed documents to separate storage
 3. Implementing file indexing if search becomes slow

@@ -1,45 +1,51 @@
-"use client"
+'use client'
 
-import { useState, useMemo, useCallback } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { SchemaBuilder, type JsonSchema } from "@/components/schema-builder"
-import { useToast } from "@/components/ui/use-toast"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { SchemaEditorTab } from "@/components/editor-tabs"
-import { ArrowLeft, Loader2 } from "lucide-react"
-import { SettingsDialog } from "@/components/settings-dialog"
-import { ThemeToggle } from "@/components/theme-toggle"
+import { useState, useMemo, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { SchemaBuilder, type JsonSchema } from '@/components/schema-builder'
+import { useToast } from '@/components/ui/use-toast'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { SchemaEditorTab } from '@/components/editor-tabs'
+import { ArrowLeft, Loader2 } from 'lucide-react'
+import { SettingsDialog } from '@/components/settings-dialog'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 const initialSchema: JsonSchema = {
-  type: "object",
-  title: "New Document",
+  type: 'object',
+  title: 'New Document',
   properties: {
     invoice_number: {
-      type: "string",
-      title: "Invoice Number",
-      description: "The unique identifier for the invoice",
+      type: 'string',
+      title: 'Invoice Number',
+      description: 'The unique identifier for the invoice',
     },
     total_amount: {
-      type: "number",
-      title: "Total Amount",
-      description: "The final amount due",
+      type: 'number',
+      title: 'Total Amount',
+      description: 'The final amount due',
     },
   },
-  required: ["invoice_number", "total_amount"],
+  required: ['invoice_number', 'total_amount'],
 }
 
 export default function NewDocumentTypePage() {
   const router = useRouter()
   const { toast } = useToast()
-  const [name, setName] = useState("")
-  const [webhookUrl, setWebhookUrl] = useState("")
-  const [webhookMethod, setWebhookMethod] = useState("POST")
+  const [name, setName] = useState('')
+  const [webhookUrl, setWebhookUrl] = useState('')
+  const [webhookMethod, setWebhookMethod] = useState('POST')
   const [schemaText, setSchemaText] = useState(JSON.stringify(initialSchema, null, 2))
   const [isLoading, setIsLoading] = useState(false)
 
@@ -47,12 +53,12 @@ export default function NewDocumentTypePage() {
     try {
       return JSON.parse(schemaText)
     } catch (e) {
-      return { type: "object", title: "Invalid Schema", properties: {} }
+      return { type: 'object', title: 'Invalid Schema', properties: {} }
     }
   }, [schemaText])
 
   const handleSchemaTextChange = useCallback((text: string | undefined) => {
-    setSchemaText(text || "")
+    setSchemaText(text || '')
   }, [])
 
   const handleSchemaBuilderChange = useCallback((newSchema: JsonSchema) => {
@@ -62,9 +68,9 @@ export default function NewDocumentTypePage() {
   const handleSubmit = async () => {
     setIsLoading(true)
     try {
-      const response = await fetch("/api/document-types", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch('/api/document-types', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name,
           schema,
@@ -75,19 +81,19 @@ export default function NewDocumentTypePage() {
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || "Failed to save document type.")
+        throw new Error(errorData.error || 'Failed to save document type.')
       }
 
       toast({
-        title: "Success!",
+        title: 'Success!',
         description: `Document type "${name}" has been created.`,
       })
-      router.push("/document-types")
+      router.push('/document-types')
       router.refresh()
     } catch (error: any) {
       toast({
-        variant: "destructive",
-        title: "Uh oh! Something went wrong.",
+        variant: 'destructive',
+        title: 'Uh oh! Something went wrong.',
         description: error.message,
       })
     } finally {
@@ -96,8 +102,8 @@ export default function NewDocumentTypePage() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background text-foreground">
-      <header className="flex items-center gap-4 px-6 py-3 border-b border-border flex-shrink-0">
+    <div className="bg-background text-foreground flex h-screen flex-col">
+      <header className="border-border flex flex-shrink-0 items-center gap-4 border-b px-6 py-3">
         <Button variant="outline" size="icon" asChild>
           <Link href="/document-types">
             <ArrowLeft className="h-4 w-4" />
@@ -107,7 +113,7 @@ export default function NewDocumentTypePage() {
         <h1 className="text-xl font-semibold">Create New Document Type</h1>
         <div className="ml-auto flex items-center gap-2">
           <Button onClick={handleSubmit} disabled={isLoading || !name}>
-            {isLoading && <Loader2 className=" h-4 w-4 animate-spin" />}
+            {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
             Save
           </Button>
           <SettingsDialog />
@@ -115,21 +121,27 @@ export default function NewDocumentTypePage() {
         </div>
       </header>
       <main className="flex-grow overflow-auto p-6">
-        <div className="max-w-4xl mx-auto space-y-8">
+        <div className="mx-auto max-w-4xl space-y-8">
           <Card>
             <CardHeader>
               <CardTitle>General Information</CardTitle>
               <CardDescription>
-                Give your document type a name and configure an optional webhook for when documents are approved.
+                Give your document type a name and configure an optional webhook for when documents
+                are approved.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Name</Label>
-                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., Invoices" />
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g., Invoices"
+                />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="md:col-span-2 space-y-2">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="webhookUrl">Webhook URL (Optional)</Label>
                   <Input
                     id="webhookUrl"
@@ -159,12 +171,12 @@ export default function NewDocumentTypePage() {
             <CardHeader>
               <CardTitle>Schema Definition</CardTitle>
               <CardDescription>
-                Define the structure of the data you want to extract. Use the builder for a visual experience or edit
-                the JSON directly.
+                Define the structure of the data you want to extract. Use the builder for a visual
+                experience or edit the JSON directly.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Tabs defaultValue="builder" className="flex flex-col h-full">
+              <Tabs defaultValue="builder" className="flex h-full flex-col">
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="builder">Builder</TabsTrigger>
                   <TabsTrigger value="schema">JSON</TabsTrigger>

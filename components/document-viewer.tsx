@@ -1,10 +1,14 @@
-"use client"
-import { useState, useRef, useEffect, useCallback, memo } from "react"
+'use client'
+import { useState, useRef, useEffect, useCallback, memo } from 'react'
 
-import { FileText, Loader2, ChevronLeft, ChevronRight } from "lucide-react"
-import { Document, pdfjs, type PDFDocumentProxy } from "react-pdf"
-import { TransformWrapper, TransformComponent, type ReactZoomPanPanPinchRef } from "react-zoom-pan-pinch"
-import { Button } from "@/components/ui/button"
+import { FileText, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Document, pdfjs, type PDFDocumentProxy } from 'react-pdf'
+import {
+  TransformWrapper,
+  TransformComponent,
+  type ReactZoomPanPanPinchRef,
+} from 'react-zoom-pan-pinch'
+import { Button } from '@/components/ui/button'
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
 
@@ -59,13 +63,13 @@ const DocumentViewerComponent = ({ file, onPageRender }: DocumentViewerProps) =>
         const scale = 2
         const viewport = page.getViewport({ scale })
 
-        const canvas = document.createElement("canvas")
+        const canvas = document.createElement('canvas')
         canvas.width = viewport.width
         canvas.height = viewport.height
-        const context = canvas.getContext("2d")
+        const context = canvas.getContext('2d')
 
         if (!context) {
-          throw new Error("Could not get canvas context")
+          throw new Error('Could not get canvas context')
         }
 
         const renderContext = {
@@ -75,12 +79,12 @@ const DocumentViewerComponent = ({ file, onPageRender }: DocumentViewerProps) =>
 
         await page.render(renderContext).promise
         if (isMounted) {
-          const dataUrl = canvas.toDataURL("image/png")
+          const dataUrl = canvas.toDataURL('image/png')
           setPageImage(dataUrl)
           onPageRender?.(dataUrl)
         }
       } catch (error) {
-        console.error("Failed to render page:", error)
+        console.error('Failed to render page:', error)
         if (isMounted) {
           setPageImage(null)
           onPageRender?.(null)
@@ -117,42 +121,49 @@ const DocumentViewerComponent = ({ file, onPageRender }: DocumentViewerProps) =>
   }
 
   const renderPdf = () => (
-    <div className="h-full w-full flex flex-col">
-      <div className="flex-grow relative bg-muted/20 overflow-hidden">
-        <div style={{ display: "none" }}>
-          {fileUrl && <Document key={fileUrl} file={fileUrl} onLoadSuccess={onDocumentLoadSuccess} />}
+    <div className="flex h-full w-full flex-col">
+      <div className="bg-muted/20 relative flex-grow overflow-hidden">
+        <div style={{ display: 'none' }}>
+          {fileUrl && (
+            <Document key={fileUrl} file={fileUrl} onLoadSuccess={onDocumentLoadSuccess} />
+          )}
         </div>
 
         {(isRendering || !pageImage) && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10">
-            <Loader2 className="w-8 h-8 text-muted-foreground animate-spin" />
+          <div className="bg-background/50 absolute inset-0 z-10 flex items-center justify-center">
+            <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
           </div>
         )}
 
         {pageImage && (
           <TransformWrapper ref={transformWrapperRef} limitToBounds={false}>
             <TransformComponent
-              wrapperStyle={{ width: "100%", height: "100%" }}
-              contentStyle={{ width: "100%", height: "100%" }}
+              wrapperStyle={{ width: '100%', height: '100%' }}
+              contentStyle={{ width: '100%', height: '100%' }}
             >
               <img
-                src={pageImage || "/placeholder.svg"}
+                src={pageImage || '/placeholder.svg'}
                 alt={`Page ${currentPage}`}
-                className="w-full h-full object-contain shadow-lg"
+                className="h-full w-full object-contain shadow-lg"
               />
             </TransformComponent>
           </TransformWrapper>
         )}
       </div>
       {numPages && numPages > 1 && (
-        <div className="flex-shrink-0 flex items-center justify-center gap-4 p-2 border-t border-border">
+        <div className="border-border flex flex-shrink-0 items-center justify-center gap-4 border-t p-2">
           <Button variant="ghost" size="icon" onClick={goToPrevPage} disabled={currentPage <= 1}>
             <ChevronLeft className="h-5 w-5" />
           </Button>
-          <span className="text-sm font-medium text-muted-foreground">
+          <span className="text-muted-foreground text-sm font-medium">
             Page {currentPage} of {numPages}
           </span>
-          <Button variant="ghost" size="icon" onClick={goToNextPage} disabled={currentPage >= numPages}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={goToNextPage}
+            disabled={currentPage >= numPages}
+          >
             <ChevronRight className="h-5 w-5" />
           </Button>
         </div>
@@ -161,46 +172,46 @@ const DocumentViewerComponent = ({ file, onPageRender }: DocumentViewerProps) =>
   )
 
   const renderImage = () => (
-    <div className="h-full w-full bg-muted/20 overflow-hidden">
+    <div className="bg-muted/20 h-full w-full overflow-hidden">
       <TransformWrapper ref={transformWrapperRef} limitToBounds={false}>
         <TransformComponent
-          wrapperStyle={{ width: "100%", height: "100%" }}
-          contentStyle={{ width: "100%", height: "100%" }}
+          wrapperStyle={{ width: '100%', height: '100%' }}
+          contentStyle={{ width: '100%', height: '100%' }}
         >
           <img
-            src={fileUrl! || "/placeholder.svg"}
+            src={fileUrl! || '/placeholder.svg'}
             alt={file?.name}
-            className="w-full h-full object-contain shadow-lg"
+            className="h-full w-full object-contain shadow-lg"
           />
         </TransformComponent>
       </TransformWrapper>
     </div>
   )
 
-  const isImage = file?.type.startsWith("image/")
-  const isPdf = file?.type === "application/pdf"
+  const isImage = file?.type.startsWith('image/')
+  const isPdf = file?.type === 'application/pdf'
 
   return (
-    <div className="h-full w-full relative">
+    <div className="relative h-full w-full">
       {!file ? (
-        <div className="flex flex-col items-center justify-center h-full border-2 border-dashed border-border rounded-lg bg-muted/50">
-          <FileText className="w-12 h-12 text-muted-foreground" />
-          <p className="mt-4 text-muted-foreground">Select a file to view or drop it here</p>
+        <div className="border-border bg-muted/50 flex h-full flex-col items-center justify-center rounded-lg border-2 border-dashed">
+          <FileText className="text-muted-foreground h-12 w-12" />
+          <p className="text-muted-foreground mt-4">Select a file to view or drop it here</p>
         </div>
       ) : isImage ? (
         renderImage()
       ) : isPdf ? (
         renderPdf()
       ) : (
-        <div className="flex flex-col items-center justify-center h-full">
-          <FileText className="w-12 h-12 text-muted-foreground" />
-          <p className="mt-4 text-muted-foreground">Preview for '{file.name}' is not available.</p>
+        <div className="flex h-full flex-col items-center justify-center">
+          <FileText className="text-muted-foreground h-12 w-12" />
+          <p className="text-muted-foreground mt-4">Preview for '{file.name}' is not available.</p>
         </div>
       )}
     </div>
   )
 }
 
-DocumentViewerComponent.displayName = "DocumentViewerComponent"
+DocumentViewerComponent.displayName = 'DocumentViewerComponent'
 
 export default memo(DocumentViewerComponent)

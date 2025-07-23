@@ -1,6 +1,6 @@
-import { anthropic } from "@ai-sdk/anthropic"
-import { generateObject, jsonSchema } from "ai"
-import { getDocumentFile, saveDocumentData, getDocumentType } from "@/lib/filesystem"
+import { anthropic } from '@ai-sdk/anthropic'
+import { generateObject, jsonSchema } from 'ai'
+import { getDocumentFile, saveDocumentData, getDocumentType } from '@/lib/filesystem'
 
 export async function POST(req: Request) {
   let model, schema, documentTypeId, documentId
@@ -12,15 +12,20 @@ export async function POST(req: Request) {
     documentId = body.documentId
 
     if (!documentTypeId || !documentId || !schema || !model) {
-      return new Response(JSON.stringify({ error: "Missing required parameters: documentTypeId, documentId, schema, or model." }), {
-        status: 400,
-      })
+      return new Response(
+        JSON.stringify({
+          error: 'Missing required parameters: documentTypeId, documentId, schema, or model.',
+        }),
+        {
+          status: 400,
+        },
+      )
     }
 
     // Get the document file from filesystem
     const fileData = await getDocumentFile(documentTypeId, documentId)
     if (!fileData) {
-      return new Response(JSON.stringify({ error: "Document file not found." }), {
+      return new Response(JSON.stringify({ error: 'Document file not found.' }), {
         status: 404,
       })
     }
@@ -28,7 +33,7 @@ export async function POST(req: Request) {
     // Get document type to get the schema
     const documentType = await getDocumentType(documentTypeId)
     if (!documentType) {
-      return new Response(JSON.stringify({ error: "Document type not found." }), {
+      return new Response(JSON.stringify({ error: 'Document type not found.' }), {
         status: 404,
       })
     }
@@ -36,7 +41,7 @@ export async function POST(req: Request) {
     // Prepare the raw schema object, ensuring it has a root 'type' and 'properties'.
     const rawSchema = {
       ...schema,
-      type: "object",
+      type: 'object',
       properties: schema.properties || {},
     }
 
@@ -48,24 +53,24 @@ export async function POST(req: Request) {
     const mimeType = getMimeType(fileExtension || '')
 
     const messageContent: (
-      | { type: "text"; text: string }
-      | { type: "image"; image: Buffer }
-      | { type: "file"; data: Buffer; mimeType?: string; filename?: string }
+      | { type: 'text'; text: string }
+      | { type: 'image'; image: Buffer }
+      | { type: 'file'; data: Buffer; mimeType?: string; filename?: string }
     )[] = [
       {
-        type: "text",
+        type: 'text',
         text: `Please analyze the attached document and extract the data according to the provided schema.`,
       },
     ]
 
-    if (mimeType.startsWith("image/")) {
-      messageContent.push({ type: "image", image: fileData.buffer })
+    if (mimeType.startsWith('image/')) {
+      messageContent.push({ type: 'image', image: fileData.buffer })
     } else {
-      messageContent.push({ 
-        type: "file", 
-        data: fileData.buffer, 
+      messageContent.push({
+        type: 'file',
+        data: fileData.buffer,
         mimeType: mimeType,
-        filename: fileData.filename
+        filename: fileData.filename,
       })
     }
 
@@ -81,7 +86,7 @@ export async function POST(req: Request) {
 4.  **Follow Schema**: Adhere strictly to the JSON schema for the output format. Pay close attention to field names, types, and nested structures.`,
       messages: [
         {
-          role: "user",
+          role: 'user',
           content: messageContent as any,
         },
       ],
@@ -92,34 +97,37 @@ export async function POST(req: Request) {
 
     return new Response(JSON.stringify({ data: object }), {
       status: 200,
-      headers: { "Content-Type": "application/json" },
+      headers: { 'Content-Type': 'application/json' },
     })
   } catch (error: any) {
-    console.error("AI processing failed:", {
-      model: model || "Unknown",
-      schema: schema?.title || "Unknown",
-      documentTypeId: documentTypeId || "Unknown",
-      documentId: documentId || "Unknown",
+    console.error('AI processing failed:', {
+      model: model || 'Unknown',
+      schema: schema?.title || 'Unknown',
+      documentTypeId: documentTypeId || 'Unknown',
+      documentId: documentId || 'Unknown',
       errorMessage: error.message,
     })
-    return new Response(JSON.stringify({ error: error.message || "An internal server error occurred." }), {
-      status: 500,
-    })
+    return new Response(
+      JSON.stringify({ error: error.message || 'An internal server error occurred.' }),
+      {
+        status: 500,
+      },
+    )
   }
 }
 
 function getMimeType(extension: string): string {
   const mimeTypes: { [key: string]: string } = {
-    'pdf': 'application/pdf',
-    'png': 'image/png',
-    'jpg': 'image/jpeg',
-    'jpeg': 'image/jpeg',
-    'gif': 'image/gif',
-    'bmp': 'image/bmp',
-    'webp': 'image/webp',
-    'tiff': 'image/tiff',
-    'tif': 'image/tiff'
+    pdf: 'application/pdf',
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    gif: 'image/gif',
+    bmp: 'image/bmp',
+    webp: 'image/webp',
+    tiff: 'image/tiff',
+    tif: 'image/tiff',
   }
-  
+
   return mimeTypes[extension] || 'application/octet-stream'
 }

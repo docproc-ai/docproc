@@ -1,17 +1,30 @@
-"use client"
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Trash2, Plus, ChevronDown, ChevronRight } from "lucide-react"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { cn } from "@/lib/utils"
-import Editor from "@/components/editor"
-import type { JsonSchema } from "./schema-builder"
-import { Textarea } from "@/components/ui/textarea"
+'use client'
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Trash2, Plus, ChevronDown, ChevronRight } from 'lucide-react'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { cn } from '@/lib/utils'
+import Editor from '@/components/editor'
+import type { JsonSchema } from './schema-builder'
+import { Textarea } from '@/components/ui/textarea'
 
 interface FormRendererProps {
   schema: JsonSchema
@@ -22,7 +35,7 @@ interface FormRendererProps {
 export function FormRenderer({ schema, data, onChange }: FormRendererProps) {
   if (!schema || !schema.properties) {
     return (
-      <div className="text-center text-muted-foreground p-8">
+      <div className="text-muted-foreground p-8 text-center">
         <p>No schema properties defined.</p>
         <p className="text-sm">Select a document or define a schema to get started.</p>
       </div>
@@ -68,59 +81,69 @@ function SpreadsheetCellInput({
 }) {
   const fieldType = Array.isArray(schema.type) ? schema.type[0] : schema.type
   const inputClasses =
-    "w-full h-full bg-transparent border-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 rounded-none px-2 py-1"
+    'w-full h-full bg-transparent border-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 rounded-none px-2 py-1'
 
   switch (fieldType) {
-    case "number":
-    case "integer":
+    case 'number':
+    case 'integer':
       return (
         <Input
           type="number"
-          value={value ?? ""}
+          value={value ?? ''}
           onChange={(e) =>
             onChange(
-              e.target.value === ""
+              e.target.value === ''
                 ? undefined
-                : fieldType === "integer"
+                : fieldType === 'integer'
                   ? Number.parseInt(e.target.value)
                   : Number.parseFloat(e.target.value),
             )
           }
           onWheel={(e) => e.currentTarget.blur()}
           onKeyDown={(e) => {
-            if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
               e.preventDefault()
             }
           }}
           className={cn(
             inputClasses,
-            "[&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]",
+            '[-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
           )}
         />
       )
-    case "boolean":
+    case 'boolean':
       return (
-        <div className="flex justify-center items-center h-full">
+        <div className="flex h-full items-center justify-center">
           <Checkbox checked={!!value} onCheckedChange={onChange} />
         </div>
       )
-    case "string":
-      if (schema.format === "date") {
+    case 'string':
+      if (schema.format === 'date') {
         return (
           <Input
             type="date"
-            value={value ?? ""}
+            value={value ?? ''}
             onChange={(e) => onChange(e.target.value)}
-            className={cn(inputClasses, "relative")}
+            className={cn(inputClasses, 'relative')}
           />
         )
       }
       return (
-        <Input type="text" value={value ?? ""} onChange={(e) => onChange(e.target.value)} className={inputClasses} />
+        <Input
+          type="text"
+          value={value ?? ''}
+          onChange={(e) => onChange(e.target.value)}
+          className={inputClasses}
+        />
       )
     default:
       return (
-        <Input type="text" value={value ?? ""} onChange={(e) => onChange(e.target.value)} className={inputClasses} />
+        <Input
+          type="text"
+          value={value ?? ''}
+          onChange={(e) => onChange(e.target.value)}
+          className={inputClasses}
+        />
       )
   }
 }
@@ -143,7 +166,7 @@ function ArrayTableField({
   const handleAddRow = () => {
     const itemsSchema = schema.items || {}
     let newItem: any
-    if (itemsSchema.type === "object") {
+    if (itemsSchema.type === 'object') {
       newItem = Object.entries(itemsSchema.properties || {}).reduce(
         (acc, [key, propSchema]) => {
           acc[key] = propSchema.default !== undefined ? propSchema.default : undefined
@@ -152,7 +175,7 @@ function ArrayTableField({
         {} as Record<string, any>,
       )
     } else {
-      newItem = itemsSchema.default !== undefined ? itemsSchema.default : ""
+      newItem = itemsSchema.default !== undefined ? itemsSchema.default : ''
     }
     onChange([...arrayValue, newItem])
   }
@@ -172,20 +195,24 @@ function ArrayTableField({
     onChange(newArray)
   }
 
-  const itemsSchema = schema.items || { type: "string" }
-  const isObjectArray = itemsSchema.type === "object" && itemsSchema.properties
-  const headers = isObjectArray ? Object.keys(itemsSchema.properties) : [itemsSchema.title || "Value"]
+  const itemsSchema = schema.items || { type: 'string' }
+  const isObjectArray = itemsSchema.type === 'object' && itemsSchema.properties
+  const headers = isObjectArray
+    ? Object.keys(itemsSchema.properties)
+    : [itemsSchema.title || 'Value']
 
   return (
-    <div className="space-y-2 border border-border rounded-lg p-4">
+    <div className="border-border space-y-2 rounded-lg border p-4">
       <div>
         <Label className="text-base font-semibold">
           {schema.title || name}
-          {required && <span className="text-red-500 ml-1">*</span>}
+          {required && <span className="ml-1 text-red-500">*</span>}
         </Label>
-        {schema.description && <p className="text-sm text-muted-foreground mt-1">{schema.description}</p>}
+        {schema.description && (
+          <p className="text-muted-foreground mt-1 text-sm">{schema.description}</p>
+        )}
       </div>
-      <div className="overflow-x-auto border border-border rounded-md">
+      <div className="border-border overflow-x-auto rounded-md border">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50 hover:bg-muted/50">
@@ -194,7 +221,7 @@ function ArrayTableField({
                   {isObjectArray ? itemsSchema.properties?.[header]?.title || header : header}
                 </TableHead>
               ))}
-              <TableHead className="w-[50px] text-right px-2 py-2">
+              <TableHead className="w-[50px] px-2 py-2 text-right">
                 <span className="sr-only">Actions</span>
               </TableHead>
             </TableRow>
@@ -203,11 +230,13 @@ function ArrayTableField({
             {arrayValue.map((item, rowIndex) => (
               <TableRow key={rowIndex}>
                 {headers.map((headerKey) => {
-                  const cellSchema = isObjectArray ? itemsSchema.properties?.[headerKey] || {} : itemsSchema
+                  const cellSchema = isObjectArray
+                    ? itemsSchema.properties?.[headerKey] || {}
+                    : itemsSchema
                   const cellValue = isObjectArray ? item[headerKey] : item
                   const columnKey = isObjectArray ? headerKey : null
                   return (
-                    <TableCell key={headerKey} className="p-0 h-10">
+                    <TableCell key={headerKey} className="h-10 p-0">
                       <SpreadsheetCellInput
                         schema={cellSchema}
                         value={cellValue}
@@ -216,7 +245,7 @@ function ArrayTableField({
                     </TableCell>
                   )
                 })}
-                <TableCell className="text-right px-2 py-0">
+                <TableCell className="px-2 py-0 text-right">
                   <Button variant="ghost" size="icon" onClick={() => handleRemoveRow(rowIndex)}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -227,14 +256,21 @@ function ArrayTableField({
         </Table>
       </div>
       <Button type="button" variant="outline" size="sm" onClick={handleAddRow}>
-        <Plus className="h-4 w-4 " />
+        <Plus className="h-4 w-4" />
         Add Row
       </Button>
     </div>
   )
 }
 
-function FormField({ name, schema, value, onChange, required, isArrayItem = false }: FormFieldProps) {
+function FormField({
+  name,
+  schema,
+  value,
+  onChange,
+  required,
+  isArrayItem = false,
+}: FormFieldProps) {
   const fieldType = Array.isArray(schema.type) ? schema.type[0] : schema.type
   const [expandedArrayItems, setExpandedArrayItems] = useState<Record<string, boolean>>({})
 
@@ -254,10 +290,12 @@ function FormField({ name, schema, value, onChange, required, isArrayItem = fals
       <div className="space-y-2">
         <Label htmlFor={name}>
           {schema.title || name}
-          {required && <span className="text-red-500 ml-1">*</span>}
+          {required && <span className="ml-1 text-red-500">*</span>}
         </Label>
-        {schema.description && <p className="text-sm text-muted-foreground">{schema.description}</p>}
-        <Select value={String(value ?? "")} onValueChange={handleChange}>
+        {schema.description && (
+          <p className="text-muted-foreground text-sm">{schema.description}</p>
+        )}
+        <Select value={String(value ?? '')} onValueChange={handleChange}>
           <SelectTrigger>
             <SelectValue placeholder="Select an option" />
           </SelectTrigger>
@@ -274,18 +312,20 @@ function FormField({ name, schema, value, onChange, required, isArrayItem = fals
   }
 
   switch (fieldType) {
-    case "string":
-      if (schema["ui:widget"] === "textarea") {
+    case 'string':
+      if (schema['ui:widget'] === 'textarea') {
         return (
           <div className="space-y-2">
             <Label htmlFor={name}>
               {schema.title || name}
-              {required && <span className="text-red-500 ml-1">*</span>}
+              {required && <span className="ml-1 text-red-500">*</span>}
             </Label>
-            {schema.description && <p className="text-sm text-muted-foreground">{schema.description}</p>}
+            {schema.description && (
+              <p className="text-muted-foreground text-sm">{schema.description}</p>
+            )}
             <Textarea
               id={name}
-              value={value ?? ""}
+              value={value ?? ''}
               onChange={(e) => handleChange(e.target.value)}
               placeholder={schema.default}
               rows={4}
@@ -293,18 +333,20 @@ function FormField({ name, schema, value, onChange, required, isArrayItem = fals
           </div>
         )
       }
-      if (schema.format === "date") {
+      if (schema.format === 'date') {
         return (
           <div className="space-y-2">
             <Label htmlFor={name}>
               {schema.title || name}
-              {required && <span className="text-red-500 ml-1">*</span>}
+              {required && <span className="ml-1 text-red-500">*</span>}
             </Label>
-            {schema.description && <p className="text-sm text-muted-foreground">{schema.description}</p>}
+            {schema.description && (
+              <p className="text-muted-foreground text-sm">{schema.description}</p>
+            )}
             <Input
               id={name}
               type="date"
-              value={value ?? ""}
+              value={value ?? ''}
               onChange={(e) => handleChange(e.target.value)}
               placeholder={schema.default}
             />
@@ -315,75 +357,85 @@ function FormField({ name, schema, value, onChange, required, isArrayItem = fals
         <div className="space-y-2">
           <Label htmlFor={name}>
             {schema.title || name}
-            {required && <span className="text-red-500 ml-1">*</span>}
+            {required && <span className="ml-1 text-red-500">*</span>}
           </Label>
-          {schema.description && <p className="text-sm text-muted-foreground">{schema.description}</p>}
+          {schema.description && (
+            <p className="text-muted-foreground text-sm">{schema.description}</p>
+          )}
           <Input
             id={name}
             type="text"
-            value={value ?? ""}
+            value={value ?? ''}
             onChange={(e) => handleChange(e.target.value)}
             placeholder={schema.default}
           />
         </div>
       )
 
-    case "number":
-    case "integer":
+    case 'number':
+    case 'integer':
       return (
         <div className="space-y-2">
           <Label htmlFor={name}>
             {schema.title || name}
-            {required && <span className="text-red-500 ml-1">*</span>}
+            {required && <span className="ml-1 text-red-500">*</span>}
           </Label>
-          {schema.description && <p className="text-sm text-muted-foreground">{schema.description}</p>}
+          {schema.description && (
+            <p className="text-muted-foreground text-sm">{schema.description}</p>
+          )}
           <Input
             id={name}
             type="number"
-            value={value ?? ""}
+            value={value ?? ''}
             onChange={(e) => {
               const val = e.target.value
-              if (val === "") {
+              if (val === '') {
                 handleChange(undefined)
               } else {
-                handleChange(fieldType === "integer" ? Number.parseInt(val) : Number.parseFloat(val))
+                handleChange(
+                  fieldType === 'integer' ? Number.parseInt(val) : Number.parseFloat(val),
+                )
               }
             }}
             onWheel={(e) => e.currentTarget.blur()}
             onKeyDown={(e) => {
-              if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+              if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
                 e.preventDefault()
               }
             }}
             min={schema.minimum}
             max={schema.maximum}
-            className="[&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+            className="[-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
         </div>
       )
 
-    case "boolean":
+    case 'boolean':
       return (
         <div className="flex items-center space-x-2">
           <Checkbox id={name} checked={value || false} onCheckedChange={handleChange} />
           <Label htmlFor={name}>
             {schema.title || name}
-            {required && <span className="text-red-500 ml-1">*</span>}
+            {required && <span className="ml-1 text-red-500">*</span>}
           </Label>
-          {schema.description && <p className="text-sm text-muted-foreground ml-2">{schema.description}</p>}
+          {schema.description && (
+            <p className="text-muted-foreground ml-2 text-sm">{schema.description}</p>
+          )}
         </div>
       )
 
-    case "object":
+    case 'object':
       const objectContent = (
         <>
           {!isArrayItem && (
             <div>
               <Label className="text-base font-semibold">
                 {schema.title || name}
-                {required && <span className="text-red-500 ml-1">*</span>}
+                {required && <span className="ml-1 text-red-500">*</span>}
               </Label>
-              {schema.description && <p className="text-sm text-muted-foreground mt-1">{schema.description}</p>}
+              {schema.description && (
+                <p className="text-muted-foreground mt-1 text-sm">{schema.description}</p>
+              )}
             </div>
           )}
           {schema.properties &&
@@ -404,29 +456,39 @@ function FormField({ name, schema, value, onChange, required, isArrayItem = fals
         return <div className="space-y-4">{objectContent}</div>
       }
 
-      return <div className="space-y-4 border border-border rounded-lg p-4">{objectContent}</div>
+      return <div className="border-border space-y-4 rounded-lg border p-4">{objectContent}</div>
 
-    case "array":
-      if (schema["ui:widget"] === "table") {
-        return <ArrayTableField name={name} schema={schema} value={value} onChange={onChange} required={required} />
+    case 'array':
+      if (schema['ui:widget'] === 'table') {
+        return (
+          <ArrayTableField
+            name={name}
+            schema={schema}
+            value={value}
+            onChange={onChange}
+            required={required}
+          />
+        )
       }
 
       const arrayValue = value || []
       return (
-        <div className="space-y-4 border border-border rounded-lg p-4">
+        <div className="border-border space-y-4 rounded-lg border p-4">
           <div className="flex items-center justify-between">
             <div>
               <Label className="text-base font-semibold">
                 {schema.title || name}
-                {required && <span className="text-red-500 ml-1">*</span>}
+                {required && <span className="ml-1 text-red-500">*</span>}
               </Label>
-              {schema.description && <p className="text-sm text-muted-foreground mt-1">{schema.description}</p>}
+              {schema.description && (
+                <p className="text-muted-foreground mt-1 text-sm">{schema.description}</p>
+              )}
             </div>
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => handleChange([...arrayValue, schema.items?.default ?? ""])}
+              onClick={() => handleChange([...arrayValue, schema.items?.default ?? ''])}
             >
               <Plus className="h-4 w-4" />
             </Button>
@@ -436,13 +498,21 @@ function FormField({ name, schema, value, onChange, required, isArrayItem = fals
             const isExpanded = expandedArrayItems[itemKey] !== false
 
             return (
-              <Collapsible key={index} open={isExpanded} onOpenChange={() => toggleArrayItem(itemKey)}>
-                <div className="border border-border rounded-lg p-4 space-y-4">
+              <Collapsible
+                key={index}
+                open={isExpanded}
+                onOpenChange={() => toggleArrayItem(itemKey)}
+              >
+                <div className="border-border space-y-4 rounded-lg border p-4">
                   <CollapsibleTrigger asChild>
-                    <div className="flex items-center justify-between cursor-pointer">
+                    <div className="flex cursor-pointer items-center justify-between">
                       <div className="flex items-center gap-2">
-                        {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                        <Label className="text-sm font-medium text-muted-foreground">
+                        {isExpanded ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                        <Label className="text-muted-foreground text-sm font-medium">
                           {schema.title || name}[{index}]
                         </Label>
                       </div>
@@ -463,7 +533,7 @@ function FormField({ name, schema, value, onChange, required, isArrayItem = fals
                   <CollapsibleContent>
                     <FormField
                       name={`${name}[${index}]`}
-                      schema={schema.items || { type: "string" }}
+                      schema={schema.items || { type: 'string' }}
                       value={item}
                       onChange={(newValue) => {
                         const newArray = [...arrayValue]
@@ -485,10 +555,12 @@ function FormField({ name, schema, value, onChange, required, isArrayItem = fals
         <div className="space-y-2">
           <Label htmlFor={name}>
             {schema.title || name}
-            {required && <span className="text-red-500 ml-1">*</span>}
+            {required && <span className="ml-1 text-red-500">*</span>}
           </Label>
-          {schema.description && <p className="text-sm text-muted-foreground">{schema.description}</p>}
-          <Editor language="text" value={String(value ?? "")} onChange={handleChange} />
+          {schema.description && (
+            <p className="text-muted-foreground text-sm">{schema.description}</p>
+          )}
+          <Editor language="text" value={String(value ?? '')} onChange={handleChange} />
         </div>
       )
   }

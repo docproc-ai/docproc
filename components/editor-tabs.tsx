@@ -1,8 +1,8 @@
-"use client"
+'use client'
 
-import React from "react"
-import Editor from "@/components/editor"
-import { Label } from "@/components/ui/label"
+import React from 'react'
+import Editor from '@/components/editor'
+import { Label } from '@/components/ui/label'
 
 interface EditorTabProps {
   value: string
@@ -14,7 +14,7 @@ const SchemaEditorTabComponent = ({ value, onChange }: EditorTabProps) => {
     <div className="space-y-4">
       <div>
         <Label className="text-lg font-semibold">JSON Schema</Label>
-        <p className="text-sm text-muted-foreground mb-4">
+        <p className="text-muted-foreground mb-4 text-sm">
           Edit the JSON schema directly. Changes will update the form and builder.
         </p>
       </div>

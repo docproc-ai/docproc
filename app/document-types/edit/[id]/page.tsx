@@ -1,22 +1,28 @@
-"use client"
+'use client'
 
-import { useState, useMemo, useCallback, useEffect } from "react"
-import { useRouter, useParams } from "next/navigation"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { SchemaBuilder, type JsonSchema } from "@/components/schema-builder"
-import { useToast } from "@/components/ui/use-toast"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { SchemaEditorTab } from "@/components/editor-tabs"
-import { ArrowLeft, Loader2 } from "lucide-react"
-import { SettingsDialog } from "@/components/settings-dialog"
-import { ThemeToggle } from "@/components/theme-toggle"
-import { Skeleton } from "@/components/ui/skeleton"
-import { DeleteDocumentTypeButton } from "@/components/delete-document-type-button"
+import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useRouter, useParams } from 'next/navigation'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { SchemaBuilder, type JsonSchema } from '@/components/schema-builder'
+import { useToast } from '@/components/ui/use-toast'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { SchemaEditorTab } from '@/components/editor-tabs'
+import { ArrowLeft, Loader2 } from 'lucide-react'
+import { SettingsDialog } from '@/components/settings-dialog'
+import { ThemeToggle } from '@/components/theme-toggle'
+import { Skeleton } from '@/components/ui/skeleton'
+import { DeleteDocumentTypeButton } from '@/components/delete-document-type-button'
 
 export default function EditDocumentTypePage() {
   const router = useRouter()
@@ -24,10 +30,10 @@ export default function EditDocumentTypePage() {
   const { toast } = useToast()
   const id = params.id as string
 
-  const [name, setName] = useState("")
-  const [webhookUrl, setWebhookUrl] = useState("")
-  const [webhookMethod, setWebhookMethod] = useState("POST")
-  const [schemaText, setSchemaText] = useState("")
+  const [name, setName] = useState('')
+  const [webhookUrl, setWebhookUrl] = useState('')
+  const [webhookMethod, setWebhookMethod] = useState('POST')
+  const [schemaText, setSchemaText] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isFetching, setIsFetching] = useState(true)
 
@@ -38,20 +44,20 @@ export default function EditDocumentTypePage() {
       try {
         const response = await fetch(`/api/document-types/${id}`)
         if (!response.ok) {
-          throw new Error("Failed to fetch document type details.")
+          throw new Error('Failed to fetch document type details.')
         }
         const data = await response.json()
         setName(data.name)
-        setWebhookUrl(data.webhook_url || "")
-        setWebhookMethod(data.webhook_method || "POST")
+        setWebhookUrl(data.webhook_url || '')
+        setWebhookMethod(data.webhook_method || 'POST')
         setSchemaText(JSON.stringify(data.schema, null, 2))
       } catch (error: any) {
         toast({
-          variant: "destructive",
-          title: "Error fetching data",
+          variant: 'destructive',
+          title: 'Error fetching data',
           description: error.message,
         })
-        router.push("/document-types")
+        router.push('/document-types')
       } finally {
         setIsFetching(false)
       }
@@ -63,12 +69,12 @@ export default function EditDocumentTypePage() {
     try {
       return JSON.parse(schemaText)
     } catch (e) {
-      return { type: "object", title: "Invalid Schema", properties: {} }
+      return { type: 'object', title: 'Invalid Schema', properties: {} }
     }
   }, [schemaText])
 
   const handleSchemaTextChange = useCallback((text: string | undefined) => {
-    setSchemaText(text || "")
+    setSchemaText(text || '')
   }, [])
 
   const handleSchemaBuilderChange = useCallback((newSchema: JsonSchema) => {
@@ -79,8 +85,8 @@ export default function EditDocumentTypePage() {
     setIsLoading(true)
     try {
       const response = await fetch(`/api/document-types/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name,
           schema,
@@ -91,19 +97,19 @@ export default function EditDocumentTypePage() {
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || "Failed to update document type.")
+        throw new Error(errorData.error || 'Failed to update document type.')
       }
 
       toast({
-        title: "Success!",
+        title: 'Success!',
         description: `Document type "${name}" has been updated.`,
       })
-      router.push("/document-types")
+      router.push('/document-types')
       router.refresh()
     } catch (error: any) {
       toast({
-        variant: "destructive",
-        title: "Uh oh! Something went wrong.",
+        variant: 'destructive',
+        title: 'Uh oh! Something went wrong.',
         description: error.message,
       })
     } finally {
@@ -112,7 +118,7 @@ export default function EditDocumentTypePage() {
   }
 
   const renderSkeleton = () => (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="mx-auto max-w-4xl space-y-8">
       <Card>
         <CardHeader>
           <Skeleton className="h-6 w-1/2" />
@@ -123,8 +129,8 @@ export default function EditDocumentTypePage() {
             <Skeleton className="h-4 w-24" />
             <Skeleton className="h-10 w-full" />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="md:col-span-2 space-y-2">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="space-y-2 md:col-span-2">
               <Skeleton className="h-4 w-32" />
               <Skeleton className="h-10 w-full" />
             </div>
@@ -148,8 +154,8 @@ export default function EditDocumentTypePage() {
   )
 
   return (
-    <div className="flex flex-col h-screen bg-background text-foreground">
-      <header className="flex items-center gap-4 px-6 py-3 border-b border-border flex-shrink-0">
+    <div className="bg-background text-foreground flex h-screen flex-col">
+      <header className="border-border flex flex-shrink-0 items-center gap-4 border-b px-6 py-3">
         <Button variant="outline" size="icon" asChild>
           <Link href="/document-types">
             <ArrowLeft className="h-4 w-4" />
@@ -160,7 +166,7 @@ export default function EditDocumentTypePage() {
         <div className="ml-auto flex items-center gap-2">
           <DeleteDocumentTypeButton documentTypeId={id} documentTypeName={name} />
           <Button onClick={handleSubmit} disabled={isLoading || isFetching || !name}>
-            {isLoading && <Loader2 className=" h-4 w-4 animate-spin" />}
+            {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
             Save Changes
           </Button>
           <SettingsDialog />
@@ -171,12 +177,13 @@ export default function EditDocumentTypePage() {
         {isFetching ? (
           renderSkeleton()
         ) : (
-          <div className="max-w-4xl mx-auto space-y-8">
+          <div className="mx-auto max-w-4xl space-y-8">
             <Card>
               <CardHeader>
                 <CardTitle>General Information</CardTitle>
                 <CardDescription>
-                  Give your document type a name and configure an optional webhook for when documents are approved.
+                  Give your document type a name and configure an optional webhook for when
+                  documents are approved.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -189,8 +196,8 @@ export default function EditDocumentTypePage() {
                     placeholder="e.g., Invoices"
                   />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="md:col-span-2 space-y-2">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="webhookUrl">Webhook URL (Optional)</Label>
                     <Input
                       id="webhookUrl"
@@ -220,12 +227,12 @@ export default function EditDocumentTypePage() {
               <CardHeader>
                 <CardTitle>Schema Definition</CardTitle>
                 <CardDescription>
-                  Define the structure of the data you want to extract. Use the builder for a visual experience or edit
-                  the JSON directly.
+                  Define the structure of the data you want to extract. Use the builder for a visual
+                  experience or edit the JSON directly.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Tabs defaultValue="builder" className="flex flex-col h-full">
+                <Tabs defaultValue="builder" className="flex h-full flex-col">
                   <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="builder">Builder</TabsTrigger>
                     <TabsTrigger value="schema">JSON</TabsTrigger>

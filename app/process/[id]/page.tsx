@@ -1,6 +1,6 @@
-import { notFound } from "next/navigation"
-import { getDocumentType } from "@/lib/filesystem"
-import { DocumentProcessor } from "@/components/document-processor"
+import { notFound } from 'next/navigation'
+import { getDocumentType } from '@/lib/filesystem'
+import { DocumentProcessor } from '@/components/document-processor'
 
 export default async function ProcessPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -11,7 +11,7 @@ export default async function ProcessPage({ params }: { params: Promise<{ id: st
   }
 
   return (
-    <div className="h-screen bg-background text-foreground">
+    <div className="bg-background text-foreground h-screen">
       <DocumentProcessor documentType={documentType} />
     </div>
   )

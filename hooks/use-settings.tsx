@@ -1,6 +1,6 @@
-"use client"
+'use client'
 
-import { useState, useEffect, createContext, useContext, type ReactNode } from "react"
+import { useState, useEffect, createContext, useContext, type ReactNode } from 'react'
 
 interface Settings {
   model: string
@@ -14,15 +14,15 @@ interface SettingsContextType extends Settings {
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined)
 
 export const ANTHROPIC_MODELS = [
-  "claude-opus-4-20250514",
-  "claude-sonnet-4-20250514",
-  "claude-3-7-sonnet-20250219",
-  "claude-3-5-sonnet-20241022",
-  "claude-3-5-haiku-20241022",
-  "claude-3-5-sonnet-20240620",
-  "claude-3-opus-20240229",
-  "claude-3-sonnet-20240229",
-  "claude-3-haiku-20240307",
+  'claude-opus-4-20250514',
+  'claude-sonnet-4-20250514',
+  'claude-3-7-sonnet-20250219',
+  'claude-3-5-sonnet-20241022',
+  'claude-3-5-haiku-20241022',
+  'claude-3-5-sonnet-20240620',
+  'claude-3-opus-20240229',
+  'claude-3-sonnet-20240229',
+  'claude-3-haiku-20240307',
 ]
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
@@ -31,10 +31,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     try {
-      const storedModel = localStorage.getItem("anthropic_model")
+      const storedModel = localStorage.getItem('anthropic_model')
       if (storedModel && ANTHROPIC_MODELS.includes(storedModel)) setModel(storedModel)
     } catch (error) {
-      console.error("Could not access local storage:", error)
+      console.error('Could not access local storage:', error)
     } finally {
       setIsLoaded(true)
     }
@@ -43,9 +43,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const handleSetModel = (newModel: string) => {
     setModel(newModel)
     try {
-      localStorage.setItem("anthropic_model", newModel)
+      localStorage.setItem('anthropic_model', newModel)
     } catch (error) {
-      console.error("Could not access local storage:", error)
+      console.error('Could not access local storage:', error)
     }
   }
 
@@ -59,7 +59,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 export function useSettings() {
   const context = useContext(SettingsContext)
   if (context === undefined) {
-    throw new Error("useSettings must be used within a SettingsProvider")
+    throw new Error('useSettings must be used within a SettingsProvider')
   }
   return context
 }

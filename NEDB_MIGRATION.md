@@ -9,6 +9,7 @@ The AI Document Processor has been upgraded to use **@seald-io/nedb** for docume
 ### What Changed
 
 **Before (JSON Files):**
+
 ```
 data/document-types/{type-id}/documents/{doc-id}/
 ├── metadata.json     # Document metadata
@@ -17,6 +18,7 @@ data/document-types/{type-id}/documents/{doc-id}/
 ```
 
 **After (NeDB + Files):**
+
 ```
 data/document-types/{type-id}/
 ├── config.json       # Document type configuration
@@ -30,18 +32,21 @@ data/document-types/{type-id}/
 ## Benefits of NeDB
 
 ### 1. **Performance Improvements**
+
 - **Fast queries**: MongoDB-style queries with indexing
 - **Bulk operations**: Update multiple documents at once
 - **Efficient filtering**: Filter by status, date range, etc.
 - **Sorting and pagination**: Built-in support
 
 ### 2. **Better Data Management**
+
 - **Atomic operations**: No more race conditions
 - **Indexing**: Automatic indexes on `status`, `uploaded_at`, and `id`
 - **Rich metadata**: File size, MIME type, and more
 - **Consistent queries**: Familiar MongoDB syntax
 
 ### 3. **Enhanced Features**
+
 - **Status filtering**: `db.find({ status: 'pending' })`
 - **Date range queries**: `db.find({ uploaded_at: { $gte: startDate } })`
 - **Document counting**: Fast document counts per type
@@ -52,6 +57,7 @@ data/document-types/{type-id}/
 ### Automatic Migration
 
 The application automatically migrates existing JSON metadata files to NeDB when:
+
 1. A document type is accessed for the first time
 2. The `getDocuments()` function is called
 3. No existing NeDB file is found
@@ -65,6 +71,7 @@ node scripts/migrate-to-nedb.js
 ```
 
 This script will:
+
 - Check all document types for existing NeDB files
 - Migrate JSON metadata to NeDB format
 - Preserve original files as backup
@@ -74,6 +81,7 @@ This script will:
 ## Database Schema
 
 ### NeDB Document Record
+
 ```javascript
 {
   _id: "0MdTWxD4fEFg1aK8",              // NeDB internal ID
@@ -89,6 +97,7 @@ This script will:
 ```
 
 ### Indexes Created
+
 - `status` - For filtering by document status
 - `uploaded_at` - For date-based queries and sorting
 - `id` (unique) - For fast document lookups
@@ -96,6 +105,7 @@ This script will:
 ## API Performance Improvements
 
 ### Before (JSON Files)
+
 ```javascript
 // Had to read every metadata.json file
 const documents = []
@@ -106,40 +116,43 @@ for (const docId of docIds) {
 ```
 
 ### After (NeDB)
+
 ```javascript
 // Single database query with sorting and filtering
-const documents = await db.find({ status: 'pending' })
-  .sort({ uploaded_at: -1 })
-  .limit(10)
+const documents = await db.find({ status: 'pending' }).sort({ uploaded_at: -1 }).limit(10)
 ```
 
 ## Query Examples
 
 ### Find Pending Documents
+
 ```javascript
 const db = new DocumentDatabase('invoices')
 const pending = await db.findByStatus('pending')
 ```
 
 ### Count Documents by Status
+
 ```javascript
 const pendingCount = await db.count({ status: 'pending' })
 const approvedCount = await db.count({ status: 'approved' })
 ```
 
 ### Bulk Status Update
+
 ```javascript
 const docIds = ['doc-1', 'doc-2', 'doc-3']
 const updated = await db.updateStatus(docIds, 'approved')
 ```
 
 ### Date Range Queries
+
 ```javascript
 const recentDocs = await db.find({
-  uploaded_at: { 
+  uploaded_at: {
     $gte: '2025-01-01T00:00:00Z',
-    $lte: '2025-01-31T23:59:59Z'
-  }
+    $lte: '2025-01-31T23:59:59Z',
+  },
 })
 ```
 
@@ -174,12 +187,14 @@ data/
 ### Migration Issues
 
 **Problem**: Migration script fails with permission errors
+
 ```bash
 # Solution: Check file permissions
 chmod +x scripts/migrate-to-nedb.js
 ```
 
 **Problem**: NeDB file corruption
+
 ```bash
 # Solution: Delete .db file and re-run migration
 rm data/document-types/{type-id}/documents.db
@@ -189,6 +204,7 @@ node scripts/migrate-to-nedb.js
 ### Performance Issues
 
 **Problem**: Slow queries
+
 ```javascript
 // Solution: Ensure indexes are created
 db.ensureIndex({ fieldName: 'status' })
@@ -196,6 +212,7 @@ db.ensureIndex({ fieldName: 'uploaded_at' })
 ```
 
 **Problem**: Memory usage
+
 - NeDB loads entire database into memory
 - For very large datasets (>10,000 documents), consider pagination
 - Monitor memory usage in production
@@ -203,12 +220,14 @@ db.ensureIndex({ fieldName: 'uploaded_at' })
 ## Monitoring and Maintenance
 
 ### Database Size
+
 ```bash
 # Check NeDB file sizes
 find data -name "documents.db" -exec ls -lh {} \;
 ```
 
 ### Index Status
+
 ```javascript
 // Check if indexes exist
 const db = new DocumentDatabase('invoices')
@@ -216,6 +235,7 @@ const db = new DocumentDatabase('invoices')
 ```
 
 ### Backup Strategy
+
 ```bash
 # Backup NeDB files
 cp -r data/document-types/ backup/$(date +%Y%m%d)/

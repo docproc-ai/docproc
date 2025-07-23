@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
 export function middleware(request: NextRequest) {
   const envUser = process.env.AUTH_USERNAME
@@ -9,27 +9,31 @@ export function middleware(request: NextRequest) {
   // It's better to deny access than to allow it insecurely.
   // A non-empty string check is important.
   if (!envUser || !envPass) {
-    console.error("Authentication credentials are not set in the environment (AUTH_USERNAME, AUTH_PASSWORD).")
+    console.error(
+      'Authentication credentials are not set in the environment (AUTH_USERNAME, AUTH_PASSWORD).',
+    )
     // Return a 500 error to indicate a server configuration issue.
-    return new NextResponse("Internal Server Error: Authentication not configured.", { status: 500 })
+    return new NextResponse('Internal Server Error: Authentication not configured.', {
+      status: 500,
+    })
   }
 
-  const authHeader = request.headers.get("authorization")
+  const authHeader = request.headers.get('authorization')
 
   if (authHeader) {
-    const [scheme, credentials] = authHeader.split(" ")
+    const [scheme, credentials] = authHeader.split(' ')
 
-    if (scheme === "Basic" && credentials) {
+    if (scheme === 'Basic' && credentials) {
       try {
         const decoded = atob(credentials)
-        const [username, password] = decoded.split(":")
+        const [username, password] = decoded.split(':')
 
         if (username === envUser && password === envPass) {
           // If credentials are valid, proceed with the request
           return NextResponse.next()
         }
       } catch (error) {
-        console.error("Error decoding Basic Auth credentials:", error)
+        console.error('Error decoding Basic Auth credentials:', error)
         // Fall through to the 401 response
       }
     }
@@ -37,10 +41,10 @@ export function middleware(request: NextRequest) {
 
   // If authentication fails or is missing, prompt the user.
   // The 'WWW-Authenticate' header triggers the browser's native login prompt.
-  return new NextResponse("Authentication required.", {
+  return new NextResponse('Authentication required.', {
     status: 401,
     headers: {
-      "WWW-Authenticate": 'Basic realm="Secure Area"',
+      'WWW-Authenticate': 'Basic realm="Secure Area"',
     },
   })
 }
@@ -54,6 +58,6 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      */
-    "/((?!_next/static|_next/image|favicon.ico).*)",
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 }

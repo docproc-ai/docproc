@@ -1,12 +1,12 @@
-import { NextResponse } from "next/server"
-import { z } from "zod"
-import { getDocumentType, updateDocumentType, deleteDocumentType } from "@/lib/filesystem"
+import { NextResponse } from 'next/server'
+import { z } from 'zod'
+import { getDocumentType, updateDocumentType, deleteDocumentType } from '@/lib/filesystem'
 
 const updateDocumentTypeSchema = z.object({
-  name: z.string().min(1, "Name is required"),
+  name: z.string().min(1, 'Name is required'),
   schema: z.record(z.any()), // More permissive - allows any object including $schema
-  webhook_url: z.string().url("Invalid URL").optional().or(z.literal("")),
-  webhook_method: z.enum(["POST", "PUT"]).optional(),
+  webhook_url: z.string().url('Invalid URL').optional().or(z.literal('')),
+  webhook_method: z.enum(['POST', 'PUT']).optional(),
 })
 
 // GET a single document type by ID
@@ -14,14 +14,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   try {
     const { id } = await params
     const docType = await getDocumentType(id)
-    
+
     if (!docType) {
-      return NextResponse.json({ error: "Document type not found" }, { status: 404 })
+      return NextResponse.json({ error: 'Document type not found' }, { status: 404 })
     }
     return NextResponse.json(docType)
   } catch (error) {
-    console.error("Failed to fetch document type:", error)
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+    console.error('Failed to fetch document type:', error)
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }
 
@@ -46,17 +46,17 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       name,
       schema: cleanSchema,
       webhook_url: webhook_url || undefined,
-      webhook_method: webhook_method || "POST"
+      webhook_method: webhook_method || 'POST',
     })
 
     if (!updatedType) {
-      return NextResponse.json({ error: "Document type not found" }, { status: 404 })
+      return NextResponse.json({ error: 'Document type not found' }, { status: 404 })
     }
 
     return NextResponse.json(updatedType, { status: 200 })
   } catch (error: any) {
-    console.error("Failed to update document type:", error)
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+    console.error('Failed to update document type:', error)
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }
 
@@ -64,24 +64,24 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   if (!id) {
-    return NextResponse.json({ error: "Document Type ID is required" }, { status: 400 })
+    return NextResponse.json({ error: 'Document Type ID is required' }, { status: 400 })
   }
 
   try {
     // Delete the document type and all its associated documents/files
     // The deleteDocumentType function handles removing the entire directory structure
     const success = await deleteDocumentType(id)
-    
+
     if (!success) {
-      return NextResponse.json({ error: "Document type not found" }, { status: 404 })
+      return NextResponse.json({ error: 'Document type not found' }, { status: 404 })
     }
 
     return NextResponse.json(
-      { message: "Document type and all associated documents deleted successfully." },
+      { message: 'Document type and all associated documents deleted successfully.' },
       { status: 200 },
     )
   } catch (error) {
     console.error(`Failed to delete document type ${id}:`, error)
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }

@@ -1,34 +1,34 @@
-import { NextResponse } from "next/server"
-import { getDocuments, createDocument } from "@/lib/filesystem"
+import { NextResponse } from 'next/server'
+import { getDocuments, createDocument } from '@/lib/filesystem'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
-  const documentTypeId = searchParams.get("documentTypeId")
+  const documentTypeId = searchParams.get('documentTypeId')
 
   if (!documentTypeId) {
-    return NextResponse.json({ error: "documentTypeId is required" }, { status: 400 })
+    return NextResponse.json({ error: 'documentTypeId is required' }, { status: 400 })
   }
 
   try {
     const documents = await getDocuments(documentTypeId)
     return NextResponse.json(documents)
   } catch (error) {
-    console.error("Failed to fetch documents:", error)
-    return NextResponse.json({ error: "Failed to fetch documents" }, { status: 500 })
+    console.error('Failed to fetch documents:', error)
+    return NextResponse.json({ error: 'Failed to fetch documents' }, { status: 500 })
   }
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
   const { searchParams } = new URL(request.url)
-  const filename = request.headers.get("x-vercel-filename") || "document.pdf"
-  const documentTypeId = searchParams.get("documentTypeId")
+  const filename = request.headers.get('x-vercel-filename') || 'document.pdf'
+  const documentTypeId = searchParams.get('documentTypeId')
 
   if (!request.body) {
-    return NextResponse.json({ error: "No file body" }, { status: 400 })
+    return NextResponse.json({ error: 'No file body' }, { status: 400 })
   }
 
   if (!documentTypeId) {
-    return NextResponse.json({ error: "documentTypeId is required" }, { status: 400 })
+    return NextResponse.json({ error: 'documentTypeId is required' }, { status: 400 })
   }
 
   try {
@@ -40,7 +40,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     return NextResponse.json(newDocument)
   } catch (error) {
-    console.error("Upload failed:", error)
-    return NextResponse.json({ error: "Upload failed" }, { status: 500 })
+    console.error('Upload failed:', error)
+    return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
   }
 }

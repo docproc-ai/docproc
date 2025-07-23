@@ -1,15 +1,15 @@
-"use client"
+'use client'
 
-import type React from "react"
-import { useState, useRef } from "react"
-import { Button } from "@/components/ui/button"
-import { UploadCloud, FileText, CheckCircle2, AlertCircle, Loader2, Trash2 } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { formatDistanceToNow } from "date-fns"
-import type { Document } from "./document-processor"
-import { useToast } from "./ui/use-toast"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Label } from "@/components/ui/label"
+import type React from 'react'
+import { useState, useRef } from 'react'
+import { Button } from '@/components/ui/button'
+import { UploadCloud, FileText, CheckCircle2, AlertCircle, Loader2, Trash2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { formatDistanceToNow } from 'date-fns'
+import type { Document } from './document-processor'
+import { useToast } from './ui/use-toast'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from '@/components/ui/alert-dialog'
 
 interface DocumentQueueProps {
   documentTypeId: string
@@ -52,18 +52,18 @@ export function DocumentQueue({
     try {
       for (const file of files) {
         const response = await fetch(`/api/documents?documentTypeId=${documentTypeId}`, {
-          method: "POST",
-          headers: { "x-vercel-filename": file.name },
+          method: 'POST',
+          headers: { 'x-vercel-filename': file.name },
           body: file,
         })
         if (!response.ok) {
           throw new Error(`Failed to upload ${file.name}`)
         }
       }
-      toast({ title: "Success", description: `${files.length} document(s) uploaded.` })
+      toast({ title: 'Success', description: `${files.length} document(s) uploaded.` })
       onUploadSuccess()
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Upload Error", description: error.message })
+      toast({ variant: 'destructive', title: 'Upload Error', description: error.message })
     } finally {
       setIsUploading(false)
     }
@@ -75,7 +75,7 @@ export function DocumentQueue({
       handleFilesUpload(Array.from(files))
     }
     if (fileInputRef.current) {
-      fileInputRef.current.value = ""
+      fileInputRef.current.value = ''
     }
   }
 
@@ -105,21 +105,21 @@ export function DocumentQueue({
     }
   }
 
-  const StatusIcon = ({ status }: { status: Document["status"] }) => {
+  const StatusIcon = ({ status }: { status: Document['status'] }) => {
     switch (status) {
-      case "approved":
+      case 'approved':
         return <CheckCircle2 className="h-4 w-4 text-green-500" />
-      case "rejected":
-      case "processing_failed":
+      case 'rejected':
+      case 'processing_failed':
         return <AlertCircle className="h-4 w-4 text-red-500" />
-      case "pending":
+      case 'pending':
       default:
-        return <FileText className="h-4 w-4 text-muted-foreground" />
+        return <FileText className="text-muted-foreground h-4 w-4" />
     }
   }
 
   const filteredDocuments = documents.filter((doc) => {
-    if (hideApproved && doc.status === "approved") {
+    if (hideApproved && doc.status === 'approved') {
       return false
     }
     return true
@@ -127,19 +127,19 @@ export function DocumentQueue({
 
   return (
     <div
-      className="h-full flex flex-col border-r border-border bg-muted/20 relative"
+      className="border-border bg-muted/20 relative flex h-full flex-col border-r"
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
       {isDragging && (
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/80 border-2 border-dashed border-primary rounded-lg pointer-events-none">
-          <UploadCloud className="w-16 h-16 text-primary" />
-          <p className="mt-4 text-lg font-semibold text-primary">Drop files to upload</p>
+        <div className="bg-background/80 border-primary pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center rounded-lg border-2 border-dashed">
+          <UploadCloud className="text-primary h-16 w-16" />
+          <p className="text-primary mt-4 text-lg font-semibold">Drop files to upload</p>
         </div>
       )}
-      <div className="p-4 border-b border-border space-y-4">
+      <div className="border-border space-y-4 border-b p-4">
         <input
           type="file"
           ref={fileInputRef}
@@ -148,8 +148,16 @@ export function DocumentQueue({
           accept="image/*,application/pdf"
           multiple
         />
-        <Button onClick={() => fileInputRef.current?.click()} className="w-full" disabled={isUploading}>
-          {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
+        <Button
+          onClick={() => fileInputRef.current?.click()}
+          className="w-full"
+          disabled={isUploading}
+        >
+          {isUploading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <UploadCloud className="h-4 w-4" />
+          )}
           Upload
         </Button>
         <div className="flex items-center space-x-2">
@@ -158,34 +166,36 @@ export function DocumentQueue({
             checked={hideApproved}
             onCheckedChange={(checked) => setHideApproved(Boolean(checked))}
           />
-          <Label htmlFor="hide-approved" className="text-sm font-medium cursor-pointer">
+          <Label htmlFor="hide-approved" className="cursor-pointer text-sm font-medium">
             Hide approved
           </Label>
         </div>
       </div>
       <div className="flex-grow overflow-y-auto">
         {filteredDocuments.length === 0 ? (
-          <div className="p-4 text-center text-sm text-muted-foreground">
-            {documents.length > 0 ? "All documents are hidden by the filter." : "No documents uploaded yet."}
+          <div className="text-muted-foreground p-4 text-center text-sm">
+            {documents.length > 0
+              ? 'All documents are hidden by the filter.'
+              : 'No documents uploaded yet.'}
           </div>
         ) : (
-          <ul className="divide-y divide-border">
+          <ul className="divide-border divide-y">
             {filteredDocuments.map((doc) => (
               <li
                 key={doc.id}
                 className={cn(
-                  "flex items-center justify-between pr-2 hover:bg-muted group",
-                  selectedDocument?.id === doc.id && "bg-muted",
+                  'hover:bg-muted group flex items-center justify-between pr-2',
+                  selectedDocument?.id === doc.id && 'bg-muted',
                 )}
               >
                 <div
                   onClick={() => onSelect(doc)}
-                  className="flex-1 flex items-center gap-3 p-4 cursor-pointer overflow-hidden"
+                  className="flex flex-1 cursor-pointer items-center gap-3 overflow-hidden p-4"
                 >
                   <StatusIcon status={doc.status} />
                   <div className="flex-1 overflow-hidden">
-                    <p className="text-sm font-medium truncate">{doc.original_filename}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="truncate text-sm font-medium">{doc.original_filename}</p>
+                    <p className="text-muted-foreground text-xs">
                       {formatDistanceToNow(new Date(doc.uploaded_at), { addSuffix: true })}
                     </p>
                   </div>
@@ -195,17 +205,17 @@ export function DocumentQueue({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                      className="flex-shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
                     >
-                      <Trash2 className="h-4 w-4 text-destructive" />
+                      <Trash2 className="text-destructive h-4 w-4" />
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This will permanently delete the document "{doc.original_filename}" and its data. This action
-                        cannot be undone.
+                        This will permanently delete the document "{doc.original_filename}" and its
+                        data. This action cannot be undone.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

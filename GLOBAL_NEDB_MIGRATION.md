@@ -12,6 +12,7 @@ The AI Document Processor has been completely restructured to use **two global N
 ## Architecture Changes
 
 ### Before (Filesystem + Per-Type NeDB)
+
 ```
 data/
 └── document-types/
@@ -26,6 +27,7 @@ data/
 ```
 
 ### After (Global NeDB)
+
 ```
 data/
 ├── document-types.db             # Global document types database
@@ -37,18 +39,21 @@ data/
 ## Benefits of Global NeDB Approach
 
 ### 1. **Simplified Architecture**
+
 - **Single source of truth**: All data in two databases
 - **No file management**: Everything stored in databases
 - **Atomic operations**: Database transactions ensure consistency
 - **Cross-type queries**: Query documents across all types
 
 ### 2. **Enhanced Performance**
+
 - **Fast lookups**: Direct document access by ID without type context
 - **Efficient counting**: Database-level document counts
 - **Bulk operations**: Update multiple documents atomically
 - **Indexed queries**: Fast filtering by status, date, type, etc.
 
 ### 3. **Improved Scalability**
+
 - **Memory efficient**: NeDB loads only what's needed
 - **Concurrent access**: Better handling of simultaneous operations
 - **Backup simplicity**: Just two database files to backup
@@ -57,6 +62,7 @@ data/
 ## Database Schemas
 
 ### Document Types Database (`document-types.db`)
+
 ```javascript
 {
   _id: "0MdTWxD4fEFg1aK8",              // NeDB internal ID
@@ -77,11 +83,13 @@ data/
 ```
 
 **Indexes:**
+
 - `id` (unique) - Fast document type lookups
 - `name` - Search by name
 - `created_at` - Sort by creation date
 
 ### Documents Database (`documents.db`)
+
 ```javascript
 {
   _id: "I8yEevIh0Cv7M34g",              // NeDB internal ID
@@ -109,6 +117,7 @@ data/
 ```
 
 **Indexes:**
+
 - `id` (unique) - Fast document lookups
 - `document_type_id` - Filter by document type
 - `status` - Filter by processing status
@@ -117,6 +126,7 @@ data/
 ## API Improvements
 
 ### Document Types API
+
 ```javascript
 // GET /api/document-types
 // Returns all document types with accurate document counts
@@ -131,6 +141,7 @@ data/
 ```
 
 ### Documents API
+
 ```javascript
 // GET /api/documents?documentTypeId=invoices
 // Fast filtering by document type
@@ -153,6 +164,7 @@ data/
 ## Migration Process
 
 ### Automatic Migration
+
 Run the migration script to move from the old structure:
 
 ```bash
@@ -160,6 +172,7 @@ node scripts/migrate-to-global-nedb.js
 ```
 
 The script will:
+
 1. Create global `document-types.db` and `documents.db`
 2. Migrate all document type configurations
 3. Migrate all document metadata and files
@@ -167,6 +180,7 @@ The script will:
 5. Preserve original filesystem structure as backup
 
 ### Migration Output
+
 ```
 🚀 Starting migration to global NeDB databases...
 📁 Found 4 document type(s) to migrate
@@ -181,6 +195,7 @@ The script will:
 ## Performance Comparisons
 
 ### Before (Filesystem)
+
 ```javascript
 // Get documents - had to read multiple files
 const documents = []
@@ -192,12 +207,14 @@ for (const docId of docIds) {
 ```
 
 ### After (Global NeDB)
+
 ```javascript
 // Get documents - single database query
 const documents = await docsDb.findByDocumentType('invoices')
 ```
 
 ### Document Counting
+
 ```javascript
 // Before: Count files in directory
 const docIds = await fs.readdir(documentsDir)
@@ -217,11 +234,11 @@ const pending = await docsDb.find({ status: 'pending' })
 
 // Find documents uploaded in the last 24 hours
 const recent = await docsDb.find({
-  uploaded_at: { $gte: new Date(Date.now() - 24*60*60*1000).toISOString() }
+  uploaded_at: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() },
 })
 
 // Find large documents (>1MB)
-const large = await docsDb.find({ file_size: { $gt: 1024*1024 } })
+const large = await docsDb.find({ file_size: { $gt: 1024 * 1024 } })
 
 // Bulk approve documents
 await docsDb.updateStatus(['doc-1', 'doc-2', 'doc-3'], 'approved')
@@ -230,12 +247,15 @@ await docsDb.updateStatus(['doc-1', 'doc-2', 'doc-3'], 'approved')
 ## File Storage
 
 ### Base64 Encoding
+
 Files are stored as base64 strings in the database:
+
 - **Pros**: No file system dependencies, atomic operations, easy backup
 - **Cons**: ~33% size increase, memory usage for large files
 - **Suitable for**: Documents up to ~10MB (typical business documents)
 
 ### Memory Considerations
+
 - NeDB loads entire database into memory
 - Monitor memory usage with large document collections
 - Consider pagination for very large datasets (>1000 documents)
@@ -243,6 +263,7 @@ Files are stored as base64 strings in the database:
 ## Backup and Maintenance
 
 ### Simple Backup
+
 ```bash
 # Backup both databases
 cp data/document-types.db backup/document-types-$(date +%Y%m%d).db
@@ -250,13 +271,16 @@ cp data/documents.db backup/documents-$(date +%Y%m%d).db
 ```
 
 ### Database Size Monitoring
+
 ```bash
 # Check database sizes
 ls -lh data/*.db
 ```
 
 ### Cleanup Old Structure
+
 After confirming the migration works:
+
 ```bash
 # Remove old filesystem structure
 rm -rf data/document-types/
@@ -265,12 +289,14 @@ rm -rf data/document-types/
 ## Troubleshooting
 
 ### Migration Issues
+
 ```bash
 # Re-run migration if needed
 node scripts/migrate-to-global-nedb.js
 ```
 
 ### Database Corruption
+
 ```bash
 # Restore from backup
 cp backup/documents-20250122.db data/documents.db
@@ -278,6 +304,7 @@ cp backup/document-types-20250122.db data/document-types.db
 ```
 
 ### Performance Issues
+
 - Monitor memory usage: `ps aux | grep node`
 - Check database sizes: `ls -lh data/*.db`
 - Consider pagination for large result sets

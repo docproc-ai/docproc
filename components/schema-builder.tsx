@@ -1,14 +1,20 @@
-"use client"
+'use client'
 
-import type React from "react"
-import { useState, useRef, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Trash2, Plus, ChevronDown, ChevronRight, GripVertical } from "lucide-react"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import type React from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Trash2, Plus, ChevronDown, ChevronRight, GripVertical } from 'lucide-react'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 
 // This interface is now shared and defined here
 export interface JsonSchema {
@@ -24,8 +30,8 @@ export interface JsonSchema {
   maximum?: number
   minLength?: number
   maxLength?: number
-  format?: "date" | "date-time" | "email" | "uri"
-  "ui:widget"?: "default" | "table" | "textarea"
+  format?: 'date' | 'date-time' | 'email' | 'uri'
+  'ui:widget'?: 'default' | 'table' | 'textarea'
   ai?: {
     instructions?: string
   }
@@ -48,8 +54,10 @@ function EnumBuilder({ value, onChange }: { value: any[]; onChange: (newValue: a
   }
 
   return (
-    <div className="pl-6 space-y-2">
-      <p className="text-sm text-muted-foreground">The form will show a dropdown with these options.</p>
+    <div className="space-y-2 pl-6">
+      <p className="text-muted-foreground text-sm">
+        The form will show a dropdown with these options.
+      </p>
       {value.map((option, index) => (
         <div key={index} className="flex items-center gap-2">
           <Input
@@ -63,7 +71,7 @@ function EnumBuilder({ value, onChange }: { value: any[]; onChange: (newValue: a
         </div>
       ))}
       <Button variant="outline" size="sm" onClick={addOption}>
-        <Plus className="h-4 w-4 " />
+        <Plus className="h-4 w-4" />
         Add Option
       </Button>
     </div>
@@ -76,7 +84,7 @@ interface SchemaBuilderProps {
   path?: string
 }
 
-export function SchemaBuilder({ schema, onChange, path = "" }: SchemaBuilderProps) {
+export function SchemaBuilder({ schema, onChange, path = '' }: SchemaBuilderProps) {
   const [expandedProperties, setExpandedProperties] = useState<Record<string, boolean>>({})
   const propertyIdMap = useRef(new Map<string, string>())
 
@@ -112,7 +120,7 @@ export function SchemaBuilder({ schema, onChange, path = "" }: SchemaBuilderProp
     updateSchema({
       properties: {
         ...schema.properties,
-        [newKey]: { type: "string", title: "" },
+        [newKey]: { type: 'string', title: '' },
       },
     })
   }
@@ -168,12 +176,12 @@ export function SchemaBuilder({ schema, onChange, path = "" }: SchemaBuilderProp
 
   const handleDragStart = (e: React.DragEvent, key: string) => {
     setDraggedItem(key)
-    e.dataTransfer.effectAllowed = "move"
+    e.dataTransfer.effectAllowed = 'move'
   }
 
   const handleDragOver = (e: React.DragEvent, key: string) => {
     e.preventDefault()
-    e.dataTransfer.dropEffect = "move"
+    e.dataTransfer.dropEffect = 'move'
     setDragOverItem(key)
   }
 
@@ -218,14 +226,14 @@ export function SchemaBuilder({ schema, onChange, path = "" }: SchemaBuilderProp
         <div>
           <Label htmlFor="type">Type</Label>
           <Select
-            value={Array.isArray(schema.type) ? schema.type[0] : String(schema.type || "object")}
+            value={Array.isArray(schema.type) ? schema.type[0] : String(schema.type || 'object')}
             onValueChange={(type) => {
               const updates: Partial<JsonSchema> = { type }
-              if (type === "object" && !schema.properties) {
+              if (type === 'object' && !schema.properties) {
                 updates.properties = {}
               }
-              if (type === "array" && !schema.items) {
-                updates.items = { type: "string" }
+              if (type === 'array' && !schema.items) {
+                updates.items = { type: 'string' }
               }
               updateSchema(updates)
             }}
@@ -246,7 +254,7 @@ export function SchemaBuilder({ schema, onChange, path = "" }: SchemaBuilderProp
         <div>
           <Label htmlFor="title">Title</Label>
           <Input
-            value={schema.title ?? ""}
+            value={schema.title ?? ''}
             onChange={(e) => updateSchema({ title: e.target.value || undefined })}
             placeholder="Field title"
           />
@@ -256,21 +264,23 @@ export function SchemaBuilder({ schema, onChange, path = "" }: SchemaBuilderProp
       <div>
         <Label htmlFor="description">Description</Label>
         <Input
-          value={schema.description ?? ""}
+          value={schema.description ?? ''}
           onChange={(e) => updateSchema({ description: e.target.value || undefined })}
           placeholder="Field description"
         />
       </div>
 
-      {schema.type === "string" && (
+      {schema.type === 'string' && (
         <div className="space-y-4">
           {!Array.isArray(schema.enum) && (
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="format">Format</Label>
                 <Select
-                  value={schema.format || "none"}
-                  onValueChange={(format) => updateSchema({ format: format === "none" ? undefined : (format as any) })}
+                  value={schema.format || 'none'}
+                  onValueChange={(format) =>
+                    updateSchema({ format: format === 'none' ? undefined : (format as any) })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a format" />
@@ -287,9 +297,11 @@ export function SchemaBuilder({ schema, onChange, path = "" }: SchemaBuilderProp
               <div>
                 <Label htmlFor="widget">Widget</Label>
                 <Select
-                  value={schema["ui:widget"] || "default"}
+                  value={schema['ui:widget'] || 'default'}
                   onValueChange={(widget) =>
-                    updateSchema({ "ui:widget": widget === "default" ? undefined : (widget as any) })
+                    updateSchema({
+                      'ui:widget': widget === 'default' ? undefined : (widget as any),
+                    })
                   }
                 >
                   <SelectTrigger>
@@ -313,8 +325,8 @@ export function SchemaBuilder({ schema, onChange, path = "" }: SchemaBuilderProp
                   const newSchema = { ...schema }
                   if (checked) {
                     delete newSchema.format
-                    delete newSchema["ui:widget"]
-                    newSchema.enum = ["Option 1"]
+                    delete newSchema['ui:widget']
+                    newSchema.enum = ['Option 1']
                   } else {
                     delete newSchema.enum
                   }
@@ -336,12 +348,12 @@ export function SchemaBuilder({ schema, onChange, path = "" }: SchemaBuilderProp
         </div>
       )}
 
-      {schema.type === "object" && (
+      {schema.type === 'object' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <Label className="text-base font-semibold">Properties</Label>
             <Button variant="outline" size="sm" onClick={addProperty}>
-              <Plus className="h-4 w-4 " />
+              <Plus className="h-4 w-4" />
               Add Property
             </Button>
           </div>
@@ -351,11 +363,15 @@ export function SchemaBuilder({ schema, onChange, path = "" }: SchemaBuilderProp
               const isExpanded = expandedProperties[key] || false
 
               return (
-                <Collapsible key={getStableId(key)} open={isExpanded} onOpenChange={() => toggleProperty(key)}>
+                <Collapsible
+                  key={getStableId(key)}
+                  open={isExpanded}
+                  onOpenChange={() => toggleProperty(key)}
+                >
                   <div
-                    className={`border border-border rounded-lg p-4 space-y-4 transition-all ${
-                      dragOverItem === key ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : ""
-                    } ${draggedItem === key ? "opacity-50" : ""}`}
+                    className={`border-border space-y-4 rounded-lg border p-4 transition-all ${
+                      dragOverItem === key ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : ''
+                    } ${draggedItem === key ? 'opacity-50' : ''}`}
                     draggable
                     onDragStart={(e) => handleDragStart(e, key)}
                     onDragOver={(e) => handleDragOver(e, key)}
@@ -364,16 +380,20 @@ export function SchemaBuilder({ schema, onChange, path = "" }: SchemaBuilderProp
                     onDragEnd={handleDragEnd}
                   >
                     <CollapsibleTrigger asChild>
-                      <div className="flex items-center justify-between cursor-pointer gap-4">
-                        <div className="flex items-center gap-2 flex-1">
-                          <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab active:cursor-grabbing" />
-                          {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                      <div className="flex cursor-pointer items-center justify-between gap-4">
+                        <div className="flex flex-1 items-center gap-2">
+                          <GripVertical className="text-muted-foreground h-4 w-4 cursor-grab active:cursor-grabbing" />
+                          {isExpanded ? (
+                            <ChevronDown className="h-4 w-4" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4" />
+                          )}
                           <Input
                             value={key}
                             onChange={(e) => renameProperty(key, e.target.value)}
                             onClick={(e) => e.stopPropagation()}
                             onFocus={(e) => e.stopPropagation()}
-                            className="flex-1 h-8 font-medium"
+                            className="h-8 flex-1 font-medium"
                             placeholder="Property name"
                           />
                         </div>
@@ -382,20 +402,23 @@ export function SchemaBuilder({ schema, onChange, path = "" }: SchemaBuilderProp
                             value={
                               Array.isArray(propertySchema.type)
                                 ? propertySchema.type[0]
-                                : String(propertySchema.type || "string")
+                                : String(propertySchema.type || 'string')
                             }
                             onValueChange={(type) => {
                               const updates: JsonSchema = { ...propertySchema, type }
-                              if (type === "object" && !propertySchema.properties) {
+                              if (type === 'object' && !propertySchema.properties) {
                                 updates.properties = {}
                               }
-                              if (type === "array" && !propertySchema.items) {
-                                updates.items = { type: "string" }
+                              if (type === 'array' && !propertySchema.items) {
+                                updates.items = { type: 'string' }
                               }
                               updateProperty(key, updates)
                             }}
                           >
-                            <SelectTrigger className="w-24 h-8" onClick={(e) => e.stopPropagation()}>
+                            <SelectTrigger
+                              className="h-8 w-24"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -413,14 +436,16 @@ export function SchemaBuilder({ schema, onChange, path = "" }: SchemaBuilderProp
                               checked={schema.required?.includes(key) || false}
                               onCheckedChange={(checked) => {
                                 const required = schema.required || []
-                                const newRequired = checked ? [...required, key] : required.filter((r) => r !== key)
+                                const newRequired = checked
+                                  ? [...required, key]
+                                  : required.filter((r) => r !== key)
                                 updateSchema({ required: newRequired })
                               }}
                               onClick={(e) => e.stopPropagation()}
                             />
                             <Label
                               htmlFor={`required-${getStableId(key)}`}
-                              className="text-sm font-medium cursor-pointer"
+                              className="cursor-pointer text-sm font-medium"
                               onClick={(e) => e.stopPropagation()}
                             >
                               Required
@@ -440,15 +465,18 @@ export function SchemaBuilder({ schema, onChange, path = "" }: SchemaBuilderProp
                       </div>
                     </CollapsibleTrigger>
                     <CollapsibleContent>
-                      <div className="space-y-4 pt-4 border-t border-border">
+                      <div className="border-border space-y-4 border-t pt-4">
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <Label htmlFor={`title-${getStableId(key)}`}>Title</Label>
                             <Input
                               id={`title-${getStableId(key)}`}
-                              value={propertySchema.title ?? ""}
+                              value={propertySchema.title ?? ''}
                               onChange={(e) =>
-                                updateProperty(key, { ...propertySchema, title: e.target.value || undefined })
+                                updateProperty(key, {
+                                  ...propertySchema,
+                                  title: e.target.value || undefined,
+                                })
                               }
                               placeholder="Field title"
                             />
@@ -457,9 +485,12 @@ export function SchemaBuilder({ schema, onChange, path = "" }: SchemaBuilderProp
                             <Label htmlFor={`description-${getStableId(key)}`}>Description</Label>
                             <Input
                               id={`description-${getStableId(key)}`}
-                              value={propertySchema.description ?? ""}
+                              value={propertySchema.description ?? ''}
                               onChange={(e) =>
-                                updateProperty(key, { ...propertySchema, description: e.target.value || undefined })
+                                updateProperty(key, {
+                                  ...propertySchema,
+                                  description: e.target.value || undefined,
+                                })
                               }
                               placeholder="Field description"
                             />
@@ -467,10 +498,12 @@ export function SchemaBuilder({ schema, onChange, path = "" }: SchemaBuilderProp
                         </div>
 
                         <div>
-                          <Label htmlFor={`ai-instructions-${getStableId(key)}`}>AI Instructions</Label>
+                          <Label htmlFor={`ai-instructions-${getStableId(key)}`}>
+                            AI Instructions
+                          </Label>
                           <Input
                             id={`ai-instructions-${getStableId(key)}`}
-                            value={propertySchema.ai?.instructions ?? ""}
+                            value={propertySchema.ai?.instructions ?? ''}
                             onChange={(e) => {
                               const instructions = e.target.value || undefined
                               const newSchema = { ...propertySchema }
@@ -490,18 +523,18 @@ export function SchemaBuilder({ schema, onChange, path = "" }: SchemaBuilderProp
                           />
                         </div>
 
-                        {propertySchema.type === "string" && (
+                        {propertySchema.type === 'string' && (
                           <div className="space-y-4">
                             {!Array.isArray(propertySchema.enum) && (
                               <div className="grid grid-cols-2 gap-4">
                                 <div>
                                   <Label htmlFor={`format-${getStableId(key)}`}>Format</Label>
                                   <Select
-                                    value={propertySchema.format || "none"}
+                                    value={propertySchema.format || 'none'}
                                     onValueChange={(format) =>
                                       updateProperty(key, {
                                         ...propertySchema,
-                                        format: format === "none" ? undefined : (format as any),
+                                        format: format === 'none' ? undefined : (format as any),
                                       })
                                     }
                                   >
@@ -520,11 +553,12 @@ export function SchemaBuilder({ schema, onChange, path = "" }: SchemaBuilderProp
                                 <div>
                                   <Label htmlFor={`widget-${getStableId(key)}`}>Widget</Label>
                                   <Select
-                                    value={propertySchema["ui:widget"] || "default"}
+                                    value={propertySchema['ui:widget'] || 'default'}
                                     onValueChange={(widget) =>
                                       updateProperty(key, {
                                         ...propertySchema,
-                                        "ui:widget": widget === "default" ? undefined : (widget as any),
+                                        'ui:widget':
+                                          widget === 'default' ? undefined : (widget as any),
                                       })
                                     }
                                   >
@@ -549,15 +583,17 @@ export function SchemaBuilder({ schema, onChange, path = "" }: SchemaBuilderProp
                                     const newPropertySchema = { ...propertySchema }
                                     if (checked) {
                                       delete newPropertySchema.format
-                                      delete newPropertySchema["ui:widget"]
-                                      newPropertySchema.enum = ["Option 1"]
+                                      delete newPropertySchema['ui:widget']
+                                      newPropertySchema.enum = ['Option 1']
                                     } else {
                                       delete newPropertySchema.enum
                                     }
                                     updateProperty(key, newPropertySchema)
                                   }}
                                 />
-                                <Label htmlFor={`use-enum-${getStableId(key)}`}>Use predefined options (enum)</Label>
+                                <Label htmlFor={`use-enum-${getStableId(key)}`}>
+                                  Use predefined options (enum)
+                                </Label>
                               </div>
 
                               {Array.isArray(propertySchema.enum) && (
@@ -572,19 +608,23 @@ export function SchemaBuilder({ schema, onChange, path = "" }: SchemaBuilderProp
                           </div>
                         )}
 
-                        {(propertySchema.type === "number" || propertySchema.type === "integer") && (
+                        {(propertySchema.type === 'number' ||
+                          propertySchema.type === 'integer') && (
                           <div className="grid grid-cols-2 gap-4">
                             <div>
                               <Label htmlFor={`min-${getStableId(key)}`}>Minimum</Label>
                               <Input
                                 id={`min-${getStableId(key)}`}
                                 type="number"
-                                value={propertySchema.minimum ?? ""}
+                                value={propertySchema.minimum ?? ''}
                                 onChange={(e) =>
-                                  updateProperty(key, { ...propertySchema, minimum: Number(e.target.value) })
+                                  updateProperty(key, {
+                                    ...propertySchema,
+                                    minimum: Number(e.target.value),
+                                  })
                                 }
                                 onKeyDown={(e) => {
-                                  if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+                                  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
                                     e.preventDefault()
                                   }
                                 }}
@@ -596,12 +636,15 @@ export function SchemaBuilder({ schema, onChange, path = "" }: SchemaBuilderProp
                               <Input
                                 id={`max-${getStableId(key)}`}
                                 type="number"
-                                value={propertySchema.maximum ?? ""}
+                                value={propertySchema.maximum ?? ''}
                                 onChange={(e) =>
-                                  updateProperty(key, { ...propertySchema, maximum: Number(e.target.value) })
+                                  updateProperty(key, {
+                                    ...propertySchema,
+                                    maximum: Number(e.target.value),
+                                  })
                                 }
                                 onKeyDown={(e) => {
-                                  if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+                                  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
                                     e.preventDefault()
                                   }
                                 }}
@@ -611,9 +654,11 @@ export function SchemaBuilder({ schema, onChange, path = "" }: SchemaBuilderProp
                           </div>
                         )}
 
-                        {propertySchema.type === "object" && (
-                          <div className="border border-border rounded-lg p-4">
-                            <Label className="text-sm font-semibold mb-4 block">Nested Properties</Label>
+                        {propertySchema.type === 'object' && (
+                          <div className="border-border rounded-lg border p-4">
+                            <Label className="mb-4 block text-sm font-semibold">
+                              Nested Properties
+                            </Label>
                             <SchemaBuilder
                               schema={{
                                 ...propertySchema,
@@ -625,18 +670,20 @@ export function SchemaBuilder({ schema, onChange, path = "" }: SchemaBuilderProp
                           </div>
                         )}
 
-                        {propertySchema.type === "array" && (
-                          <div className="border border-border rounded-lg p-4">
-                            <div className="grid grid-cols-2 gap-4 mb-4">
-                              <Label className="text-sm font-semibold col-span-2">Array Items Schema</Label>
+                        {propertySchema.type === 'array' && (
+                          <div className="border-border rounded-lg border p-4">
+                            <div className="mb-4 grid grid-cols-2 gap-4">
+                              <Label className="col-span-2 text-sm font-semibold">
+                                Array Items Schema
+                              </Label>
                               <div>
                                 <Label>Display as</Label>
                                 <Select
-                                  value={propertySchema["ui:widget"] || "default"}
+                                  value={propertySchema['ui:widget'] || 'default'}
                                   onValueChange={(value) =>
                                     updateProperty(key, {
                                       ...propertySchema,
-                                      "ui:widget": value as "default" | "table",
+                                      'ui:widget': value as 'default' | 'table',
                                     })
                                   }
                                 >
@@ -652,14 +699,17 @@ export function SchemaBuilder({ schema, onChange, path = "" }: SchemaBuilderProp
                             </div>
                             <SchemaBuilder
                               schema={{
-                                type: propertySchema.items?.type || "string",
+                                type: propertySchema.items?.type || 'string',
                                 title: propertySchema.items?.title,
                                 description: propertySchema.items?.description,
                                 properties:
-                                  propertySchema.items?.type === "object"
+                                  propertySchema.items?.type === 'object'
                                     ? propertySchema.items?.properties || {}
                                     : undefined,
-                                items: propertySchema.items?.type === "array" ? propertySchema.items?.items : undefined,
+                                items:
+                                  propertySchema.items?.type === 'array'
+                                    ? propertySchema.items?.items
+                                    : undefined,
                                 required: propertySchema.items?.required || [],
                                 minimum: propertySchema.items?.minimum,
                                 maximum: propertySchema.items?.maximum,
@@ -685,15 +735,17 @@ export function SchemaBuilder({ schema, onChange, path = "" }: SchemaBuilderProp
         </div>
       )}
 
-      {schema.type === "array" && (
+      {schema.type === 'array' && (
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <Label className="text-base font-semibold col-span-2">Array Settings</Label>
+            <Label className="col-span-2 text-base font-semibold">Array Settings</Label>
             <div>
               <Label>Display as</Label>
               <Select
-                value={schema["ui:widget"] || "default"}
-                onValueChange={(value) => updateSchema({ "ui:widget": value as "default" | "table" })}
+                value={schema['ui:widget'] || 'default'}
+                onValueChange={(value) =>
+                  updateSchema({ 'ui:widget': value as 'default' | 'table' })
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -706,14 +758,15 @@ export function SchemaBuilder({ schema, onChange, path = "" }: SchemaBuilderProp
             </div>
           </div>
           <Label className="text-base font-semibold">Array Items Schema</Label>
-          <div className="border border-border rounded-lg p-4">
+          <div className="border-border rounded-lg border p-4">
             <SchemaBuilder
               schema={{
-                type: schema.items?.type || "string",
+                type: schema.items?.type || 'string',
                 title: schema.items?.title,
                 description: schema.items?.description,
-                properties: schema.items?.type === "object" ? schema.items?.properties || {} : undefined,
-                items: schema.items?.type === "array" ? schema.items?.items : undefined,
+                properties:
+                  schema.items?.type === 'object' ? schema.items?.properties || {} : undefined,
+                items: schema.items?.type === 'array' ? schema.items?.items : undefined,
                 required: schema.items?.required || [],
                 minimum: schema.items?.minimum,
                 maximum: schema.items?.maximum,

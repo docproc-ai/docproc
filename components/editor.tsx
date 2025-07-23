@@ -1,11 +1,11 @@
-"use client"
+'use client'
 
-import { useRef, useEffect } from "react"
-import { Editor as MonacoEditor, type OnMount } from "@monaco-editor/react"
-import { useTheme } from "next-themes"
-import { Skeleton } from "@/components/ui/skeleton"
-import type * as monaco from "monaco-editor"
-import { Textarea } from "@/components/ui/textarea"
+import { useRef, useEffect } from 'react'
+import { Editor as MonacoEditor, type OnMount } from '@monaco-editor/react'
+import { useTheme } from 'next-themes'
+import { Skeleton } from '@/components/ui/skeleton'
+import type * as monaco from 'monaco-editor'
+import { Textarea } from '@/components/ui/textarea'
 
 interface EditorProps {
   value: string
@@ -13,7 +13,7 @@ interface EditorProps {
   language?: string
 }
 
-export default function Editor({ value, onChange, language = "json" }: EditorProps) {
+export default function Editor({ value, onChange, language = 'json' }: EditorProps) {
   const { resolvedTheme } = useTheme()
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
 
@@ -34,7 +34,7 @@ export default function Editor({ value, onChange, language = "json" }: EditorPro
     }
   }, [value])
 
-  if (language !== "json") {
+  if (language !== 'json') {
     return (
       <Textarea
         value={value}
@@ -46,7 +46,7 @@ export default function Editor({ value, onChange, language = "json" }: EditorPro
   }
 
   return (
-    <div className="border border-border rounded-md overflow-hidden h-full min-h-[200px]">
+    <div className="border-border h-full min-h-[200px] overflow-hidden rounded-md border">
       <MonacoEditor
         language={language}
         // The `defaultValue` prop is only used for the initial value.
@@ -54,11 +54,11 @@ export default function Editor({ value, onChange, language = "json" }: EditorPro
         defaultValue={value}
         onChange={onChange}
         onMount={handleEditorDidMount}
-        theme={resolvedTheme === "dark" ? "vs-dark" : "light"}
+        theme={resolvedTheme === 'dark' ? 'vs-dark' : 'light'}
         options={{
           minimap: { enabled: false },
           fontSize: 14,
-          wordWrap: "on",
+          wordWrap: 'on',
           scrollBeyondLastLine: false,
           automaticLayout: true, // This is important for resizable containers
         }}

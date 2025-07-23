@@ -1,13 +1,13 @@
-import { NextResponse } from "next/server"
-import { z } from "zod"
-import { createDocumentType, getDocumentTypes } from "@/lib/filesystem"
+import { NextResponse } from 'next/server'
+import { z } from 'zod'
+import { createDocumentType, getDocumentTypes } from '@/lib/filesystem'
 // import { isAuthenticated } from "@/lib/auth"
 
 const createDocumentTypeSchema = z.object({
-  name: z.string().min(1, "Name is required"),
+  name: z.string().min(1, 'Name is required'),
   schema: z.record(z.any()), // More permissive - allows any object including $schema
-  webhook_url: z.string().url("Invalid URL").optional().or(z.literal("")),
-  webhook_method: z.enum(["POST", "PUT"]).optional(),
+  webhook_url: z.string().url('Invalid URL').optional().or(z.literal('')),
+  webhook_method: z.enum(['POST', 'PUT']).optional(),
 })
 
 export async function POST(request: Request) {
@@ -32,17 +32,20 @@ export async function POST(request: Request) {
       name,
       schema: cleanSchema,
       webhook_url: webhook_url || undefined,
-      webhook_method: webhook_method || "POST"
+      webhook_method: webhook_method || 'POST',
     })
 
     return NextResponse.json(newType, { status: 201 })
   } catch (error: any) {
-    console.error("Failed to create document type:", error)
+    console.error('Failed to create document type:', error)
     // Check for unique constraint violation
-    if (error.code === "23505") {
-      return NextResponse.json({ error: "A document type with this name already exists." }, { status: 409 })
+    if (error.code === '23505') {
+      return NextResponse.json(
+        { error: 'A document type with this name already exists.' },
+        { status: 409 },
+      )
     }
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }
 
@@ -51,7 +54,7 @@ export async function GET() {
     const documentTypes = await getDocumentTypes()
     return NextResponse.json(documentTypes)
   } catch (error) {
-    console.error("Failed to fetch document types:", error)
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+    console.error('Failed to fetch document types:', error)
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }
