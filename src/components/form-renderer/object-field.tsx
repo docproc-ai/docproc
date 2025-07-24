@@ -2,9 +2,113 @@
 
 import { Label } from '@/components/ui/label'
 import type { FormFieldProps } from './types'
+import { StringField } from './string-field'
+import { NumberField } from './number-field'
+import { BooleanField } from './boolean-field'
+import { ArrayField } from './array-field'
+
+// Forward declaration to avoid circular dependency
+function FormField({
+  name,
+  schema,
+  value,
+  onChange,
+  required,
+  isArrayItem = false,
+}: FormFieldProps) {
+  // Handle enum fields (dropdowns) for any type
+  if (schema.enum) {
+    return (
+      <StringField
+        name={name}
+        schema={schema}
+        value={value}
+        onChange={onChange}
+        required={required}
+        isArrayItem={isArrayItem}
+      />
+    )
+  }
+
+  const fieldType = Array.isArray(schema.type) ? schema.type[0] : schema.type
+
+  // Render based on field type
+  switch (fieldType) {
+    case 'string':
+      return (
+        <StringField
+          name={name}
+          schema={schema}
+          value={value}
+          onChange={onChange}
+          required={required}
+          isArrayItem={isArrayItem}
+        />
+      )
+    case 'number':
+    case 'integer':
+      return (
+        <NumberField
+          name={name}
+          schema={schema}
+          value={value}
+          onChange={onChange}
+          required={required}
+          isArrayItem={isArrayItem}
+        />
+      )
+    case 'boolean':
+      return (
+        <BooleanField
+          name={name}
+          schema={schema}
+          value={value}
+          onChange={onChange}
+          required={required}
+          isArrayItem={isArrayItem}
+        />
+      )
+    case 'object':
+      return (
+        <ObjectField
+          name={name}
+          schema={schema}
+          value={value}
+          onChange={onChange}
+          required={required}
+          isArrayItem={isArrayItem}
+        />
+      )
+    case 'array':
+      return (
+        <ArrayField
+          name={name}
+          schema={schema}
+          value={value}
+          onChange={onChange}
+          required={required}
+          isArrayItem={isArrayItem}
+        />
+      )
+    default:
+      // Fallback for unknown types - render as string
+      return (
+        <StringField
+          name={name}
+          schema={schema}
+          value={value}
+          onChange={onChange}
+          required={required}
+          isArrayItem={isArrayItem}
+        />
+      )
+  }
+}
 
 export function ObjectField({ name, schema, value, onChange, required, isArrayItem = false }: FormFieldProps) {
   if (schema.type !== 'object') return null
+
+  const objectValue = value || {}
 
   const objectContent = (
     <>
@@ -21,12 +125,15 @@ export function ObjectField({ name, schema, value, onChange, required, isArrayIt
       )}
       {schema.properties &&
         Object.entries(schema.properties).map(([key, subSchema]) => (
-          <div key={key} className="space-y-2">
-            {/* This would need to be replaced with the actual FormField component */}
-            <div className="text-muted-foreground text-sm">
-              Object property "{key}" would go here
-            </div>
-          </div>
+          <FormField
+            key={key}
+            name={key}
+            schema={subSchema}
+            value={objectValue[key]}
+            onChange={(newValue) => onChange({ ...objectValue, [key]: newValue })}
+            required={schema.required?.includes(key)}
+            isArrayItem={false}
+          />
         ))}
     </>
   )

@@ -13,8 +13,9 @@ import { Textarea } from '@/components/ui/textarea'
 import type { FormFieldProps } from './types'
 
 export function StringField({ name, schema, value, onChange, required }: FormFieldProps) {
-  if (schema.type !== 'string') return null
-
+  const fieldType = Array.isArray(schema.type) ? schema.type[0] : schema.type
+  
+  // Handle enums for any type, not just strings
   if (schema.enum) {
     return (
       <div className="space-y-2">
@@ -40,6 +41,9 @@ export function StringField({ name, schema, value, onChange, required }: FormFie
       </div>
     )
   }
+
+  // Only render string fields if not an enum
+  if (fieldType !== 'string') return null
 
   if (schema['ui:widget'] === 'textarea') {
     return (

@@ -18,6 +18,115 @@ import {
 import { cn } from '@/lib/utils'
 import type { FormFieldProps } from './types'
 import type { JsonSchema } from '../schema-builder/types'
+import { StringField } from './string-field'
+import { NumberField } from './number-field'
+import { BooleanField } from './boolean-field'
+import { ObjectField } from './object-field'
+
+// Forward declaration to avoid circular dependency
+function FormField({
+  name,
+  schema,
+  value,
+  onChange,
+  required,
+  isArrayItem = false,
+}: {
+  name: string
+  schema: JsonSchema
+  value: any
+  onChange: (value: any) => void
+  required?: boolean
+  isArrayItem?: boolean
+}) {
+  // Handle enum fields (dropdowns) for any type
+  if (schema.enum) {
+    return (
+      <StringField
+        name={name}
+        schema={schema}
+        value={value}
+        onChange={onChange}
+        required={required}
+        isArrayItem={isArrayItem}
+      />
+    )
+  }
+
+  const fieldType = Array.isArray(schema.type) ? schema.type[0] : schema.type
+
+  // Render based on field type
+  switch (fieldType) {
+    case 'string':
+      return (
+        <StringField
+          name={name}
+          schema={schema}
+          value={value}
+          onChange={onChange}
+          required={required}
+          isArrayItem={isArrayItem}
+        />
+      )
+    case 'number':
+    case 'integer':
+      return (
+        <NumberField
+          name={name}
+          schema={schema}
+          value={value}
+          onChange={onChange}
+          required={required}
+          isArrayItem={isArrayItem}
+        />
+      )
+    case 'boolean':
+      return (
+        <BooleanField
+          name={name}
+          schema={schema}
+          value={value}
+          onChange={onChange}
+          required={required}
+          isArrayItem={isArrayItem}
+        />
+      )
+    case 'object':
+      return (
+        <ObjectField
+          name={name}
+          schema={schema}
+          value={value}
+          onChange={onChange}
+          required={required}
+          isArrayItem={isArrayItem}
+        />
+      )
+    case 'array':
+      return (
+        <ArrayField
+          name={name}
+          schema={schema}
+          value={value}
+          onChange={onChange}
+          required={required}
+          isArrayItem={isArrayItem}
+        />
+      )
+    default:
+      // Fallback for unknown types - render as string
+      return (
+        <StringField
+          name={name}
+          schema={schema}
+          value={value}
+          onChange={onChange}
+          required={required}
+          isArrayItem={isArrayItem}
+        />
+      )
+  }
+}
 
 function SpreadsheetCellInput({
   schema,
@@ -297,10 +406,17 @@ export function ArrayField({ name, schema, value, onChange, required }: FormFiel
                 </div>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                {/* This would need to be replaced with the actual FormField component */}
-                <div className="text-muted-foreground text-sm">
-                  Array item content would go here
-                </div>
+                <FormField
+                  name={`${name}[${index}]`}
+                  schema={schema.items || { type: 'string' }}
+                  value={item}
+                  onChange={(newValue: any) => {
+                    const newArray = [...arrayValue]
+                    newArray[index] = newValue
+                    onChange(newArray)
+                  }}
+                  isArrayItem={true}
+                />
               </CollapsibleContent>
             </div>
           </Collapsible>

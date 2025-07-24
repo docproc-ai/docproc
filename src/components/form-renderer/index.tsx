@@ -1,6 +1,5 @@
 'use client'
 
-import Editor from '@/components/editor'
 import { StringField } from './string-field'
 import { NumberField } from './number-field'
 import { BooleanField } from './boolean-field'
@@ -61,71 +60,79 @@ function FormField({
     )
   }
 
+  const fieldType = Array.isArray(schema.type) ? schema.type[0] : schema.type
+
   // Render based on field type
-  return (
-    <>
-      <StringField
-        name={name}
-        schema={schema}
-        value={value}
-        onChange={handleChange}
-        required={required}
-        isArrayItem={isArrayItem}
-      />
-
-      <NumberField
-        name={name}
-        schema={schema}
-        value={value}
-        onChange={handleChange}
-        required={required}
-        isArrayItem={isArrayItem}
-      />
-
-      <BooleanField
-        name={name}
-        schema={schema}
-        value={value}
-        onChange={handleChange}
-        required={required}
-        isArrayItem={isArrayItem}
-      />
-
-      <ObjectField
-        name={name}
-        schema={schema}
-        value={value}
-        onChange={handleChange}
-        required={required}
-        isArrayItem={isArrayItem}
-      />
-
-      <ArrayField
-        name={name}
-        schema={schema}
-        value={value}
-        onChange={handleChange}
-        required={required}
-        isArrayItem={isArrayItem}
-      />
-
-      {/* Fallback for unknown types */}
-      {!['string', 'number', 'integer', 'boolean', 'object', 'array'].includes(
-        Array.isArray(schema.type) ? schema.type[0] : String(schema.type || ''),
-      ) && (
-        <div className="space-y-2">
-          <label className="text-base font-semibold">
-            {schema.title || name}
-            {required && <span className="ml-1 text-red-500">*</span>}
-          </label>
-          {schema.description && (
-            <p className="text-muted-foreground text-sm">{schema.description}</p>
-          )}
-          <Editor language="text" value={String(value ?? '')} onChange={handleChange} />
-        </div>
-      )}
-    </>
-  )
+  switch (fieldType) {
+    case 'string':
+      return (
+        <StringField
+          name={name}
+          schema={schema}
+          value={value}
+          onChange={handleChange}
+          required={required}
+          isArrayItem={isArrayItem}
+        />
+      )
+    case 'number':
+    case 'integer':
+      return (
+        <NumberField
+          name={name}
+          schema={schema}
+          value={value}
+          onChange={handleChange}
+          required={required}
+          isArrayItem={isArrayItem}
+        />
+      )
+    case 'boolean':
+      return (
+        <BooleanField
+          name={name}
+          schema={schema}
+          value={value}
+          onChange={handleChange}
+          required={required}
+          isArrayItem={isArrayItem}
+        />
+      )
+    case 'object':
+      return (
+        <ObjectField
+          name={name}
+          schema={schema}
+          value={value}
+          onChange={handleChange}
+          required={required}
+          isArrayItem={isArrayItem}
+        />
+      )
+    case 'array':
+      return (
+        <ArrayField
+          name={name}
+          schema={schema}
+          value={value}
+          onChange={handleChange}
+          required={required}
+          isArrayItem={isArrayItem}
+        />
+      )
+    default:
+      // Fallback for unknown types - render as string
+      return (
+        <StringField
+          name={name}
+          schema={{ ...schema, type: 'string' }}
+          value={value}
+          onChange={handleChange}
+          required={required}
+          isArrayItem={isArrayItem}
+        />
+      )
+  }
 }
 
 // Re-export types for convenience
