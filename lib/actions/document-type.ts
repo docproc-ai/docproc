@@ -5,10 +5,37 @@ import { documentType, document } from '@/db/schema'
 import { eq, desc, count } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { auth } from '@/lib/auth'
+import { headers } from 'next/headers'
 import type { InferSelectModel, InferInsertModel } from 'drizzle-orm'
 
 export type DocumentType = InferSelectModel<typeof documentType>
 export type NewDocumentType = InferInsertModel<typeof documentType>
+
+async function checkAdminAccess() {
+  const headersList = await headers()
+  
+  // Check for API key authentication first
+  const apiKey = headersList.get('x-api-key')
+  if (apiKey && apiKey === process.env.API_KEY) {
+    return { success: true }
+  }
+
+  // Fall back to session authentication
+  const session = await auth.api.getSession({
+    headers: headersList,
+  })
+
+  if (!session?.user) {
+    return { success: false, error: 'Authentication required' }
+  }
+
+  if (session.user.role !== 'admin') {
+    return { success: false, error: 'Admin access required' }
+  }
+
+  return { success: true }
+}
 
 export async function getDocumentTypes(): Promise<(DocumentType & { document_count: number })[]> {
   try {
@@ -46,6 +73,12 @@ export async function getDocumentType(id: number): Promise<DocumentType | null> 
 }
 
 export async function createDocumentType(formData: FormData) {
+  // Check admin access
+  const adminCheck = await checkAdminAccess()
+  if (!adminCheck.success) {
+    return adminCheck
+  }
+
   try {
     const name = formData.get('name') as string
     const schemaString = formData.get('schema') as string
@@ -53,14 +86,14 @@ export async function createDocumentType(formData: FormData) {
     const webhookMethod = formData.get('webhookMethod') as string
 
     if (!name || !schemaString) {
-      throw new Error('Name and schema are required')
+      return { success: false, error: 'Name and schema are required' }
     }
 
     let schema
     try {
       schema = JSON.parse(schemaString)
     } catch {
-      throw new Error('Invalid JSON schema')
+      return { success: false, error: 'Invalid JSON schema' }
     }
 
     const [result] = await db
@@ -74,14 +107,20 @@ export async function createDocumentType(formData: FormData) {
       .returning()
 
     revalidatePath('/document-types')
-    redirect('/document-types')
+    return { success: true, data: result }
   } catch (error) {
     console.error('Failed to create document type:', error)
-    throw error
+    return { success: false, error: 'Failed to create document type' }
   }
 }
 
 export async function updateDocumentType(id: number, formData: FormData) {
+  // Check admin access
+  const adminCheck = await checkAdminAccess()
+  if (!adminCheck.success) {
+    return adminCheck
+  }
+
   try {
     const name = formData.get('name') as string
     const schemaString = formData.get('schema') as string
@@ -89,14 +128,14 @@ export async function updateDocumentType(id: number, formData: FormData) {
     const webhookMethod = formData.get('webhookMethod') as string
 
     if (!name || !schemaString) {
-      throw new Error('Name and schema are required')
+      return { success: false, error: 'Name and schema are required' }
     }
 
     let schema
     try {
       schema = JSON.parse(schemaString)
     } catch {
-      throw new Error('Invalid JSON schema')
+      return { success: false, error: 'Invalid JSON schema' }
     }
 
     const [result] = await db
@@ -112,19 +151,25 @@ export async function updateDocumentType(id: number, formData: FormData) {
       .returning()
 
     if (!result) {
-      throw new Error('Document type not found')
+      return { success: false, error: 'Document type not found' }
     }
 
     revalidatePath('/document-types')
     revalidatePath(`/document-types/edit/${id}`)
-    redirect('/document-types')
+    return { success: true, data: result }
   } catch (error) {
     console.error('Failed to update document type:', error)
-    throw error
+    return { success: false, error: 'Failed to update document type' }
   }
 }
 
 export async function deleteDocumentType(id: number) {
+  // Check admin access
+  const adminCheck = await checkAdminAccess()
+  if (!adminCheck.success) {
+    throw new Error(adminCheck.error)
+  }
+
   try {
     // First delete all documents of this type
     await db.delete(document).where(eq(document.documentTypeId, id))

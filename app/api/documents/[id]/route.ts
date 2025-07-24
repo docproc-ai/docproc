@@ -1,20 +1,36 @@
 import { NextResponse } from 'next/server'
-import {
-  getDocument,
-  updateDocument,
-  deleteDocument,
-  getDocumentFile,
-  saveDocumentData,
-  getDocumentType,
-} from '@/lib/drizzle-filesystem'
-import { z } from 'zod'
+import { getDocument, updateDocument, deleteDocument } from '@/lib/actions/document'
 
-const updateDocumentSchema = z.object({
-  extracted_data: z.any(),
-  status: z.enum(['pending', 'approved', 'rejected', 'processing_failed']),
-  schema_snapshot: z.any().optional(),
-})
+// GET a single document by ID
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params
+    const document = await getDocument(parseInt(id))
 
+    if (!document) {
+      return NextResponse.json({ error: 'Document not found' }, { status: 404 })
+    }
+    
+    // Return simplified data for external API consumers
+    const simplifiedDoc = {
+      id: document.id,
+      filename: document.filename,
+      documentTypeId: document.documentTypeId,
+      approvalStatus: document.approvalStatus,
+      processingStatus: document.processingStatus,
+      extractedData: document.extractedData,
+      createdAt: document.createdAt,
+      updatedAt: document.updatedAt,
+    }
+    
+    return NextResponse.json(simplifiedDoc)
+  } catch (error) {
+    console.error('Failed to fetch document:', error)
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+  }
+}
+
+// PUT (update) a document by ID
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   if (!id) {
@@ -23,84 +39,36 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
   try {
     const body = await request.json()
-    const validation = updateDocumentSchema.safeParse(body)
 
-    if (!validation.success) {
-      return NextResponse.json({ error: validation.error.flatten().fieldErrors }, { status: 400 })
+    // Convert JSON body to FormData for server action
+    const formData = new FormData()
+    
+    if (body.extractedData) {
+      formData.append('extractedData', JSON.stringify(body.extractedData))
+    }
+    
+    if (body.approvalStatus) {
+      formData.append('approvalStatus', body.approvalStatus)
+    }
+    
+    if (body.processingStatus) {
+      formData.append('processingStatus', body.processingStatus)
+    }
+    
+    if (body.schemaSnapshot) {
+      formData.append('schemaSnapshot', JSON.stringify(body.schemaSnapshot))
     }
 
-    const { extracted_data, status, schema_snapshot } = validation.data
+    const updatedDocument = await updateDocument(parseInt(id), formData)
 
-    // Parse document ID to get document type and doc ID
-    const urlParts = new URL(request.url).pathname.split('/')
-    const documentId = urlParts[urlParts.length - 1]
-
-    // We need to find which document type this document belongs to
-    // Since we don't have the document type ID in the URL, we need to search for it
-    // This is a limitation of the current API structure - ideally we'd have /api/document-types/{typeId}/documents/{docId}
-
-    // For now, let's extract the document type from the request or find it by searching
-    const documentTypeId = request.headers.get('x-document-type-id')
-    if (!documentTypeId) {
-      return NextResponse.json(
-        { error: 'Document type ID is required in x-document-type-id header' },
-        { status: 400 },
-      )
-    }
-
-    // Save the extracted data and schema snapshot
-    if (schema_snapshot) {
-      await saveDocumentData(parseInt(documentTypeId), parseInt(documentId), extracted_data, schema_snapshot)
-    }
-
-    // Update document status
-    const updatedDocument = await updateDocument(parseInt(documentTypeId), parseInt(documentId), {
-      approvalStatus: status as 'pending' | 'approved' | 'rejected',
-    })
-
-    if (!updatedDocument) {
-      return NextResponse.json({ error: 'Document not found' }, { status: 404 })
-    }
-
-    // --- Webhook Trigger Logic ---
-    if (status === 'approved') {
-      try {
-        const docType = await getDocumentType(parseInt(documentTypeId))
-
-        if (docType && docType.webhookUrl) {
-          console.log(`Triggering webhook for document ${id} to ${docType.webhookUrl}`)
-          fetch(docType.webhookUrl, {
-            method: docType.webhookMethod || 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              ...updatedDocument,
-              extracted_data,
-              schema_snapshot,
-            }),
-          }).catch((webhookError) => {
-            console.error(`Webhook failed for document ${id}:`, webhookError)
-          })
-        }
-      } catch (error) {
-        console.error(
-          `Failed to fetch document type for webhook trigger for document ${id}:`,
-          error,
-        )
-      }
-    }
-    // --- END: Webhook Trigger Logic ---
-
-    return NextResponse.json({
-      ...updatedDocument,
-      extracted_data,
-      schema_snapshot,
-    })
+    return NextResponse.json(updatedDocument)
   } catch (error) {
     console.error(`Failed to update document ${id}:`, error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }
 
+// DELETE a document by ID
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   if (!id) {
@@ -108,20 +76,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   }
 
   try {
-    // We need the document type ID to delete the document
-    const documentTypeId = request.headers.get('x-document-type-id')
-    if (!documentTypeId) {
-      return NextResponse.json(
-        { error: 'Document type ID is required in x-document-type-id header' },
-        { status: 400 },
-      )
-    }
-
-    const success = await deleteDocument(parseInt(documentTypeId), parseInt(id))
-
-    if (!success) {
-      return NextResponse.json({ error: 'Document not found' }, { status: 404 })
-    }
+    await deleteDocument(parseInt(id))
 
     return NextResponse.json({ message: 'Document deleted successfully' }, { status: 200 })
   } catch (error) {

@@ -1,60 +1,53 @@
 import { NextResponse } from 'next/server'
-import { z } from 'zod'
-import { createDocumentType, getDocumentTypes } from '@/lib/drizzle-filesystem'
-import { auth } from '@/lib/auth'
-
-const createDocumentTypeSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  schema: z.record(z.any()), // More permissive - allows any object including $schema
-  webhook_url: z.string().url('Invalid URL').optional().or(z.literal('')),
-  webhook_method: z.enum(['POST', 'PUT']).optional(),
-})
-
-export async function POST(request: Request) {
-  // if (!(await isAuthenticated(request as any))) {
-  //   return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
-  // }
-  try {
-    const body = await request.json()
-    const validation = createDocumentTypeSchema.safeParse(body)
-
-    if (!validation.success) {
-      return NextResponse.json({ error: validation.error.flatten().fieldErrors }, { status: 400 })
-    }
-
-    const { name, schema, webhook_url, webhook_method } = validation.data
-
-    // Remove $schema property if present (NeDB doesn't allow field names starting with $)
-    const cleanSchema = { ...schema }
-    delete cleanSchema.$schema
-
-    const newType = await createDocumentType({
-      name,
-      schema: cleanSchema,
-      webhookUrl: webhook_url || undefined,
-      webhookMethod: webhook_method || 'POST',
-    })
-
-    return NextResponse.json(newType, { status: 201 })
-  } catch (error: any) {
-    console.error('Failed to create document type:', error)
-    // Check for unique constraint violation
-    if (error.code === '23505') {
-      return NextResponse.json(
-        { error: 'A document type with this name already exists.' },
-        { status: 409 },
-      )
-    }
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
-  }
-}
+import { getDocumentTypes, createDocumentType } from '@/lib/actions/document-type'
 
 export async function GET() {
   try {
     const documentTypes = await getDocumentTypes()
-    return NextResponse.json(documentTypes)
+    
+    // Return simplified data for external API consumers
+    const simplifiedTypes = documentTypes.map(type => ({
+      id: type.id,
+      name: type.name,
+      document_count: type.document_count,
+      createdAt: type.createdAt,
+    }))
+    
+    return NextResponse.json(simplifiedTypes)
   } catch (error) {
     console.error('Failed to fetch document types:', error)
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json()
+
+    if (!body.name || !body.schema) {
+      return NextResponse.json({ error: 'Name and schema are required' }, { status: 400 })
+    }
+
+    // Convert JSON body to FormData for server action
+    const formData = new FormData()
+    formData.append('name', body.name)
+    formData.append('schema', JSON.stringify(body.schema))
+    formData.append('webhookUrl', body.webhookUrl || '')
+    formData.append('webhookMethod', body.webhookMethod || 'POST')
+
+    const result = await createDocumentType(formData)
+
+    if (!result.success) {
+      const errorMessage = 'error' in result ? result.error : 'Failed to create document type'
+      if (errorMessage === 'Admin access required') {
+        return NextResponse.json({ error: errorMessage }, { status: 403 })
+      }
+      return NextResponse.json({ error: errorMessage }, { status: 400 })
+    }
+
+    return NextResponse.json('data' in result ? result.data : {}, { status: 201 })
+  } catch (error: any) {
+    console.error('Failed to create document type:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }

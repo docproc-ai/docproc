@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { getDocumentType, updateDocumentType } from '@/lib/actions/document-type'
+import { authClient } from '@/lib/auth-client'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,6 +23,7 @@ import { SchemaEditorTab } from '@/components/editor-tabs'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { SettingsDialog } from '@/components/settings-dialog'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { UserMenu } from '@/components/user-menu'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DeleteDocumentTypeDialog } from '@/components/delete-document-type-dialog'
 
@@ -29,6 +31,7 @@ export default function EditDocumentTypePage() {
   const router = useRouter()
   const params = useParams()
   const id = params.id as string
+  const { data: session } = authClient.useSession()
 
   const [name, setName] = useState('')
   const [webhookUrl, setWebhookUrl] = useState('')
@@ -36,6 +39,30 @@ export default function EditDocumentTypePage() {
   const [schemaText, setSchemaText] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isFetching, setIsFetching] = useState(true)
+
+  // Redirect non-admin users
+  useEffect(() => {
+    if (session && session.user?.role !== 'admin') {
+      router.push('/document-types')
+    }
+  }, [session, router])
+
+  // Show loading while checking session
+  if (!session) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="border-primary mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Don't render if not admin
+  if (session.user?.role !== 'admin') {
+    return null
+  }
 
   useEffect(() => {
     if (!id) return
@@ -85,10 +112,14 @@ export default function EditDocumentTypePage() {
       formData.append('webhookUrl', webhookUrl)
       formData.append('webhookMethod', webhookMethod)
 
-      await updateDocumentType(parseInt(id), formData)
+      const result = await updateDocumentType(parseInt(id), formData)
 
-      toast.success(`Document type "${name}" has been updated.`)
-      // The Server Action handles redirect, so we don't need to call router.push
+      if (result.success) {
+        toast.success(`Document type "${name}" has been updated.`)
+        router.push('/document-types')
+      } else {
+        toast.error('error' in result ? result.error : 'Failed to update document type')
+      }
     } catch (error: any) {
       toast.error(`Something went wrong: ${error.message}`)
     } finally {
@@ -134,24 +165,25 @@ export default function EditDocumentTypePage() {
 
   return (
     <div className="bg-background text-foreground flex h-screen flex-col">
-      <header className="border-border flex flex-shrink-0 items-center gap-4 border-b px-6 py-3">
-        <Button variant="outline" size="icon" asChild>
-          <Link href="/document-types">
-            <ArrowLeft className="h-4 w-4" />
-            <span className="sr-only">Back</span>
-          </Link>
-        </Button>
-        <h1 className="text-xl font-semibold">Edit Document Type</h1>
-        <div className="ml-auto flex items-center gap-2">
-          <DeleteDocumentTypeDialog documentTypeId={id} documentTypeName={name} />
-          <Button onClick={handleSubmit} disabled={isLoading || isFetching || !name}>
-            {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-            Save Changes
+        <header className="border-border flex flex-shrink-0 items-center gap-4 border-b px-6 py-3">
+          <Button variant="outline" size="icon" asChild>
+            <Link href="/document-types">
+              <ArrowLeft className="h-4 w-4" />
+              <span className="sr-only">Back</span>
+            </Link>
           </Button>
-          <SettingsDialog />
-          <ThemeToggle />
-        </div>
-      </header>
+          <h1 className="text-xl font-semibold">Edit Document Type</h1>
+          <div className="ml-auto flex items-center gap-2">
+            <DeleteDocumentTypeDialog documentTypeId={id} documentTypeName={name} />
+            <Button onClick={handleSubmit} disabled={isLoading || isFetching || !name}>
+              {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+              Save Changes
+            </Button>
+            <SettingsDialog />
+            <ThemeToggle />
+            <UserMenu />
+          </div>
+        </header>
       <main className="flex-grow overflow-auto p-6">
         {isFetching ? (
           renderSkeleton()

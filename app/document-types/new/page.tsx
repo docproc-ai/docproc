@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createDocumentType } from '@/lib/actions/document-type'
 import Link from 'next/link'
@@ -22,7 +22,8 @@ import { SchemaEditorTab } from '@/components/editor-tabs'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { SettingsDialog } from '@/components/settings-dialog'
 import { ThemeToggle } from '@/components/theme-toggle'
-
+import { UserMenu } from '@/components/user-menu'
+import { authClient } from '@/lib/auth-client'
 const initialSchema: JsonSchema = {
   type: 'object',
   title: 'New Document',
@@ -43,11 +44,36 @@ const initialSchema: JsonSchema = {
 
 export default function NewDocumentTypePage() {
   const router = useRouter()
+  const { data: session } = authClient.useSession()
   const [name, setName] = useState('')
   const [webhookUrl, setWebhookUrl] = useState('')
   const [webhookMethod, setWebhookMethod] = useState('POST')
   const [schemaText, setSchemaText] = useState(JSON.stringify(initialSchema, null, 2))
   const [isLoading, setIsLoading] = useState(false)
+
+  // Redirect non-admin users
+  useEffect(() => {
+    if (session && session.user?.role !== 'admin') {
+      router.push('/document-types')
+    }
+  }, [session, router])
+
+  // Show loading while checking session
+  if (!session) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="border-primary mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Don't render if not admin
+  if (session.user?.role !== 'admin') {
+    return null
+  }
 
   const schema: JsonSchema = useMemo(() => {
     try {
@@ -74,10 +100,14 @@ export default function NewDocumentTypePage() {
       formData.append('webhookUrl', webhookUrl)
       formData.append('webhookMethod', webhookMethod)
 
-      await createDocumentType(formData)
+      const result = await createDocumentType(formData)
 
-      toast.success(`Document type "${name}" has been created.`)
-      // The Server Action handles redirect, so we don't need to call router.push
+      if (result.success) {
+        toast.success(`Document type "${name}" has been created.`)
+        router.push('/document-types')
+      } else {
+        toast.error('error' in result ? result.error : 'Failed to create document type')
+      }
     } catch (error: any) {
       toast.error(`Something went wrong: ${error.message}`)
     } finally {
@@ -87,23 +117,24 @@ export default function NewDocumentTypePage() {
 
   return (
     <div className="bg-background text-foreground flex h-screen flex-col">
-      <header className="border-border flex flex-shrink-0 items-center gap-4 border-b px-6 py-3">
-        <Button variant="outline" size="icon" asChild>
-          <Link href="/document-types">
-            <ArrowLeft className="h-4 w-4" />
-            <span className="sr-only">Back</span>
-          </Link>
-        </Button>
-        <h1 className="text-xl font-semibold">Create New Document Type</h1>
-        <div className="ml-auto flex items-center gap-2">
-          <Button onClick={handleSubmit} disabled={isLoading || !name}>
-            {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-            Save
+        <header className="border-border flex flex-shrink-0 items-center gap-4 border-b px-6 py-3">
+          <Button variant="outline" size="icon" asChild>
+            <Link href="/document-types">
+              <ArrowLeft className="h-4 w-4" />
+              <span className="sr-only">Back</span>
+            </Link>
           </Button>
-          <SettingsDialog />
-          <ThemeToggle />
-        </div>
-      </header>
+          <h1 className="text-xl font-semibold">Create New Document Type</h1>
+          <div className="ml-auto flex items-center gap-2">
+            <Button onClick={handleSubmit} disabled={isLoading || !name}>
+              {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+              Save
+            </Button>
+            <SettingsDialog />
+            <ThemeToggle />
+            <UserMenu />
+          </div>
+        </header>
       <main className="flex-grow overflow-auto p-6">
         <div className="mx-auto max-w-4xl space-y-8">
           <Card>

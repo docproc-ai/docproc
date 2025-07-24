@@ -1,13 +1,5 @@
 import { NextResponse } from 'next/server'
-import { z } from 'zod'
-import { getDocumentType, updateDocumentType, deleteDocumentType } from '@/lib/drizzle-filesystem'
-
-const updateDocumentTypeSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  schema: z.record(z.any()), // More permissive - allows any object including $schema
-  webhook_url: z.string().url('Invalid URL').optional().or(z.literal('')),
-  webhook_method: z.enum(['POST', 'PUT']).optional(),
-})
+import { getDocumentType, updateDocumentType, deleteDocumentType } from '@/lib/actions/document-type'
 
 // GET a single document type by ID
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -18,7 +10,19 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     if (!docType) {
       return NextResponse.json({ error: 'Document type not found' }, { status: 404 })
     }
-    return NextResponse.json(docType)
+    
+    // Return simplified data for external API consumers
+    const simplifiedType = {
+      id: docType.id,
+      name: docType.name,
+      schema: docType.schema,
+      webhookUrl: docType.webhookUrl,
+      webhookMethod: docType.webhookMethod,
+      createdAt: docType.createdAt,
+      updatedAt: docType.updatedAt,
+    }
+    
+    return NextResponse.json(simplifiedType)
   } catch (error) {
     console.error('Failed to fetch document type:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
@@ -30,30 +34,29 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   try {
     const { id } = await params
     const body = await request.json()
-    const validation = updateDocumentTypeSchema.safeParse(body)
 
-    if (!validation.success) {
-      return NextResponse.json({ error: validation.error.flatten().fieldErrors }, { status: 400 })
+    if (!body.name || !body.schema) {
+      return NextResponse.json({ error: 'Name and schema are required' }, { status: 400 })
     }
 
-    const { name, schema, webhook_url, webhook_method } = validation.data
+    // Convert JSON body to FormData for server action
+    const formData = new FormData()
+    formData.append('name', body.name)
+    formData.append('schema', JSON.stringify(body.schema))
+    formData.append('webhookUrl', body.webhookUrl || '')
+    formData.append('webhookMethod', body.webhookMethod || 'POST')
 
-    // Remove $schema property if present (NeDB doesn't allow field names starting with $)
-    const cleanSchema = { ...schema }
-    delete cleanSchema.$schema
+    const result = await updateDocumentType(parseInt(id), formData)
 
-    const updatedType = await updateDocumentType(parseInt(id), {
-      name,
-      schema: cleanSchema,
-      webhookUrl: webhook_url || undefined,
-      webhookMethod: webhook_method || 'POST',
-    })
-
-    if (!updatedType) {
-      return NextResponse.json({ error: 'Document type not found' }, { status: 404 })
+    if (!result.success) {
+      const errorMessage = 'error' in result ? result.error : 'Failed to update document type'
+      if (errorMessage === 'Admin access required') {
+        return NextResponse.json({ error: errorMessage }, { status: 403 })
+      }
+      return NextResponse.json({ error: errorMessage }, { status: 400 })
     }
 
-    return NextResponse.json(updatedType, { status: 200 })
+    return NextResponse.json('data' in result ? result.data : {}, { status: 200 })
   } catch (error: any) {
     console.error('Failed to update document type:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
@@ -68,20 +71,19 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   }
 
   try {
-    // Delete the document type and all its associated documents/files
-    // The deleteDocumentType function handles removing the entire directory structure
-    const success = await deleteDocumentType(parseInt(id))
-
-    if (!success) {
-      return NextResponse.json({ error: 'Document type not found' }, { status: 404 })
-    }
+    await deleteDocumentType(parseInt(id))
 
     return NextResponse.json(
       { message: 'Document type and all associated documents deleted successfully.' },
       { status: 200 },
     )
-  } catch (error) {
+  } catch (error: any) {
     console.error(`Failed to delete document type ${id}:`, error)
+    
+    if (error.message === 'Admin access required') {
+      return NextResponse.json({ error: error.message }, { status: 403 })
+    }
+    
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }

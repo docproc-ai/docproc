@@ -1,21 +1,49 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { getSessionCookie } from 'better-auth/cookies'
 
 export async function middleware(request: NextRequest) {
-  // Temporarily disable authentication in middleware due to Edge Runtime limitations
-  // Authentication will be handled in individual API routes and pages
-  
-  // Skip auth for API auth routes
-  if (request.nextUrl.pathname.startsWith('/api/auth/')) {
+  const { pathname } = request.nextUrl
+  const sessionCookie = getSessionCookie(request)
+  const apiKey = request.headers.get('x-api-key')
+
+  // Skip auth for API auth routes and static files
+  if (
+    pathname.startsWith('/api/auth/') ||
+    pathname.startsWith('/_next/') ||
+    pathname.includes('/favicon.ico') ||
+    pathname.includes('/placeholder')
+  ) {
     return NextResponse.next()
   }
 
-  // For now, allow all requests to proceed
-  // TODO: Implement Edge Runtime compatible authentication
+  // If user has session and tries to access login page, redirect to dashboard
+  if (sessionCookie && pathname === '/login') {
+    return NextResponse.redirect(new URL('/document-types', request.url))
+  }
+
+  // For API routes (except auth), check for session or valid API key
+  if (pathname.startsWith('/api/')) {
+    const validApiKey = process.env.API_KEY
+    
+    if (!sessionCookie && (!apiKey || !validApiKey || apiKey !== validApiKey)) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
+    
+    // API routes are authenticated, continue
+    return NextResponse.next()
+  }
+
+  // If no session and trying to access protected routes, redirect to login
+  if (!sessionCookie && pathname !== '/login') {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
+
   return NextResponse.next()
 }
 
-// Apply this middleware to all routes except for Next.js internals and auth routes
 export const config = {
   matcher: [
     /*
