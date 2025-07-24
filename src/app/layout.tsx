@@ -5,7 +5,6 @@ import './globals.css'
 import { ThemeProvider } from '@/components/theme-provider'
 import { SettingsProvider } from '@/hooks/use-settings'
 import { Toaster } from '@/components/ui/sonner'
-import { initDefaultUser } from '@/lib/init-default-user'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -14,9 +13,6 @@ export const metadata: Metadata = {
   description: 'Upload, process, and correct documents with AI.',
   generator: 'v0.dev',
 }
-
-// Initialize default user on app startup
-initDefaultUser().catch(console.error)
 
 export default function RootLayout({
   children,

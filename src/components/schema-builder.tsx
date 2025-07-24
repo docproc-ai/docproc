@@ -238,7 +238,7 @@ export function SchemaBuilder({ schema, onChange, path = '' }: SchemaBuilderProp
               updateSchema(updates)
             }}
           >
-            <SelectTrigger>
+            <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -282,7 +282,7 @@ export function SchemaBuilder({ schema, onChange, path = '' }: SchemaBuilderProp
                     updateSchema({ format: format === 'none' ? undefined : (format as any) })
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select a format" />
                   </SelectTrigger>
                   <SelectContent>
@@ -304,7 +304,7 @@ export function SchemaBuilder({ schema, onChange, path = '' }: SchemaBuilderProp
                     })
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select a widget" />
                   </SelectTrigger>
                   <SelectContent>
@@ -322,15 +322,17 @@ export function SchemaBuilder({ schema, onChange, path = '' }: SchemaBuilderProp
                 id="use-enum-root"
                 checked={Array.isArray(schema.enum)}
                 onCheckedChange={(checked) => {
-                  const newSchema = { ...schema }
                   if (checked) {
-                    delete newSchema.format
-                    delete newSchema['ui:widget']
-                    newSchema.enum = ['Option 1']
+                    updateSchema({
+                      format: undefined,
+                      'ui:widget': undefined,
+                      enum: ['Option 1']
+                    })
                   } else {
-                    delete newSchema.enum
+                    updateSchema({
+                      enum: undefined
+                    })
                   }
-                  updateSchema(newSchema)
                 }}
               />
               <Label htmlFor="use-enum-root">Use predefined options (enum)</Label>
@@ -538,7 +540,7 @@ export function SchemaBuilder({ schema, onChange, path = '' }: SchemaBuilderProp
                                       })
                                     }
                                   >
-                                    <SelectTrigger>
+                                    <SelectTrigger className="w-full">
                                       <SelectValue placeholder="Select a format" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -562,7 +564,7 @@ export function SchemaBuilder({ schema, onChange, path = '' }: SchemaBuilderProp
                                       })
                                     }
                                   >
-                                    <SelectTrigger>
+                                    <SelectTrigger className="w-full">
                                       <SelectValue placeholder="Select a widget" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -580,15 +582,19 @@ export function SchemaBuilder({ schema, onChange, path = '' }: SchemaBuilderProp
                                   id={`use-enum-${getStableId(key)}`}
                                   checked={Array.isArray(propertySchema.enum)}
                                   onCheckedChange={(checked) => {
-                                    const newPropertySchema = { ...propertySchema }
                                     if (checked) {
-                                      delete newPropertySchema.format
-                                      delete newPropertySchema['ui:widget']
-                                      newPropertySchema.enum = ['Option 1']
+                                      updateProperty(key, {
+                                        ...propertySchema,
+                                        format: undefined,
+                                        'ui:widget': undefined,
+                                        enum: ['Option 1']
+                                      })
                                     } else {
-                                      delete newPropertySchema.enum
+                                      updateProperty(key, {
+                                        ...propertySchema,
+                                        enum: undefined
+                                      })
                                     }
-                                    updateProperty(key, newPropertySchema)
                                   }}
                                 />
                                 <Label htmlFor={`use-enum-${getStableId(key)}`}>
@@ -687,7 +693,7 @@ export function SchemaBuilder({ schema, onChange, path = '' }: SchemaBuilderProp
                                     })
                                   }
                                 >
-                                  <SelectTrigger>
+                                  <SelectTrigger className="w-full">
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -747,7 +753,7 @@ export function SchemaBuilder({ schema, onChange, path = '' }: SchemaBuilderProp
                   updateSchema({ 'ui:widget': value as 'default' | 'table' })
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

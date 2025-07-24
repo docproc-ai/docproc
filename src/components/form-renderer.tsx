@@ -198,7 +198,8 @@ function ArrayTableField({
   const itemsSchema = schema.items || { type: 'string' }
   const isObjectArray = itemsSchema.type === 'object' && itemsSchema.properties
   const headers = isObjectArray
-    ? Object.keys(itemsSchema.properties)
+    ? // @ts-ignore
+      Object.keys(itemsSchema.properties)
     : [itemsSchema.title || 'Value']
 
   return (
@@ -487,7 +488,7 @@ function FormField({
             <Button
               type="button"
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={() => handleChange([...arrayValue, schema.items?.default ?? ''])}
             >
               <Plus className="h-4 w-4" />
@@ -519,7 +520,7 @@ function FormField({
                       <Button
                         type="button"
                         variant="outline"
-                        size="sm"
+                        size="icon"
                         onClick={(e) => {
                           e.stopPropagation()
                           const newArray = arrayValue.filter((_: any, i: number) => i !== index)

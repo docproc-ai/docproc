@@ -192,11 +192,10 @@ const DocumentViewerComponent = ({ file, onPageRender }: DocumentViewerProps) =>
   const isPdf = file?.type === 'application/pdf'
 
   return (
-    <div className="relative h-full w-full">
+    <div className="relative h-full w-full bg-muted/50">
       {!file ? (
-        <div className="border-border bg-muted/50 flex h-full flex-col items-center justify-center rounded-lg border-2 border-dashed">
+        <div className="flex h-full flex-col items-center justify-center">
           <FileText className="text-muted-foreground h-12 w-12" />
-          <p className="text-muted-foreground mt-4">Select a file to view or drop it here</p>
         </div>
       ) : isImage ? (
         renderImage()

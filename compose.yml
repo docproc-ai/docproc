@@ -1,4 +1,23 @@
 services:
+  ai-document-processor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 3000:3000
+    environment:
+      - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-postgres}
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-your-secret}
+      - DEFAULT_ADMIN_EMAIL=${DEFAULT_ADMIN_EMAIL:-admin@example.com}
+      - DEFAULT_ADMIN_PASSWORD=${DEFAULT_ADMIN_PASSWORD:-password}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # - DOCUMENT_STORAGE_DIR=/documents
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - documents:/app/data/documents
+
   postgres:
     image: postgres:latest
     environment:
@@ -9,6 +28,12 @@ services:
       - 5432:5432
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres_data:
+  documents:

@@ -69,9 +69,11 @@
     "react-resizable-panels": "^2.1.9",
     "react-zoom-pan-pinch": "latest",
     "recharts": "^2.15.4",
+    "server-only": "^0.0.1",
     "sonner": "^1.7.4",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
+    "tsx": "^4.20.3",
     "vaul": "^0.9.9",
     "zod": "^3.25.76"
   },
