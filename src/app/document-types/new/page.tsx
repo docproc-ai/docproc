@@ -117,24 +117,24 @@ export default function NewDocumentTypePage() {
 
   return (
     <div className="bg-background text-foreground flex h-screen flex-col">
-        <header className="border-border flex flex-shrink-0 items-center gap-4 border-b px-6 py-3">
-          <Button variant="outline" size="icon" asChild>
-            <Link href="/document-types">
-              <ArrowLeft className="h-4 w-4" />
-              <span className="sr-only">Back</span>
-            </Link>
+      <header className="border-border flex flex-shrink-0 items-center gap-4 border-b px-6 py-3">
+        <Button variant="outline" size="icon" asChild>
+          <Link href="/document-types">
+            <ArrowLeft className="h-4 w-4" />
+            <span className="sr-only">Back</span>
+          </Link>
+        </Button>
+        <h1 className="text-xl font-semibold">Create New Document Type</h1>
+        <div className="ml-auto flex items-center gap-2">
+          <Button onClick={handleSubmit} disabled={isLoading || !name}>
+            {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+            Save
           </Button>
-          <h1 className="text-xl font-semibold">Create New Document Type</h1>
-          <div className="ml-auto flex items-center gap-2">
-            <Button onClick={handleSubmit} disabled={isLoading || !name}>
-              {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-              Save
-            </Button>
-            <SettingsDialog />
-            <ThemeToggle />
-            <UserMenu />
-          </div>
-        </header>
+          <SettingsDialog />
+          <ThemeToggle />
+          <UserMenu />
+        </div>
+      </header>
       <main className="flex-grow overflow-auto p-6">
         <div className="mx-auto max-w-4xl space-y-8">
           <Card>
@@ -155,8 +155,8 @@ export default function NewDocumentTypePage() {
                   placeholder="e.g., Invoices"
                 />
               </div>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <div className="space-y-2 md:col-span-2">
+              <div className="flex flex-row gap-4">
+                <div className="flex-1 space-y-2">
                   <Label htmlFor="webhookUrl">Webhook URL (Optional)</Label>
                   <Input
                     id="webhookUrl"
@@ -166,10 +166,10 @@ export default function NewDocumentTypePage() {
                     placeholder="https://api.example.com/invoices"
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="w-32 space-y-2">
                   <Label htmlFor="webhookMethod">Method</Label>
                   <Select value={webhookMethod} onValueChange={setWebhookMethod}>
-                    <SelectTrigger id="webhookMethod">
+                    <SelectTrigger className="w-full" id="webhookMethod">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
