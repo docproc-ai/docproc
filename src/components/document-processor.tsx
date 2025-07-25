@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { updateDocument, deleteDocument, processDocument } from '@/lib/actions/document'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import { DocumentQueue } from '@/components/document-queue'
-import DocumentViewer from '@/components/document-viewer'
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DataEditorTab } from './editor-tabs'
 import { FormRenderer } from './form-renderer'
@@ -15,6 +15,11 @@ import { Button } from './ui/button'
 import { useSettings } from '@/hooks/use-settings'
 import { SettingsDialog } from './settings-dialog'
 import { ThemeToggle } from './theme-toggle'
+import dynamic from 'next/dynamic'
+
+const DocumentViewer = dynamic(() => import('@/components/document-viewer'), {
+  ssr: false,
+})
 
 import type { DocumentSelect as Document } from '@/db/schema/app'
 
@@ -41,7 +46,6 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
   const [isPending, startTransition] = useTransition()
   const viewerRef = useRef<any>(null)
   const [currentPageImageData, setCurrentPageImageData] = useState<string | null>(null)
-
 
   const handleDocumentSelect = (doc: Document | null) => {
     setSelectedDocument(doc)
@@ -76,11 +80,14 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
       const formData = new FormData()
       formData.append('documentId', selectedDocument.id.toString())
       formData.append('documentTypeId', documentType.id)
-      formData.append('schema', JSON.stringify(selectedDocument.schemaSnapshot || documentType.schema))
+      formData.append(
+        'schema',
+        JSON.stringify(selectedDocument.schemaSnapshot || documentType.schema),
+      )
       formData.append('model', model)
 
       const result = await processDocument(formData)
-      
+
       setFormData(result.data)
       const updatedDoc = {
         ...selectedDocument,
@@ -100,19 +107,19 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
 
   const handleStatusUpdate = async (status: 'approved' | 'pending') => {
     if (!selectedDocument) return
-    
+
     startTransition(async () => {
       try {
         const formDataToSubmit = new FormData()
         formDataToSubmit.append('extractedData', JSON.stringify(formData))
         formDataToSubmit.append('approvalStatus', status)
-        
+
         if (status === 'approved') {
           formDataToSubmit.append('schemaSnapshot', JSON.stringify(documentType.schema))
         }
 
         const updatedDoc = await updateDocument(selectedDocument.id, formDataToSubmit)
-        
+
         setSelectedDocument(updatedDoc)
         setDocuments(documents.map((d) => (d.id === updatedDoc.id ? updatedDoc : d)))
 
@@ -132,7 +139,7 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
     startTransition(async () => {
       try {
         await deleteDocument(docId)
-        
+
         toast.success('Document deleted.')
 
         // Update state
