@@ -31,6 +31,7 @@ COPY ./drizzle ./drizzle
 
 # Create data directory with proper permissions
 RUN mkdir -p /documents && chown -R nextjs:nodejs /documents
+ENV DOCUMENT_STORAGE_DIR="/documents"
 
 USER nextjs
 
