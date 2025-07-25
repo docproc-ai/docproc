@@ -21,13 +21,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <link
-          rel="stylesheet"
-          href="https://unpkg.com/react-pdf@9.1.0/dist/Page/AnnotationLayer.css"
-        />
-        <link rel="stylesheet" href="https://unpkg.com/react-pdf@9.1.0/dist/Page/TextLayer.css" />
-      </head>
+      <head></head>
       <body className={inter.className}>
         <ThemeProvider
           attribute="class"
