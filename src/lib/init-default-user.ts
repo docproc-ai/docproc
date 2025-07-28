@@ -26,7 +26,7 @@ export async function initDefaultUser() {
     // Create default admin user
     console.log('Creating default admin user...')
 
-    const result = await auth.api.signUpEmail({
+    const result = await auth.api.createUser({
       body: {
         email: defaultEmail,
         password: defaultPassword,
