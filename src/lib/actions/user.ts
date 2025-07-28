@@ -70,7 +70,7 @@ export async function createUser(formData: FormData) {
     }
 
     // Create user via better-auth
-    const result = await auth.api.signUpEmail({
+    const result = await auth.api.createUser({
       body: {
         email,
         password,
