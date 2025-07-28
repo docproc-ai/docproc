@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { authClient } from '@/lib/auth-client'
+import { PageLoadingSkeleton } from '@/components/ui/loading-skeletons'
 import { LoginForm } from '@/components/login-form'
 
 export default function LoginPage() {
@@ -16,11 +17,7 @@ export default function LoginPage() {
   }, [session, isPending, router])
 
   if (isPending) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="border-primary h-8 w-8 animate-spin rounded-full border-b-2"></div>
-      </div>
-    )
+    return <PageLoadingSkeleton />
   }
 
   if (session?.user) {

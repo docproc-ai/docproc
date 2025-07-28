@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { authClient } from '@/lib/auth-client'
 import { Loader2 } from 'lucide-react'
+import { PageLoadingSkeleton } from '@/components/ui/loading-skeletons'
 
 export default function HomePage() {
   const { data: session, isPending } = authClient.useSession()
@@ -19,9 +20,5 @@ export default function HomePage() {
     }
   }, [session, isPending, router])
 
-  return (
-    <div className="flex min-h-screen items-center justify-center">
-      <Loader2 className="h-8 w-8 animate-spin" />
-    </div>
-  )
+  return <PageLoadingSkeleton />
 }

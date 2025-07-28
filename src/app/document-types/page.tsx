@@ -19,6 +19,7 @@ import { getDocumentTypes } from '@/lib/actions/document-type'
 import { authClient } from '@/lib/auth-client'
 import { useEffect, useState } from 'react'
 import { Users } from 'lucide-react'
+import { PageLoadingSkeleton, DocumentTypeCardSkeleton } from '@/components/ui/loading-skeletons'
 
 export default function DocumentTypesPage() {
   const [documentTypes, setDocumentTypes] = useState<any[]>([])
@@ -66,12 +67,7 @@ export default function DocumentTypesPage() {
       <main className="flex-grow overflow-auto p-6">
         <div className="space-y-6">
           {isLoading ? (
-            <div className="flex items-center justify-center py-16">
-              <div className="text-center">
-                <div className="border-primary mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2"></div>
-                <p className="text-muted-foreground">Loading document types...</p>
-              </div>
-            </div>
+            <DocumentTypeCardSkeleton count={6} />
           ) : documentTypes.length === 0 ? (
             <div className="border-border rounded-lg border-2 border-dashed py-16 text-center">
               <h2 className="text-2xl font-semibold">No Document Types Found</h2>

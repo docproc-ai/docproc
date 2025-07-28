@@ -41,6 +41,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { PageLoadingSkeleton, UserTableSkeleton } from '@/components/ui/loading-skeletons'
 import { UserPlus, Edit, Trash2, Users } from 'lucide-react'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
@@ -82,14 +83,7 @@ export default function UsersPage() {
 
   // Show loading while auth is loading
   if (isAuthLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="border-primary mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    )
+    return <PageLoadingSkeleton />
   }
 
   // Check if user is admin
@@ -281,9 +275,7 @@ export default function UsersPage() {
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="border-primary h-8 w-8 animate-spin rounded-full border-b-2"></div>
-              </div>
+              <UserTableSkeleton rows={5} />
             ) : (
               <Table>
                 <TableHeader>
