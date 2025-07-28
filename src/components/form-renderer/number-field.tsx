@@ -15,9 +15,7 @@ export function NumberField({ name, schema, value, onChange, required }: FormFie
         {schema.title || name}
         {required && <span className="ml-1 text-red-500">*</span>}
       </Label>
-      {schema.description && (
-        <p className="text-muted-foreground text-sm">{schema.description}</p>
-      )}
+      {schema.description && <p className="text-muted-foreground text-sm">{schema.description}</p>}
       <Input
         id={name}
         type="number"
@@ -27,9 +25,7 @@ export function NumberField({ name, schema, value, onChange, required }: FormFie
           if (val === '') {
             onChange(undefined)
           } else {
-            onChange(
-              fieldType === 'integer' ? Number.parseInt(val) : Number.parseFloat(val),
-            )
+            onChange(fieldType === 'integer' ? Number.parseInt(val) : Number.parseFloat(val))
           }
         }}
         onWheel={(e) => e.currentTarget.blur()}

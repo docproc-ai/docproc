@@ -57,7 +57,7 @@ export function DocumentQueue({
           const formData = new FormData()
           formData.append('file', file)
           formData.append('documentTypeId', documentTypeId)
-          
+
           await createDocument(formData)
         }
         toast.success(`${files.length} document(s) uploaded.`)
@@ -196,7 +196,9 @@ export function DocumentQueue({
                   <div className="flex-1 overflow-hidden">
                     <p className="truncate text-sm font-medium">{doc.filename}</p>
                     <p className="text-muted-foreground text-xs">
-                      {doc.createdAt ? formatDistanceToNow(new Date(doc.createdAt), { addSuffix: true }) : 'Unknown'}
+                      {doc.createdAt
+                        ? formatDistanceToNow(new Date(doc.createdAt), { addSuffix: true })
+                        : 'Unknown'}
                     </p>
                   </div>
                 </div>
@@ -214,13 +216,13 @@ export function DocumentQueue({
                     <AlertDialogHeader>
                       <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This will permanently delete the document "{doc.filename}" and its
-                        data. This action cannot be undone.
+                        This will permanently delete the document "{doc.filename}" and its data.
+                        This action cannot be undone.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction 
+                      <AlertDialogAction
                         onClick={() => onDelete(doc.id)}
                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       >

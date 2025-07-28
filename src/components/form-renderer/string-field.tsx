@@ -14,7 +14,7 @@ import type { FormFieldProps } from './types'
 
 export function StringField({ name, schema, value, onChange, required }: FormFieldProps) {
   const fieldType = Array.isArray(schema.type) ? schema.type[0] : schema.type
-  
+
   // Handle enums for any type, not just strings
   if (schema.enum) {
     return (
@@ -93,9 +93,7 @@ export function StringField({ name, schema, value, onChange, required }: FormFie
         {schema.title || name}
         {required && <span className="ml-1 text-red-500">*</span>}
       </Label>
-      {schema.description && (
-        <p className="text-muted-foreground text-sm">{schema.description}</p>
-      )}
+      {schema.description && <p className="text-muted-foreground text-sm">{schema.description}</p>}
       <Input
         id={name}
         type="text"

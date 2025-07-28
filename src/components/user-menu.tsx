@@ -40,23 +40,27 @@ export function UserMenu() {
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{user.name}</p>
-            <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+            <p className="text-sm leading-none font-medium">{user.name}</p>
+            <p className="text-muted-foreground text-xs leading-none">{user.email}</p>
             {user.role && (
-              <p className="text-xs leading-none text-muted-foreground capitalize">
+              <p className="text-muted-foreground text-xs leading-none capitalize">
                 Role: {user.role}
               </p>
             )}
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => authClient.signOut({
-          fetchOptions: {
-            onSuccess: () => {
-              window.location.href = '/login'
-            }
+        <DropdownMenuItem
+          onClick={() =>
+            authClient.signOut({
+              fetchOptions: {
+                onSuccess: () => {
+                  window.location.href = '/login'
+                },
+              },
+            })
           }
-        })}>
+        >
           <LogOut className="mr-2 h-4 w-4" />
           <span>Log out</span>
         </DropdownMenuItem>

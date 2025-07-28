@@ -373,11 +373,7 @@ export function ArrayField({ name, schema, value, onChange, required }: FormFiel
         const isExpanded = expandedArrayItems[itemKey] !== false
 
         return (
-          <Collapsible
-            key={index}
-            open={isExpanded}
-            onOpenChange={() => toggleArrayItem(itemKey)}
-          >
+          <Collapsible key={index} open={isExpanded} onOpenChange={() => toggleArrayItem(itemKey)}>
             <div className="border-border space-y-4 rounded-lg border p-4">
               <CollapsibleTrigger asChild>
                 <div className="flex cursor-pointer items-center justify-between">

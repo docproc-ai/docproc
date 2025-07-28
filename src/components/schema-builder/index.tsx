@@ -35,9 +35,7 @@ export function SchemaBuilder({ schema, onChange, path = '' }: SchemaBuilderProp
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="type">
-            Type
-          </Label>
+          <Label htmlFor="type">Type</Label>
           <Select
             value={Array.isArray(schema.type) ? schema.type[0] : String(schema.type || 'object')}
             onValueChange={(type) => {
@@ -65,9 +63,7 @@ export function SchemaBuilder({ schema, onChange, path = '' }: SchemaBuilderProp
           </Select>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="title">
-            Title
-          </Label>
+          <Label htmlFor="title">Title</Label>
           <Input
             id="title"
             value={schema.title ?? ''}
@@ -78,9 +74,7 @@ export function SchemaBuilder({ schema, onChange, path = '' }: SchemaBuilderProp
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="description">
-          Description
-        </Label>
+        <Label htmlFor="description">Description</Label>
         <Input
           value={schema.description ?? ''}
           onChange={(e) => updateSchema({ description: e.target.value || undefined })}
@@ -143,9 +137,7 @@ export function SchemaBuilder({ schema, onChange, path = '' }: SchemaBuilderProp
 
             {propertySchema.type === 'object' && (
               <div className="border-border rounded-lg border p-4">
-                <Label className="mb-4 block text-sm font-semibold">
-                  Nested Properties
-                </Label>
+                <Label className="mb-4 block text-sm font-semibold">Nested Properties</Label>
                 <SchemaBuilder
                   schema={{
                     ...propertySchema,
@@ -166,9 +158,7 @@ export function SchemaBuilder({ schema, onChange, path = '' }: SchemaBuilderProp
             {propertySchema.type === 'array' && (
               <div className="border-border rounded-lg border p-4">
                 <div className="mb-4 grid grid-cols-2 gap-4">
-                  <Label className="col-span-2 text-sm font-semibold">
-                    Array Items Schema
-                  </Label>
+                  <Label className="col-span-2 text-sm font-semibold">Array Items Schema</Label>
                   <div>
                     <Label>Display as</Label>
                     <Select

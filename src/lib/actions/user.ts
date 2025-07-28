@@ -32,9 +32,9 @@ export async function updateUserRole(userId: string, newRole: string) {
   try {
     await db
       .update(user)
-      .set({ 
+      .set({
         role: newRole,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       })
       .where(eq(user.id, userId))
 
@@ -48,9 +48,7 @@ export async function updateUserRole(userId: string, newRole: string) {
 
 export async function deleteUser(userId: string) {
   try {
-    await db
-      .delete(user)
-      .where(eq(user.id, userId))
+    await db.delete(user).where(eq(user.id, userId))
 
     revalidatePath('/users')
     return { success: true }
@@ -83,10 +81,7 @@ export async function createUser(formData: FormData) {
     if (result) {
       // Update user role if specified
       if (role && role !== 'user') {
-        await db
-          .update(user)
-          .set({ role })
-          .where(eq(user.email, email))
+        await db.update(user).set({ role }).where(eq(user.email, email))
       }
 
       revalidatePath('/users')

@@ -105,7 +105,14 @@ function FormField({
   }
 }
 
-export function ObjectField({ name, schema, value, onChange, required, isArrayItem = false }: FormFieldProps) {
+export function ObjectField({
+  name,
+  schema,
+  value,
+  onChange,
+  required,
+  isArrayItem = false,
+}: FormFieldProps) {
   if (schema.type !== 'object') return null
 
   const objectValue = value || {}

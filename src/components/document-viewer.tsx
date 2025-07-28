@@ -192,7 +192,7 @@ const DocumentViewerComponent = ({ file, onPageRender }: DocumentViewerProps) =>
   const isPdf = file?.type === 'application/pdf'
 
   return (
-    <div className="relative h-full w-full bg-muted/50">
+    <div className="bg-muted/50 relative h-full w-full">
       {!file ? (
         <div className="flex h-full flex-col items-center justify-center">
           <FileText className="text-muted-foreground h-12 w-12" />

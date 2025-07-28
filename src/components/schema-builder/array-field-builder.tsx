@@ -27,9 +27,7 @@ export function ArrayFieldBuilder({ schema, onChange, children }: ArrayFieldBuil
           <Label>Display as</Label>
           <Select
             value={schema['ui:widget'] || 'default'}
-            onValueChange={(value) =>
-              onChange({ 'ui:widget': value as 'default' | 'table' })
-            }
+            onValueChange={(value) => onChange({ 'ui:widget': value as 'default' | 'table' })}
           >
             <SelectTrigger className="w-full">
               <SelectValue />
@@ -42,9 +40,7 @@ export function ArrayFieldBuilder({ schema, onChange, children }: ArrayFieldBuil
         </div>
       </div>
       <Label className="text-base font-semibold">Array Items Schema</Label>
-      <div className="border-border rounded-lg border p-4">
-        {children}
-      </div>
+      <div className="border-border rounded-lg border p-4">{children}</div>
     </div>
   )
 }

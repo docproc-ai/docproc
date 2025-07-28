@@ -10,7 +10,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     if (!document) {
       return NextResponse.json({ error: 'Document not found' }, { status: 404 })
     }
-    
+
     // Return simplified data for external API consumers
     const simplifiedDoc = {
       id: document.id,
@@ -22,7 +22,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       createdAt: document.createdAt,
       updatedAt: document.updatedAt,
     }
-    
+
     return NextResponse.json(simplifiedDoc)
   } catch (error) {
     console.error('Failed to fetch document:', error)
@@ -42,19 +42,19 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
     // Convert JSON body to FormData for server action
     const formData = new FormData()
-    
+
     if (body.extractedData) {
       formData.append('extractedData', JSON.stringify(body.extractedData))
     }
-    
+
     if (body.approvalStatus) {
       formData.append('approvalStatus', body.approvalStatus)
     }
-    
+
     if (body.processingStatus) {
       formData.append('processingStatus', body.processingStatus)
     }
-    
+
     if (body.schemaSnapshot) {
       formData.append('schemaSnapshot', JSON.stringify(body.schemaSnapshot))
     }

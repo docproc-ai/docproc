@@ -24,14 +24,11 @@ export async function middleware(request: NextRequest) {
   // For API routes (except auth), check for session or valid API key
   if (pathname.startsWith('/api/')) {
     const validApiKey = process.env.API_KEY
-    
+
     if (!sessionCookie && (!apiKey || !validApiKey || apiKey !== validApiKey)) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
-    
+
     // API routes are authenticated, continue
     return NextResponse.next()
   }

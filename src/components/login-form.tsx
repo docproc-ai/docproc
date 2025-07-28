@@ -27,7 +27,7 @@ export function LoginForm() {
         email,
         password,
       })
-      
+
       if (result.data?.user) {
         router.push('/document-types')
       } else {
@@ -41,7 +41,7 @@ export function LoginForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
+    <div className="bg-background flex min-h-screen items-center justify-center">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold">Sign In</CardTitle>

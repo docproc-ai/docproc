@@ -76,10 +76,9 @@ export default function DocumentTypesPage() {
             <div className="border-border rounded-lg border-2 border-dashed py-16 text-center">
               <h2 className="text-2xl font-semibold">No Document Types Found</h2>
               <p className="text-muted-foreground mt-2">
-                {session?.user?.role === 'admin' 
+                {session?.user?.role === 'admin'
                   ? 'Get started by creating your first document type.'
-                  : 'No document types have been created yet. Contact an admin to create document types.'
-                }
+                  : 'No document types have been created yet. Contact an admin to create document types.'}
               </p>
               {session?.user?.role === 'admin' && (
                 <Button asChild className="mt-4">

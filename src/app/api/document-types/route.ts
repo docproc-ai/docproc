@@ -4,15 +4,15 @@ import { getDocumentTypes, createDocumentType } from '@/lib/actions/document-typ
 export async function GET() {
   try {
     const documentTypes = await getDocumentTypes()
-    
+
     // Return simplified data for external API consumers
-    const simplifiedTypes = documentTypes.map(type => ({
+    const simplifiedTypes = documentTypes.map((type) => ({
       id: type.id,
       name: type.name,
       document_count: type.document_count,
       createdAt: type.createdAt,
     }))
-    
+
     return NextResponse.json(simplifiedTypes)
   } catch (error) {
     console.error('Failed to fetch document types:', error)

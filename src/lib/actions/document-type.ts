@@ -4,7 +4,6 @@ import { db } from '@/db'
 import { documentType, document } from '@/db/schema'
 import { eq, desc, count } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import type { InferSelectModel, InferInsertModel } from 'drizzle-orm'
@@ -14,7 +13,7 @@ export type NewDocumentType = InferInsertModel<typeof documentType>
 
 async function checkAdminAccess() {
   const headersList = await headers()
-  
+
   // Check for API key authentication first
   const apiKey = headersList.get('x-api-key')
   if (apiKey && apiKey === process.env.API_KEY) {

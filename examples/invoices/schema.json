@@ -35,20 +35,13 @@
       "type": "string",
       "description": "Currency code (ISO 4217)",
       "pattern": "^[A-Z]{3}$",
-      "examples": [
-        "USD",
-        "EUR",
-        "GBP"
-      ],
+      "examples": ["USD", "EUR", "GBP"],
       "title": "Currency"
     },
     "seller": {
       "type": "object",
       "description": "Information about the invoice issuer",
-      "required": [
-        "name",
-        "address"
-      ],
+      "required": ["name", "address"],
       "properties": {
         "name": {
           "type": "string",
@@ -57,11 +50,7 @@
         },
         "address": {
           "type": "object",
-          "required": [
-            "street",
-            "city",
-            "country"
-          ],
+          "required": ["street", "city", "country"],
           "properties": {
             "street": {
               "type": "string",
@@ -101,10 +90,7 @@
     "buyer": {
       "type": "object",
       "description": "Information about the invoice recipient",
-      "required": [
-        "name",
-        "address"
-      ],
+      "required": ["name", "address"],
       "properties": {
         "name": {
           "type": "string",
@@ -113,11 +99,7 @@
         },
         "address": {
           "type": "object",
-          "required": [
-            "street",
-            "city",
-            "country"
-          ],
+          "required": ["street", "city", "country"],
           "properties": {
             "street": {
               "type": "string",
@@ -151,12 +133,7 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": [
-          "description",
-          "quantity",
-          "unitPrice",
-          "total"
-        ],
+        "required": ["description", "quantity", "unitPrice", "total"],
         "properties": {
           "description": {
             "type": "string",
@@ -189,10 +166,7 @@
     "totals": {
       "type": "object",
       "description": "Invoice total calculations",
-      "required": [
-        "subtotal",
-        "total"
-      ],
+      "required": ["subtotal", "total"],
       "properties": {
         "subtotal": {
           "type": "number",

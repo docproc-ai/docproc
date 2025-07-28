@@ -103,10 +103,7 @@ export function FieldBuilder({
                 }
                 onValueChange={(type) => onTypeChange(propertyKey, type)}
               >
-                <SelectTrigger
-                  className="h-8 w-24"
-                  onClick={(e) => e.stopPropagation()}
-                >
+                <SelectTrigger className="h-8 w-24" onClick={(e) => e.stopPropagation()}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -170,9 +167,7 @@ export function FieldBuilder({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor={`ai-instructions-${propertyId}`}>
-                AI Instructions
-              </Label>
+              <Label htmlFor={`ai-instructions-${propertyId}`}>AI Instructions</Label>
               <Input
                 id={`ai-instructions-${propertyId}`}
                 value={propertySchema.ai?.instructions ?? ''}

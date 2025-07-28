@@ -21,29 +21,34 @@ NEXTAUTH_URL="http://localhost:3000"
 ## Features
 
 ### 🔐 Authentication System
+
 - **Better-auth** integration with Drizzle ORM
 - Email/password authentication
 - Session management with 7-day expiration
 - Admin role support
 
 ### 👤 Default Admin User
+
 - Automatically created on app startup
 - Uses environment variables for credentials
 - Admin role assigned automatically
 - Only created if user doesn't already exist
 
 ### 🛡️ Protected Routes
+
 - All pages are protected by authentication
 - Login form shown for unauthenticated users
 - User menu with logout functionality
 - Middleware protection for API routes
 
 ### 🎨 UI Components
+
 - `LoginForm` - Clean login interface
 - `UserMenu` - User avatar dropdown with logout
 - `ProtectedRoute` - Wrapper component for auth protection
 
 ### 📄 Pages
+
 - `/login` - Dedicated login page
 - `/users` - User management page (admin only)
 - All other pages are protected and require authentication
@@ -51,6 +56,7 @@ NEXTAUTH_URL="http://localhost:3000"
 ## Database Schema
 
 The authentication system includes these tables:
+
 - `user` - User accounts with role field
 - `session` - Active user sessions
 - `account` - Account provider information

@@ -22,16 +22,19 @@ export type NewDocument = InferInsertModel<typeof document>
  * Get the model to use for processing a document type
  * Priority: overrideModel > documentType.modelName > system default
  */
-async function getModelForProcessing(documentTypeId: number, overrideModel?: string): Promise<string> {
+async function getModelForProcessing(
+  documentTypeId: number,
+  overrideModel?: string,
+): Promise<string> {
   if (overrideModel) {
     return overrideModel
   }
-  
+
   const docType = await getDocumentType(documentTypeId)
   if (docType?.modelName) {
     return docType.modelName
   }
-  
+
   // System default
   return DEFAULT_MODEL
 }
@@ -97,7 +100,7 @@ export async function getDocuments(documentTypeId: number): Promise<Document[]> 
       .from(document)
       .where(eq(document.documentTypeId, documentTypeId))
       .orderBy(desc(document.createdAt))
-    
+
     return documents
   } catch (error) {
     console.error('Failed to get documents:', error)
@@ -127,7 +130,7 @@ export async function createDocument(formData: FormData) {
     // Create storage directory if it doesn't exist
     const storageDir = getStorageDir()
     await mkdir(storageDir, { recursive: true })
-    
+
     // Generate unique filename
     const fileExtension = file.name.split('.').pop()
     const uniqueFilename = `${randomUUID()}.${fileExtension}`
@@ -241,7 +244,7 @@ export async function deleteDocument(id: number) {
   try {
     // Get document info before deletion
     const [doc] = await db.select().from(document).where(eq(document.id, id))
-    
+
     if (!doc) {
       throw new Error('Document not found')
     }
@@ -282,7 +285,9 @@ export async function processDocument(formData: FormData) {
       if (!adminSession) {
         // Non-admin users cannot override models - ignore the parameter
         overrideModel = ''
-        console.warn('Non-admin user attempted to override model in processDocument, ignoring parameter')
+        console.warn(
+          'Non-admin user attempted to override model in processDocument, ignoring parameter',
+        )
       }
     }
 
@@ -368,7 +373,7 @@ export async function processDocument(formData: FormData) {
     updateFormData.append('schemaSnapshot', JSON.stringify(schema))
 
     const updatedDoc = await updateDocument(documentId, updateFormData)
-    
+
     return { data: object, document: updatedDoc }
   } catch (error) {
     console.error('Failed to process document:', error)

@@ -8,42 +8,36 @@ import { validateAdminUser } from '@/lib/auth-utils'
  * Get the model to use for processing a document type
  * Priority: overrideModel > documentType.modelName > system default
  */
-async function getModelForProcessing(documentTypeId: number, overrideModel?: string): Promise<string> {
+async function getModelForProcessing(
+  documentTypeId: number,
+  overrideModel?: string,
+): Promise<string> {
   if (overrideModel) {
     return overrideModel
   }
-  
+
   const docType = await getDocumentType(documentTypeId)
   if (docType?.modelName) {
     return docType.modelName
   }
-  
+
   // System default
   return DEFAULT_MODEL
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
     const documentTypeId = parseInt(id)
-    
+
     if (isNaN(documentTypeId)) {
-      return NextResponse.json(
-        { error: 'Invalid document type ID' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Invalid document type ID' }, { status: 400 })
     }
 
     // Check if document type exists
     const docType = await getDocumentType(documentTypeId)
     if (!docType) {
-      return NextResponse.json(
-        { error: 'Document type not found' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'Document type not found' }, { status: 404 })
     }
 
     // Get autoProcess flag from query params
@@ -64,7 +58,7 @@ export async function POST(
     // Parse form data
     const formData = await request.formData()
     const files = formData.getAll('files[]') as File[]
-    
+
     // Also check for single file uploads
     const singleFile = formData.get('file') as File
     if (singleFile && files.length === 0) {
@@ -72,10 +66,7 @@ export async function POST(
     }
 
     if (files.length === 0) {
-      return NextResponse.json(
-        { error: 'No files provided' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'No files provided' }, { status: 400 })
     }
 
     const results = []
@@ -109,7 +100,7 @@ export async function POST(
 
             // Trigger processing (this will happen in background)
             await processDocument(processFormData)
-            
+
             // Note: We don't wait for processing to complete or return extracted data
             // The processing happens asynchronously and users can check results later
           } catch (processError) {
@@ -130,8 +121,8 @@ export async function POST(
     }
 
     // Calculate summary
-    const successful = results.filter(r => r.success).length
-    const failed = results.filter(r => !r.success).length
+    const successful = results.filter((r) => r.success).length
+    const failed = results.filter((r) => !r.success).length
 
     return NextResponse.json({
       success: true,
@@ -145,9 +136,6 @@ export async function POST(
     })
   } catch (error) {
     console.error('Upload API error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

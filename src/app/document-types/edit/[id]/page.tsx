@@ -238,7 +238,7 @@ export default function EditDocumentTypePage() {
                       placeholder="https://api.example.com/invoices"
                     />
                   </div>
-                  <div className="space-y-2 w-32">
+                  <div className="w-32 space-y-2">
                     <Label htmlFor="webhookMethod">Method</Label>
                     <Select value={webhookMethod} onValueChange={setWebhookMethod}>
                       <SelectTrigger className="w-full" id="webhookMethod">

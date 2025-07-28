@@ -14,10 +14,10 @@ export function NumberFieldBuilder({ schema, onChange, fieldId }: NumberFieldBui
   if (schema.type !== 'number' && schema.type !== 'integer') return null
 
   return (
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor={`minimum-${fieldId}`}>Minimum</Label>
-            <Input
+    <div className="grid grid-cols-2 gap-4">
+      <div className="space-y-2">
+        <Label htmlFor={`minimum-${fieldId}`}>Minimum</Label>
+        <Input
           id={`min-${fieldId}`}
           type="number"
           value={schema.minimum ?? ''}

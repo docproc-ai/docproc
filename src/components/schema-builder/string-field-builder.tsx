@@ -77,11 +77,11 @@ export function StringFieldBuilder({ schema, onChange, fieldId }: StringFieldBui
                 onChange({
                   format: undefined,
                   'ui:widget': undefined,
-                  enum: ['Option 1']
+                  enum: ['Option 1'],
                 })
               } else {
                 onChange({
-                  enum: undefined
+                  enum: undefined,
                 })
               }
             }}

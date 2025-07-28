@@ -11,7 +11,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const { id } = await params
 
     // Find document by ID directly
-    const [doc] = await db.select().from(document).where(eq(document.id, parseInt(id)))
+    const [doc] = await db
+      .select()
+      .from(document)
+      .where(eq(document.id, parseInt(id)))
 
     if (!doc) {
       return NextResponse.json({ error: 'Document not found' }, { status: 404 })
