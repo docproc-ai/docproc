@@ -144,7 +144,7 @@ const DocumentViewerComponent = ({ file, onPageRender }: DocumentViewerProps) =>
               <img
                 src={pageImage || '/placeholder.svg'}
                 alt={`Page ${currentPage}`}
-                className="h-full w-full object-contain shadow-lg"
+                className="h-full w-full object-contain"
               />
             </TransformComponent>
           </TransformWrapper>
