@@ -1,7 +1,12 @@
 'use server'
 
-export async function getEnabledAuthProviders(): Promise<string[]> {
-  const providers: string[] = []
+export interface AuthConfig {
+  socialProviders: string[]
+  emailPasswordEnabled: boolean
+}
+
+export async function getEnabledAuthProviders(): Promise<AuthConfig> {
+  const socialProviders: string[] = []
 
   // Check Microsoft auth
   if (process.env.AUTH_MICROSOFT_ENABLED === 'true') {
@@ -11,7 +16,7 @@ export async function getEnabledAuthProviders(): Promise<string[]> {
       process.env.AUTH_MICROSOFT_TENANT_ID
 
     if (hasRequiredVars) {
-      providers.push('microsoft')
+      socialProviders.push('microsoft')
     }
   }
 
@@ -22,7 +27,7 @@ export async function getEnabledAuthProviders(): Promise<string[]> {
       process.env.AUTH_GOOGLE_CLIENT_SECRET
 
     if (hasRequiredVars) {
-      providers.push('google')
+      socialProviders.push('google')
     }
   }
 
@@ -33,9 +38,15 @@ export async function getEnabledAuthProviders(): Promise<string[]> {
       process.env.AUTH_GITHUB_CLIENT_SECRET
 
     if (hasRequiredVars) {
-      providers.push('github')
+      socialProviders.push('github')
     }
   }
 
-  return providers
+  // Check email/password auth
+  const emailPasswordEnabled = process.env.AUTH_EMAIL_PASSWORD_ENABLED === 'true'
+
+  return {
+    socialProviders,
+    emailPasswordEnabled
+  }
 }

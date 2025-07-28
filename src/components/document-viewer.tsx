@@ -181,7 +181,7 @@ const DocumentViewerComponent = ({ file, onPageRender }: DocumentViewerProps) =>
           <img
             src={fileUrl! || '/placeholder.svg'}
             alt={file?.name}
-            className="h-full w-full object-contain shadow-lg"
+            className="h-full w-full object-contain"
           />
         </TransformComponent>
       </TransformWrapper>

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { authClient } from '@/lib/auth-client'
-import { getEnabledAuthProviders } from '@/lib/actions/auth'
+import { getEnabledAuthProviders, AuthConfig } from '@/lib/actions/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -18,17 +18,17 @@ export function LoginForm() {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [socialLoading, setSocialLoading] = useState<string | null>(null)
-  const [enabledProviders, setEnabledProviders] = useState<string[]>([])
+  const [authConfig, setAuthConfig] = useState<AuthConfig>({ socialProviders: [], emailPasswordEnabled: false })
   const router = useRouter()
 
   useEffect(() => {
     // Check available auth providers using server action
     const checkAuthProviders = async () => {
       try {
-        const providers = await getEnabledAuthProviders()
-        setEnabledProviders(providers)
+        const config = await getEnabledAuthProviders()
+        setAuthConfig(config)
       } catch (error) {
-        setEnabledProviders([])
+        setAuthConfig({ socialProviders: [], emailPasswordEnabled: false })
       }
     }
     checkAuthProviders()
@@ -136,6 +136,26 @@ export function LoginForm() {
     }
   }
 
+  // Show error if no authentication methods are available
+  if (!authConfig.emailPasswordEnabled && authConfig.socialProviders.length === 0) {
+    return (
+      <div className="bg-background flex min-h-screen items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl font-bold">Sign In</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Alert variant="destructive">
+              <AlertDescription>
+                No authentication methods are currently enabled. Please contact your administrator.
+              </AlertDescription>
+            </Alert>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="bg-background flex min-h-screen items-center justify-center">
       <Card className="w-full max-w-md">
@@ -143,81 +163,78 @@ export function LoginForm() {
           <CardTitle className="text-2xl font-bold">Sign In</CardTitle>
         </CardHeader>
         <CardContent>
-          <form
-            onSubmit={handleSubmit}
-            className={`space-y-4 ${enabledProviders.length > 0 ? 'mt-4' : ''}`}
-          >
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="admin@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={isLoading}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={isLoading}
-              />
-            </div>
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              <div className="flex items-center justify-center">
+          {/* Email/Password Form */}
+          {authConfig.emailPasswordEnabled && (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="admin@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                <span>Sign In</span>
-              </div>
-            </Button>
+                Sign In
+              </Button>
+            </form>
+          )}
 
-            {enabledProviders.length > 0 && (
-              <div className="space-y-4">
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <Separator className="w-full" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background text-muted-foreground px-2">
-                      Or
-                    </span>
-                  </div>
-                </div>
-
-                {/* Social Sign In Buttons */}
-                {enabledProviders.map((provider) => (
-                  <Button
-                    key={provider}
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => handleSocialSignIn(provider)}
-                    disabled={socialLoading !== null || isLoading}
-                  >
-                    <div className="flex items-center justify-center">
-                      {socialLoading === provider ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        getProviderIcon(provider)
-                      )}
-                      <span>Sign in with {getProviderDisplayName(provider)}</span>
-                    </div>
-                  </Button>
-                ))}
+          {/* Separator - only show if both email/password and social providers are enabled */}
+          {authConfig.emailPasswordEnabled && authConfig.socialProviders.length > 0 && (
+            <div className="relative mt-4">
+              <div className="absolute inset-0 flex items-center">
+                <Separator className="w-full" />
               </div>
-            )}
-          </form>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">Or</span>
+              </div>
+            </div>
+          )}
+
+          {/* Social Sign In Buttons */}
+          {authConfig.socialProviders.length > 0 && (
+            <div className={`space-y-4 ${authConfig.emailPasswordEnabled ? 'mt-4' : ''}`}>
+              {authConfig.socialProviders.map((provider: string) => (
+                <Button
+                  key={provider}
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => handleSocialSignIn(provider)}
+                  disabled={socialLoading !== null || isLoading}
+                >
+                  {socialLoading === provider ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    getProviderIcon(provider)
+                  )}
+                  Continue with {getProviderDisplayName(provider)}
+                </Button>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
