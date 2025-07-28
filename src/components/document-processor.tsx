@@ -59,6 +59,9 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
   const isAdmin = session?.user?.role === 'admin'
 
   const handleDocumentSelect = (doc: Document | null) => {
+    if (doc?.id === selectedDocument?.id) {
+      return
+    }
     setSelectedDocument(doc)
     setFormData(doc?.extractedData || {})
     if (doc) {
