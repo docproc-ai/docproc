@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { updateDocument, deleteDocument, processDocument } from '@/lib/actions/document'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
@@ -22,7 +22,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Label } from '@/components/ui/label'
 import dynamic from 'next/dynamic'
 
 const DocumentViewer = dynamic(() => import('@/components/document-viewer'), {
@@ -51,10 +50,7 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
   )
   const [activeTab, setActiveTab] = useState('form')
   const [isProcessing, setIsProcessing] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
   const [isPending, startTransition] = useTransition()
-  const viewerRef = useRef<any>(null)
-  const [currentPageImageData, setCurrentPageImageData] = useState<string | null>(null)
   const [overrideModel, setOverrideModel] = useState<string>(
     documentType.modelName || DEFAULT_MODEL,
   )
@@ -110,7 +106,7 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
       const updatedDoc = {
         ...selectedDocument,
         extractedData: result.data,
-        approvalStatus: 'pending' as const,
+        status: 'processed' as const,
       }
       setSelectedDocument(updatedDoc)
       setDocuments(documents.map((d) => (d.id === selectedDocument.id ? updatedDoc : d)))
@@ -123,14 +119,14 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
     }
   }
 
-  const handleStatusUpdate = async (status: 'approved' | 'pending') => {
+  const handleStatusUpdate = async (status: 'approved' | 'processed') => {
     if (!selectedDocument) return
 
     startTransition(async () => {
       try {
         const formDataToSubmit = new FormData()
         formDataToSubmit.append('extractedData', JSON.stringify(formData))
-        formDataToSubmit.append('approvalStatus', status)
+        formDataToSubmit.append('status', status)
 
         if (status === 'approved') {
           formDataToSubmit.append('schemaSnapshot', JSON.stringify(documentType.schema))
@@ -220,9 +216,9 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
             )}
             Process
           </Button>
-          {selectedDocument?.approvalStatus === 'approved' ? (
+          {selectedDocument?.status === 'approved' ? (
             <Button
-              onClick={() => handleStatusUpdate('pending')}
+              onClick={() => handleStatusUpdate('processed')}
               disabled={isPending || !selectedDocument}
               variant="secondary"
             >
@@ -252,7 +248,7 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
         </div>
       </header>
       <ResizablePanelGroup direction="horizontal" className="flex-grow">
-        <ResizablePanel defaultSize={20} minSize={15}>
+        <ResizablePanel defaultSize={24} minSize={15}>
           <DocumentQueue
             documentTypeId={documentType.id}
             documents={documents}
@@ -263,7 +259,7 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
           />
         </ResizablePanel>
         <ResizableHandle />
-        <ResizablePanel defaultSize={45} minSize={30}>
+        <ResizablePanel defaultSize={40} minSize={30}>
           <div className="flex h-full flex-col p-4">
             {selectedDocument ? (
               <Tabs value={activeTab} onValueChange={setActiveTab} className="flex h-full flex-col">
@@ -296,7 +292,7 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
           </div>
         </ResizablePanel>
         <ResizableHandle />
-        <ResizablePanel defaultSize={35} minSize={25}>
+        <ResizablePanel defaultSize={36} minSize={25}>
           <DocumentViewer file={viewerFile} />
         </ResizablePanel>
       </ResizablePanelGroup>

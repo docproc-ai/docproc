@@ -16,8 +16,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       id: document.id,
       filename: document.filename,
       documentTypeId: document.documentTypeId,
-      approvalStatus: document.approvalStatus,
-      processingStatus: document.processingStatus,
+      status: document.status,
       extractedData: document.extractedData,
       createdAt: document.createdAt,
       updatedAt: document.updatedAt,
@@ -47,12 +46,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       formData.append('extractedData', JSON.stringify(body.extractedData))
     }
 
-    if (body.approvalStatus) {
-      formData.append('approvalStatus', body.approvalStatus)
-    }
-
-    if (body.processingStatus) {
-      formData.append('processingStatus', body.processingStatus)
+    if (body.status) {
+      formData.append('status', body.status)
     }
 
     if (body.schemaSnapshot) {

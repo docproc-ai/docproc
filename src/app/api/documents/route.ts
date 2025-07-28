@@ -17,8 +17,7 @@ export async function GET(request: Request) {
       id: doc.id,
       filename: doc.filename,
       documentTypeId: doc.documentTypeId,
-      approvalStatus: doc.approvalStatus,
-      processingStatus: doc.processingStatus,
+      status: doc.status,
       createdAt: doc.createdAt,
       updatedAt: doc.updatedAt,
     }))

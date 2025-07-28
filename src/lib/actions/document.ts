@@ -68,8 +68,7 @@ async function triggerWebhook(documentType: any, document: Document) {
     document: {
       id: document.id,
       filename: document.filename,
-      approvalStatus: document.approvalStatus,
-      processingStatus: document.processingStatus,
+      status: document.status,
       extractedData: document.extractedData,
       createdAt: document.createdAt,
       updatedAt: document.updatedAt,
@@ -148,8 +147,7 @@ export async function createDocument(formData: FormData) {
         filename: file.name,
         storagePath: uniqueFilename, // Store relative path
         documentTypeId,
-        approvalStatus: 'pending',
-        processingStatus: 'pending',
+        status: 'pending',
         extractedData: {},
         schemaSnapshot: null,
       })
@@ -166,8 +164,7 @@ export async function createDocument(formData: FormData) {
 export async function updateDocument(id: string, formData: FormData) {
   try {
     const extractedDataString = formData.get('extractedData') as string
-    const approvalStatus = formData.get('approvalStatus') as 'pending' | 'approved' | 'rejected'
-    const processingStatus = formData.get('processingStatus') as 'pending' | 'processed' | 'failed'
+    const status = formData.get('status') as 'pending' | 'processed' | 'approved'
     const schemaSnapshotString = formData.get('schemaSnapshot') as string
 
     let extractedData = {}
@@ -195,12 +192,8 @@ export async function updateDocument(id: string, formData: FormData) {
       updatedAt: new Date(),
     }
 
-    if (approvalStatus) {
-      updateData.approvalStatus = approvalStatus
-    }
-
-    if (processingStatus) {
-      updateData.processingStatus = processingStatus
+    if (status) {
+      updateData.status = status
     }
 
     const [result] = await db
@@ -220,7 +213,7 @@ export async function updateDocument(id: string, formData: FormData) {
       .where(eq(documentType.id, result.documentTypeId))
 
     // Trigger webhook if document is approved and webhook is configured
-    if (approvalStatus === 'approved' && docType?.webhookUrl) {
+    if (status === 'approved' && docType?.webhookUrl) {
       try {
         await triggerWebhook(docType, result)
       } catch (webhookError) {
@@ -368,8 +361,7 @@ export async function processDocument(formData: FormData) {
     // Update document with extracted data
     const updateFormData = new FormData()
     updateFormData.append('extractedData', JSON.stringify(object))
-    updateFormData.append('approvalStatus', 'pending')
-    updateFormData.append('processingStatus', 'processed')
+    updateFormData.append('status', 'processed')
     updateFormData.append('schemaSnapshot', JSON.stringify(schema))
 
     const updatedDoc = await updateDocument(documentId, updateFormData)

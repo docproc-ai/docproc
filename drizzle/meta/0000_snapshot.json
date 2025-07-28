@@ -1,5 +1,5 @@
 {
-  "id": "5fb9de92-b6eb-474c-b4eb-8566381da05b",
+  "id": "21ae85cf-d2d5-4686-b8c5-89aa752f9c9f",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -21,17 +21,9 @@
           "primaryKey": false,
           "notNull": true
         },
-        "approval_status": {
-          "name": "approval_status",
-          "type": "approval_status",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'pending'"
-        },
-        "processing_status": {
-          "name": "processing_status",
-          "type": "processing_status",
+        "status": {
+          "name": "status",
+          "type": "document_status",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": false,
@@ -94,6 +86,21 @@
           "columns": [
             {
               "expression": "document_type_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_document_status": {
+          "name": "idx_document_status",
+          "columns": [
+            {
+              "expression": "status",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -227,23 +234,7 @@
           "notNull": false
         }
       },
-      "indexes": {
-        "idx_document_type_name": {
-          "name": "idx_document_type_name",
-          "columns": [
-            {
-              "expression": "name",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "document_type_created_by_user_id_fk": {
           "name": "document_type_created_by_user_id_fk",
@@ -273,7 +264,15 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "document_type_slug_unique": {
+          "name": "document_type_slug_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "slug"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -590,22 +589,13 @@
     }
   },
   "enums": {
-    "public.approval_status": {
-      "name": "approval_status",
-      "schema": "public",
-      "values": [
-        "pending",
-        "approved",
-        "rejected"
-      ]
-    },
-    "public.processing_status": {
-      "name": "processing_status",
+    "public.document_status": {
+      "name": "document_status",
       "schema": "public",
       "values": [
         "pending",
         "processed",
-        "failed"
+        "approved"
       ]
     }
   },

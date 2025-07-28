@@ -1,10 +1,8 @@
-CREATE TYPE "public"."approval_status" AS ENUM('pending', 'approved', 'rejected');--> statement-breakpoint
-CREATE TYPE "public"."processing_status" AS ENUM('pending', 'processed', 'failed');--> statement-breakpoint
+CREATE TYPE "public"."document_status" AS ENUM('pending', 'processed', 'approved');--> statement-breakpoint
 CREATE TABLE "document" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"document_type_id" uuid NOT NULL,
-	"approval_status" "approval_status" DEFAULT 'pending',
-	"processing_status" "processing_status" DEFAULT 'pending',
+	"status" "document_status" DEFAULT 'pending',
 	"filename" text NOT NULL,
 	"storage_path" text NOT NULL,
 	"extracted_data" json,
@@ -26,7 +24,8 @@ CREATE TABLE "document_type" (
 	"created_at" timestamp DEFAULT now(),
 	"updated_at" timestamp DEFAULT now(),
 	"created_by" uuid,
-	"updated_by" uuid
+	"updated_by" uuid,
+	CONSTRAINT "document_type_slug_unique" UNIQUE("slug")
 );
 --> statement-breakpoint
 CREATE TABLE "account" (
@@ -86,4 +85,4 @@ ALTER TABLE "document_type" ADD CONSTRAINT "document_type_updated_by_user_id_fk"
 ALTER TABLE "account" ADD CONSTRAINT "account_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "idx_document_document_type_id" ON "document" USING btree ("document_type_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "idx_document_type_name" ON "document_type" USING btree ("name");
+CREATE INDEX "idx_document_status" ON "document" USING btree ("status");

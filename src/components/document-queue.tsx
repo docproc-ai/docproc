@@ -3,13 +3,18 @@
 import type React from 'react'
 import { useState, useRef, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
-import { UploadCloud, FileText, CheckCircle2, AlertCircle, Loader2, Trash2 } from 'lucide-react'
+import { UploadCloud, Loader2, Trash2 } from 'lucide-react'
+import {
+  DocumentStatusIcon,
+  PendingStatusIcon,
+  ProcessedStatusIcon,
+  ApprovedStatusIcon,
+} from '@/components/document-status-icon'
 import { cn } from '@/lib/utils'
 import { formatDistanceToNow } from 'date-fns'
 import type { DocumentSelect as Document } from '@/db/schema/app'
 import { toast } from 'sonner'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Label } from '@/components/ui/label'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { createDocument } from '@/lib/actions/document'
 import {
   AlertDialog,
@@ -41,7 +46,7 @@ export function DocumentQueue({
   onDelete,
 }: DocumentQueueProps) {
   const [isUploading, setIsUploading] = useState(false)
-  const [hideApproved, setHideApproved] = useState(true)
+  const [statusFilter, setStatusFilter] = useState<string[]>(['pending', 'processed'])
   const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -106,23 +111,8 @@ export function DocumentQueue({
     }
   }
 
-  const StatusIcon = ({ status }: { status: Document['approvalStatus'] }) => {
-    switch (status) {
-      case 'approved':
-        return <CheckCircle2 className="h-4 w-4 text-green-500" />
-      case 'rejected':
-        return <AlertCircle className="h-4 w-4 text-red-500" />
-      case 'pending':
-      default:
-        return <FileText className="text-muted-foreground h-4 w-4" />
-    }
-  }
-
   const filteredDocuments = documents.filter((doc) => {
-    if (hideApproved && doc.approvalStatus === 'approved') {
-      return false
-    }
-    return true
+    return statusFilter.includes(doc.status || 'pending')
   })
 
   return (
@@ -160,16 +150,40 @@ export function DocumentQueue({
           )}
           Upload
         </Button>
-        <div className="flex items-center space-x-2">
-          <Checkbox
-            id="hide-approved"
-            checked={hideApproved}
-            onCheckedChange={(checked) => setHideApproved(Boolean(checked))}
-          />
-          <Label htmlFor="hide-approved" className="cursor-pointer text-sm font-medium">
-            Hide approved
-          </Label>
-        </div>
+        <ToggleGroup
+          type="multiple"
+          value={statusFilter}
+          onValueChange={setStatusFilter}
+          className="w-full"
+        >
+          <ToggleGroupItem
+            value="pending"
+            className={cn('gap-0.5 text-xs outline-2 outline-current', {
+              'bg-secondary font-bold': statusFilter.includes('pending'),
+            })}
+          >
+            <PendingStatusIcon size="sm" />
+            <span className="truncate">Pending</span>
+          </ToggleGroupItem>
+          <ToggleGroupItem
+            value="processed"
+            className={cn('gap-0.5 text-xs outline-2 outline-current', {
+              'bg-secondary font-bold': statusFilter.includes('processed'),
+            })}
+          >
+            <ProcessedStatusIcon size="sm" />
+            <span className="truncate">Processed</span>
+          </ToggleGroupItem>
+          <ToggleGroupItem
+            value="approved"
+            className={cn('gap-0.5 text-xs outline-2 outline-current', {
+              'bg-secondary font-bold': statusFilter.includes('approved'),
+            })}
+          >
+            <ApprovedStatusIcon size="sm" />
+            <span className="truncate">Approved</span>
+          </ToggleGroupItem>
+        </ToggleGroup>
       </div>
       <div className="flex-grow overflow-y-auto">
         {filteredDocuments.length === 0 ? (
@@ -192,7 +206,7 @@ export function DocumentQueue({
                   onClick={() => onSelect(doc)}
                   className="flex flex-1 cursor-pointer items-center gap-3 overflow-hidden p-4"
                 >
-                  <StatusIcon status={doc.approvalStatus} />
+                  <DocumentStatusIcon status={doc.status} />
                   <div className="flex-1 overflow-hidden">
                     <p className="truncate text-sm font-medium">{doc.filename}</p>
                     <p className="text-muted-foreground text-xs">

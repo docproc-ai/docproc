@@ -10,28 +10,27 @@ import {
 } from 'drizzle-orm/pg-core'
 import { user } from './auth'
 
-export const documentType = pgTable(
-  'document_type',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    name: text('name').notNull(),
-    slug: text('slug').notNull(),
-    schema: json('schema').notNull(),
-    webhookUrl: text('webhook_url'),
-    webhookMethod: text('webhook_method').default('POST'),
-    modelName: text('model_name'),
-    createdAt: timestamp('created_at').defaultNow(),
-    updatedAt: timestamp('updated_at')
-      .defaultNow()
-      .$onUpdate(() => new Date()),
-    createdBy: uuid('created_by').references(() => user.id),
-    updatedBy: uuid('updated_by').references(() => user.id),
-  },
-  (table) => [uniqueIndex('idx_document_type_name').on(table.name)],
-)
+export const documentType = pgTable('document_type', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  slug: text('slug').notNull().unique(),
+  schema: json('schema').notNull(),
+  webhookUrl: text('webhook_url'),
+  webhookMethod: text('webhook_method').default('POST'),
+  modelName: text('model_name'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at')
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+  createdBy: uuid('created_by').references(() => user.id),
+  updatedBy: uuid('updated_by').references(() => user.id),
+})
 
-export const approvalStatus = pgEnum('approval_status', ['pending', 'approved', 'rejected'])
-export const processingStatus = pgEnum('processing_status', ['pending', 'processed', 'failed'])
+export const documentStatus = pgEnum('document_status', [
+  'pending', // Document needs to be processed AND approved (user must click process + approve)
+  'processed', // Document is processed and needs approval/editing (user just needs to approve/edit)
+  'approved', // Document is finalized and approved
+])
 
 export const document = pgTable(
   'document',
@@ -40,8 +39,7 @@ export const document = pgTable(
     documentTypeId: uuid('document_type_id')
       .notNull()
       .references(() => documentType.id),
-    approvalStatus: approvalStatus('approval_status').default('pending'),
-    processingStatus: processingStatus('processing_status').default('pending'),
+    status: documentStatus('status').default('pending'),
     filename: text('filename').notNull(),
     storagePath: text('storage_path').notNull(),
     extractedData: json('extracted_data'),
@@ -53,7 +51,10 @@ export const document = pgTable(
     createdBy: uuid('created_by').references(() => user.id),
     updatedBy: uuid('updated_by').references(() => user.id),
   },
-  (table) => [index('idx_document_document_type_id').on(table.documentTypeId)],
+  (table) => [
+    index('idx_document_document_type_id').on(table.documentTypeId),
+    index('idx_document_status').on(table.status),
+  ],
 )
 
 export type DocumentTypeSelect = typeof documentType.$inferSelect
