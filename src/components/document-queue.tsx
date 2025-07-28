@@ -117,7 +117,7 @@ export function DocumentQueue({
 
   return (
     <div
-      className="border-border bg-muted/20 relative flex h-full flex-col border-r"
+      className="bg-muted/20 relative flex h-full flex-col"
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
