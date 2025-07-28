@@ -14,7 +14,7 @@ export const auth = betterAuth({
   }),
   plugins: [admin()],
   emailAndPassword: {
-    enabled: process.env.AUTH_EMAIL_PASSWORD_ENABLED === 'true',
+    enabled: process.env.AUTH_EMAIL_PASSWORD_ENABLED !== 'false',
     requireEmailVerification: false,
   },
   socialProviders: {
