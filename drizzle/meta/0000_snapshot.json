@@ -1,5 +1,5 @@
 {
-  "id": "3a09382d-d24a-468b-8e95-7261fd403e0b",
+  "id": "5fb9de92-b6eb-474c-b4eb-8566381da05b",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -10,13 +10,14 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "serial",
+          "type": "uuid",
           "primaryKey": true,
-          "notNull": true
+          "notNull": true,
+          "default": "gen_random_uuid()"
         },
         "document_type_id": {
           "name": "document_type_id",
-          "type": "serial",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
@@ -76,13 +77,13 @@
         },
         "created_by": {
           "name": "created_by",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": false
         },
         "updated_by": {
           "name": "updated_by",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": false
         }
@@ -109,8 +110,12 @@
           "name": "document_document_type_id_document_type_id_fk",
           "tableFrom": "document",
           "tableTo": "document_type",
-          "columnsFrom": ["document_type_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "document_type_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -118,8 +123,12 @@
           "name": "document_created_by_user_id_fk",
           "tableFrom": "document",
           "tableTo": "user",
-          "columnsFrom": ["created_by"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -127,8 +136,12 @@
           "name": "document_updated_by_user_id_fk",
           "tableFrom": "document",
           "tableTo": "user",
-          "columnsFrom": ["updated_by"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "updated_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -145,12 +158,19 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "serial",
+          "type": "uuid",
           "primaryKey": true,
-          "notNull": true
+          "notNull": true,
+          "default": "gen_random_uuid()"
         },
         "name": {
           "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "slug": {
+          "name": "slug",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -196,13 +216,13 @@
         },
         "created_by": {
           "name": "created_by",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": false
         },
         "updated_by": {
           "name": "updated_by",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": false
         }
@@ -229,8 +249,12 @@
           "name": "document_type_created_by_user_id_fk",
           "tableFrom": "document_type",
           "tableTo": "user",
-          "columnsFrom": ["created_by"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -238,8 +262,12 @@
           "name": "document_type_updated_by_user_id_fk",
           "tableFrom": "document_type",
           "tableTo": "user",
-          "columnsFrom": ["updated_by"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "updated_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -256,9 +284,10 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": true,
-          "notNull": true
+          "notNull": true,
+          "default": "gen_random_uuid()"
         },
         "account_id": {
           "name": "account_id",
@@ -274,7 +303,7 @@
         },
         "user_id": {
           "name": "user_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
@@ -339,8 +368,12 @@
           "name": "account_user_id_user_id_fk",
           "tableFrom": "account",
           "tableTo": "user",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -357,9 +390,10 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": true,
-          "notNull": true
+          "notNull": true,
+          "default": "gen_random_uuid()"
         },
         "expires_at": {
           "name": "expires_at",
@@ -399,7 +433,7 @@
         },
         "user_id": {
           "name": "user_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         }
@@ -410,8 +444,12 @@
           "name": "session_user_id_user_id_fk",
           "tableFrom": "session",
           "tableTo": "user",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -421,7 +459,9 @@
         "session_token_unique": {
           "name": "session_token_unique",
           "nullsNotDistinct": false,
-          "columns": ["token"]
+          "columns": [
+            "token"
+          ]
         }
       },
       "policies": {},
@@ -434,9 +474,10 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": true,
-          "notNull": true
+          "notNull": true,
+          "default": "gen_random_uuid()"
         },
         "name": {
           "name": "name",
@@ -488,7 +529,9 @@
         "user_email_unique": {
           "name": "user_email_unique",
           "nullsNotDistinct": false,
-          "columns": ["email"]
+          "columns": [
+            "email"
+          ]
         }
       },
       "policies": {},
@@ -501,9 +544,10 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": true,
-          "notNull": true
+          "notNull": true,
+          "default": "gen_random_uuid()"
         },
         "identifier": {
           "name": "identifier",
@@ -549,12 +593,20 @@
     "public.approval_status": {
       "name": "approval_status",
       "schema": "public",
-      "values": ["pending", "approved", "rejected"]
+      "values": [
+        "pending",
+        "approved",
+        "rejected"
+      ]
     },
     "public.processing_status": {
       "name": "processing_status",
       "schema": "public",
-      "values": ["pending", "processed", "failed"]
+      "values": [
+        "pending",
+        "processed",
+        "failed"
+      ]
     }
   },
   "schemas": {},

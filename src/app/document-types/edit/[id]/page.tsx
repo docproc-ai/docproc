@@ -64,7 +64,7 @@ export default function EditDocumentTypePage() {
     const fetchDocumentType = async () => {
       setIsFetching(true)
       try {
-        const data = await getDocumentType(parseInt(id))
+        const data = await getDocumentType(id)
         if (!data) {
           throw new Error('Document type not found.')
         }
@@ -109,7 +109,7 @@ export default function EditDocumentTypePage() {
       formData.append('webhookMethod', webhookMethod)
       formData.append('modelName', modelName === '__none__' ? '' : modelName)
 
-      const result = await updateDocumentType(parseInt(id), formData)
+      const result = await updateDocumentType(id, formData)
 
       if (result.success) {
         toast.success(`Document type "${name}" has been updated.`)

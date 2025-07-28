@@ -5,7 +5,7 @@ import { getDocument, updateDocument, deleteDocument } from '@/lib/actions/docum
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const document = await getDocument(parseInt(id))
+    const document = await getDocument(id)
 
     if (!document) {
       return NextResponse.json({ error: 'Document not found' }, { status: 404 })
@@ -59,7 +59,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       formData.append('schemaSnapshot', JSON.stringify(body.schemaSnapshot))
     }
 
-    const updatedDocument = await updateDocument(parseInt(id), formData)
+    const updatedDocument = await updateDocument(id, formData)
 
     return NextResponse.json(updatedDocument)
   } catch (error) {
@@ -76,7 +76,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   }
 
   try {
-    await deleteDocument(parseInt(id))
+    await deleteDocument(id)
 
     return NextResponse.json({ message: 'Document deleted successfully' }, { status: 200 })
   } catch (error) {

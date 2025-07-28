@@ -6,6 +6,7 @@ import { eq, desc, count } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
+import { generateSlug } from '@/lib/generate-slug'
 import type { InferSelectModel, InferInsertModel } from 'drizzle-orm'
 
 export type DocumentType = InferSelectModel<typeof documentType>
@@ -61,7 +62,7 @@ export async function getDocumentTypes(): Promise<(DocumentType & { document_cou
   }
 }
 
-export async function getDocumentType(id: number): Promise<DocumentType | null> {
+export async function getDocumentType(id: string): Promise<DocumentType | null> {
   try {
     const [result] = await db.select().from(documentType).where(eq(documentType.id, id))
     return result || null
@@ -96,10 +97,13 @@ export async function createDocumentType(formData: FormData) {
       return { success: false, error: 'Invalid JSON schema' }
     }
 
+    const slug = generateSlug(name)
+
     const [result] = await db
       .insert(documentType)
       .values({
         name,
+        slug,
         schema,
         webhookUrl: webhookUrl || null,
         webhookMethod: webhookMethod || 'POST',
@@ -115,7 +119,7 @@ export async function createDocumentType(formData: FormData) {
   }
 }
 
-export async function updateDocumentType(id: number, formData: FormData) {
+export async function updateDocumentType(id: string, formData: FormData) {
   // Check admin access
   const adminCheck = await checkAdminAccess()
   if (!adminCheck.success) {
@@ -166,7 +170,7 @@ export async function updateDocumentType(id: number, formData: FormData) {
   }
 }
 
-export async function deleteDocumentType(id: number) {
+export async function deleteDocumentType(id: string) {
   // Check admin access
   const adminCheck = await checkAdminAccess()
   if (!adminCheck.success) {

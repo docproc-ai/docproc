@@ -99,8 +99,8 @@ A human-in-the-loop document extraction web platform that uses AI to extract str
 
    ```bash
    # Authentication
-   DEFAULT_ADMIN_EMAIL="admin@example.com"
-   DEFAULT_ADMIN_PASSWORD="admin123"
+   AUTH_ADMIN_EMAIL="admin@example.com"
+   AUTH_ADMIN_PASSWORD="admin123"
    BETTER_AUTH_SECRET="your-secret-key"
 
    # Database
@@ -229,8 +229,8 @@ ANTHROPIC_API_KEY="your-anthropic-api-key"
 BETTER_AUTH_SECRET="your-production-secret"
 
 # Optional
-DEFAULT_ADMIN_EMAIL="admin@yourdomain.com"
-DEFAULT_ADMIN_PASSWORD="secure-password"
+AUTH_ADMIN_EMAIL="admin@yourdomain.com"
+AUTH_ADMIN_PASSWORD="secure-password"
 DOCUMENT_STORAGE_DIR="/app/documents"
 ```
 

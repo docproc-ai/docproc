@@ -1,20 +1,21 @@
 import {
   pgTable,
-  serial,
   text,
   json,
   timestamp,
   uniqueIndex,
   index,
   pgEnum,
+  uuid,
 } from 'drizzle-orm/pg-core'
 import { user } from './auth'
 
 export const documentType = pgTable(
   'document_type',
   {
-    id: serial('id').primaryKey(),
+    id: uuid('id').primaryKey().defaultRandom(),
     name: text('name').notNull(),
+    slug: text('slug').notNull(),
     schema: json('schema').notNull(),
     webhookUrl: text('webhook_url'),
     webhookMethod: text('webhook_method').default('POST'),
@@ -23,8 +24,8 @@ export const documentType = pgTable(
     updatedAt: timestamp('updated_at')
       .defaultNow()
       .$onUpdate(() => new Date()),
-    createdBy: text('created_by').references(() => user.id),
-    updatedBy: text('updated_by').references(() => user.id),
+    createdBy: uuid('created_by').references(() => user.id),
+    updatedBy: uuid('updated_by').references(() => user.id),
   },
   (table) => [uniqueIndex('idx_document_type_name').on(table.name)],
 )
@@ -35,8 +36,8 @@ export const processingStatus = pgEnum('processing_status', ['pending', 'process
 export const document = pgTable(
   'document',
   {
-    id: serial('id').primaryKey(),
-    documentTypeId: serial('document_type_id')
+    id: uuid('id').primaryKey().defaultRandom(),
+    documentTypeId: uuid('document_type_id')
       .notNull()
       .references(() => documentType.id),
     approvalStatus: approvalStatus('approval_status').default('pending'),
@@ -49,8 +50,8 @@ export const document = pgTable(
     updatedAt: timestamp('updated_at')
       .defaultNow()
       .$onUpdate(() => new Date()),
-    createdBy: text('created_by').references(() => user.id),
-    updatedBy: text('updated_by').references(() => user.id),
+    createdBy: uuid('created_by').references(() => user.id),
+    updatedBy: uuid('updated_by').references(() => user.id),
   },
   (table) => [index('idx_document_document_type_id').on(table.documentTypeId)],
 )

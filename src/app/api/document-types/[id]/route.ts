@@ -9,7 +9,7 @@ import {
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const docType = await getDocumentType(parseInt(id))
+    const docType = await getDocumentType(id)
 
     if (!docType) {
       return NextResponse.json({ error: 'Document type not found' }, { status: 404 })
@@ -39,7 +39,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     formData.append('webhookUrl', body.webhookUrl || '')
     formData.append('webhookMethod', body.webhookMethod || 'POST')
 
-    const result = await updateDocumentType(parseInt(id), formData)
+    const result = await updateDocumentType(id, formData)
 
     if (!result.success) {
       const errorMessage = 'error' in result ? result.error : 'Failed to update document type'
@@ -64,7 +64,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   }
 
   try {
-    await deleteDocumentType(parseInt(id))
+    await deleteDocumentType(id)
 
     return NextResponse.json(
       { message: 'Document type and all associated documents deleted successfully.' },

@@ -14,7 +14,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const [doc] = await db
       .select()
       .from(document)
-      .where(eq(document.id, parseInt(id)))
+      .where(eq(document.id, id))
 
     if (!doc) {
       return NextResponse.json({ error: 'Document not found' }, { status: 404 })

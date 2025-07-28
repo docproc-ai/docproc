@@ -4,12 +4,12 @@ import { user } from '@/db/schema/auth'
 import { eq } from 'drizzle-orm'
 
 export async function initDefaultUser() {
-  const defaultEmail = process.env.DEFAULT_ADMIN_EMAIL
-  const defaultPassword = process.env.DEFAULT_ADMIN_PASSWORD
+  const defaultEmail = process.env.AUTH_ADMIN_EMAIL
+  const defaultPassword = process.env.AUTH_ADMIN_PASSWORD
 
   if (!defaultEmail || !defaultPassword) {
     console.warn(
-      'DEFAULT_ADMIN_EMAIL and DEFAULT_ADMIN_PASSWORD environment variables are required for default user creation',
+      'AUTH_ADMIN_EMAIL and AUTH_ADMIN_PASSWORD environment variables are required for default user creation',
     )
     return
   }

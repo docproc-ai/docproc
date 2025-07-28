@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const documents = await getDocuments(parseInt(documentTypeId))
+    const documents = await getDocuments(documentTypeId)
 
     // Return simplified data for external API consumers
     const simplifiedDocs = documents.map((doc) => ({

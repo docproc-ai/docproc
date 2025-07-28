@@ -34,7 +34,7 @@ export function DeleteDocumentTypeDialog({
   const handleDelete = async () => {
     setIsLoading(true)
     try {
-      await deleteDocumentType(parseInt(documentTypeId))
+      await deleteDocumentType(documentTypeId)
 
       toast.success(`Document type "${documentTypeName}" and all its documents have been deleted.`)
       setIsOpen(false)

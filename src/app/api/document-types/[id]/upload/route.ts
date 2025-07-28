@@ -9,7 +9,7 @@ import { validateAdminUser } from '@/lib/auth-utils'
  * Priority: overrideModel > documentType.modelName > system default
  */
 async function getModelForProcessing(
-  documentTypeId: number,
+  documentTypeId: string,
   overrideModel?: string,
 ): Promise<string> {
   if (overrideModel) {
@@ -28,11 +28,7 @@ async function getModelForProcessing(
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const documentTypeId = parseInt(id)
-
-    if (isNaN(documentTypeId)) {
-      return NextResponse.json({ error: 'Invalid document type ID' }, { status: 400 })
-    }
+    const documentTypeId = id
 
     // Check if document type exists
     const docType = await getDocumentType(documentTypeId)
@@ -77,7 +73,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         // Create document
         const uploadFormData = new FormData()
         uploadFormData.append('file', file)
-        uploadFormData.append('documentTypeId', documentTypeId.toString())
+        uploadFormData.append('documentTypeId', documentTypeId)
 
         const document = await createDocument(uploadFormData)
 
@@ -91,8 +87,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         if (autoProcess) {
           try {
             const processFormData = new FormData()
-            processFormData.append('documentId', document.id.toString())
-            processFormData.append('documentTypeId', documentTypeId.toString())
+            processFormData.append('documentId', document.id)
+            processFormData.append('documentTypeId', documentTypeId)
             processFormData.append('schema', JSON.stringify(docType.schema))
             if (overrideModel) {
               processFormData.append('model', overrideModel)

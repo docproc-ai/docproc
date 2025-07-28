@@ -8,8 +8,8 @@ Copy `.env.example` to `.env` and configure the following variables:
 
 ```bash
 # Authentication
-DEFAULT_ADMIN_EMAIL="admin@example.com"
-DEFAULT_ADMIN_PASSWORD="admin123"
+AUTH_ADMIN_EMAIL="admin@example.com"
+AUTH_ADMIN_PASSWORD="admin123"
 
 # Database
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/postgres"

@@ -1,8 +1,8 @@
 CREATE TYPE "public"."approval_status" AS ENUM('pending', 'approved', 'rejected');--> statement-breakpoint
 CREATE TYPE "public"."processing_status" AS ENUM('pending', 'processed', 'failed');--> statement-breakpoint
 CREATE TABLE "document" (
-	"id" serial PRIMARY KEY NOT NULL,
-	"document_type_id" serial NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"document_type_id" uuid NOT NULL,
 	"approval_status" "approval_status" DEFAULT 'pending',
 	"processing_status" "processing_status" DEFAULT 'pending',
 	"filename" text NOT NULL,
@@ -11,28 +11,29 @@ CREATE TABLE "document" (
 	"schema_snapshot" json,
 	"created_at" timestamp DEFAULT now(),
 	"updated_at" timestamp DEFAULT now(),
-	"created_by" text,
-	"updated_by" text
+	"created_by" uuid,
+	"updated_by" uuid
 );
 --> statement-breakpoint
 CREATE TABLE "document_type" (
-	"id" serial PRIMARY KEY NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" text NOT NULL,
+	"slug" text NOT NULL,
 	"schema" json NOT NULL,
 	"webhook_url" text,
 	"webhook_method" text DEFAULT 'POST',
 	"model_name" text,
 	"created_at" timestamp DEFAULT now(),
 	"updated_at" timestamp DEFAULT now(),
-	"created_by" text,
-	"updated_by" text
+	"created_by" uuid,
+	"updated_by" uuid
 );
 --> statement-breakpoint
 CREATE TABLE "account" (
-	"id" text PRIMARY KEY NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"account_id" text NOT NULL,
 	"provider_id" text NOT NULL,
-	"user_id" text NOT NULL,
+	"user_id" uuid NOT NULL,
 	"access_token" text,
 	"refresh_token" text,
 	"id_token" text,
@@ -45,19 +46,19 @@ CREATE TABLE "account" (
 );
 --> statement-breakpoint
 CREATE TABLE "session" (
-	"id" text PRIMARY KEY NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"expires_at" timestamp NOT NULL,
 	"token" text NOT NULL,
 	"created_at" timestamp NOT NULL,
 	"updated_at" timestamp NOT NULL,
 	"ip_address" text,
 	"user_agent" text,
-	"user_id" text NOT NULL,
+	"user_id" uuid NOT NULL,
 	CONSTRAINT "session_token_unique" UNIQUE("token")
 );
 --> statement-breakpoint
 CREATE TABLE "user" (
-	"id" text PRIMARY KEY NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" text NOT NULL,
 	"email" text NOT NULL,
 	"email_verified" boolean NOT NULL,
@@ -69,7 +70,7 @@ CREATE TABLE "user" (
 );
 --> statement-breakpoint
 CREATE TABLE "verification" (
-	"id" text PRIMARY KEY NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"identifier" text NOT NULL,
 	"value" text NOT NULL,
 	"expires_at" timestamp NOT NULL,

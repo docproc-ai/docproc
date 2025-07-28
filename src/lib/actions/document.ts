@@ -23,7 +23,7 @@ export type NewDocument = InferInsertModel<typeof document>
  * Priority: overrideModel > documentType.modelName > system default
  */
 async function getModelForProcessing(
-  documentTypeId: number,
+  documentTypeId: string,
   overrideModel?: string,
 ): Promise<string> {
   if (overrideModel) {
@@ -93,7 +93,7 @@ async function triggerWebhook(documentType: any, document: Document) {
   console.log(`Webhook triggered successfully for document ${document.id}`)
 }
 
-export async function getDocuments(documentTypeId: number): Promise<Document[]> {
+export async function getDocuments(documentTypeId: string): Promise<Document[]> {
   try {
     const documents = await db
       .select()
@@ -108,7 +108,7 @@ export async function getDocuments(documentTypeId: number): Promise<Document[]> 
   }
 }
 
-export async function getDocument(id: number): Promise<Document | null> {
+export async function getDocument(id: string): Promise<Document | null> {
   try {
     const [result] = await db.select().from(document).where(eq(document.id, id))
     return result || null
@@ -121,7 +121,7 @@ export async function getDocument(id: number): Promise<Document | null> {
 export async function createDocument(formData: FormData) {
   try {
     const file = formData.get('file') as File
-    const documentTypeId = parseInt(formData.get('documentTypeId') as string)
+    const documentTypeId = formData.get('documentTypeId') as string
 
     if (!file || !documentTypeId) {
       throw new Error('File and document type ID are required')
@@ -163,7 +163,7 @@ export async function createDocument(formData: FormData) {
   }
 }
 
-export async function updateDocument(id: number, formData: FormData) {
+export async function updateDocument(id: string, formData: FormData) {
   try {
     const extractedDataString = formData.get('extractedData') as string
     const approvalStatus = formData.get('approvalStatus') as 'pending' | 'approved' | 'rejected'
@@ -240,7 +240,7 @@ export async function updateDocument(id: number, formData: FormData) {
   }
 }
 
-export async function deleteDocument(id: number) {
+export async function deleteDocument(id: string) {
   try {
     // Get document info before deletion
     const [doc] = await db.select().from(document).where(eq(document.id, id))
@@ -270,8 +270,8 @@ export async function deleteDocument(id: number) {
 
 export async function processDocument(formData: FormData) {
   try {
-    const documentId = parseInt(formData.get('documentId') as string)
-    const documentTypeId = parseInt(formData.get('documentTypeId') as string)
+    const documentId = formData.get('documentId') as string
+    const documentTypeId = formData.get('documentTypeId') as string
     const schemaString = formData.get('schema') as string
     let overrideModel = formData.get('model') as string
 

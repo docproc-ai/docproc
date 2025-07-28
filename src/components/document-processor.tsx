@@ -93,7 +93,7 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
     try {
       // Use Server Action for processing
       const formData = new FormData()
-      formData.append('documentId', selectedDocument.id.toString())
+      formData.append('documentId', selectedDocument.id)
       formData.append('documentTypeId', documentType.id)
       formData.append(
         'schema',
@@ -153,7 +153,7 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
     })
   }
 
-  const handleDelete = async (docId: number) => {
+  const handleDelete = async (docId: string) => {
     startTransition(async () => {
       try {
         await deleteDocument(docId)

@@ -29,7 +29,7 @@ interface DocumentQueueProps {
   selectedDocument: Document | null
   onSelect: (doc: Document) => void
   onUploadSuccess: () => void
-  onDelete: (docId: number) => void
+  onDelete: (docId: string) => void
 }
 
 export function DocumentQueue({

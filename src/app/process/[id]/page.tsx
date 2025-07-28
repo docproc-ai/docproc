@@ -5,7 +5,7 @@ import { DocumentProcessor } from '@/components/document-processor'
 
 export default async function ProcessPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const documentTypeId = parseInt(id)
+  const documentTypeId = id
 
   // Load both document type and documents server-side
   const [documentType, initialDocuments] = await Promise.all([
@@ -21,7 +21,7 @@ export default async function ProcessPage({ params }: { params: Promise<{ id: st
     <div className="bg-background text-foreground h-screen">
       <DocumentProcessor
         documentType={{
-          id: documentType.id.toString(),
+          id: documentType.id,
           name: documentType.name,
           schema: documentType.schema,
           modelName: documentType.modelName,
