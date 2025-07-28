@@ -29,7 +29,7 @@ export async function POST(
     // Get autoProcess flag from query params
     const { searchParams } = new URL(request.url)
     const autoProcess = searchParams.get('autoProcess') === 'true'
-    const model = searchParams.get('model') || 'claude-3-5-sonnet-20241022'
+    const model = searchParams.get('model') || 'claude-3-7-sonnet-latest'
 
     // Parse form data
     const formData = await request.formData()
