@@ -3,6 +3,9 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { db } from '@/db'
 import { admin } from 'better-auth/plugins'
 import * as schema from '@/db/schema/auth'
+import { checkMicrosoftAuth } from './auth/providers/microsoft'
+import { checkGoogleAuth } from './auth/providers/google'
+import { checkGitHubAuth } from './auth/providers/github'
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -14,10 +17,14 @@ export const auth = betterAuth({
     enabled: true,
     requireEmailVerification: false,
   },
-  socialProviders: {},
+  socialProviders: {
+    microsoft: checkMicrosoftAuth(),
+    google: checkGoogleAuth(),
+    github: checkGitHubAuth(),
+  },
   advanced: {
     database: {
-      generateId: () => crypto.randomUUID(),
+      // useNumberId: true,
     },
   },
   session: {

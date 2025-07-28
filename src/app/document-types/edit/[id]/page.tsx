@@ -22,7 +22,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { SchemaEditorTab } from '@/components/editor-tabs'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { PageLoadingSkeleton } from '@/components/ui/loading-skeletons'
-import { SettingsDialog } from '@/components/settings-dialog'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { UserMenu } from '@/components/user-menu'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -177,7 +176,6 @@ export default function EditDocumentTypePage() {
             {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
             Save Changes
           </Button>
-          <SettingsDialog />
           <ThemeToggle />
           <UserMenu />
         </div>

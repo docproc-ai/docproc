@@ -45,7 +45,6 @@ import { PageLoadingSkeleton, UserTableSkeleton } from '@/components/ui/loading-
 import { UserPlus, Edit, Trash2, Users } from 'lucide-react'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
-import { SettingsDialog } from '@/components/settings-dialog'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { UserMenu } from '@/components/user-menu'
 import { getUsers, updateUserRole, deleteUser, createUser } from '@/lib/actions/user'
@@ -260,7 +259,6 @@ export default function UsersPage() {
               </form>
             </DialogContent>
           </Dialog>
-          <SettingsDialog />
           <ThemeToggle />
           <UserMenu />
         </div>

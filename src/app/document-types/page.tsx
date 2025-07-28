@@ -12,7 +12,6 @@ import {
 import { FileText, ArrowRight, Edit } from 'lucide-react'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
-import { SettingsDialog } from '@/components/settings-dialog'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { UserMenu } from '@/components/user-menu'
 import { getDocumentTypes } from '@/lib/actions/document-type'
@@ -59,7 +58,6 @@ export default function DocumentTypesPage() {
               </Button>
             </>
           )}
-          <SettingsDialog />
           <ThemeToggle />
           <UserMenu />
         </div>
