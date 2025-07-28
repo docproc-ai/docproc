@@ -46,7 +46,7 @@ export function LoginForm() {
       })
 
       if (result.data?.user) {
-        router.push('/document-types')
+        router.push('/')
       } else {
         setError(result.error?.message || 'Sign in failed')
       }
@@ -64,7 +64,7 @@ export function LoginForm() {
     try {
       const result = await authClient.signIn.social({
         provider: provider as any,
-        callbackURL: '/document-types',
+        callbackURL: '/',
       })
 
       if (result.error) {
