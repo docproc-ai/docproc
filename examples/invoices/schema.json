@@ -183,7 +183,8 @@
           }
         }
       },
-      "title": "Items"
+      "title": "Items",
+      "ui:widget": "table"
     },
     "totals": {
       "type": "object",
