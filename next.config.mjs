@@ -9,7 +9,12 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // output: 'standalone'
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '512mb',
+    },
+  },
+  output: 'standalone',
 }
 
 export default nextConfig

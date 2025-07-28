@@ -1,0 +1,198 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "Invoices",
+  "description": "A simplified schema for basic business invoices",
+  "required": [
+    "invoiceNumber",
+    "invoiceDate",
+    "dueDate",
+    "seller",
+    "buyer",
+    "items",
+    "currency",
+    "totals"
+  ],
+  "properties": {
+    "invoiceNumber": {
+      "type": "string",
+      "description": "Unique identifier for the invoice",
+      "title": "Invoice Number"
+    },
+    "invoiceDate": {
+      "type": "string",
+      "format": "date",
+      "description": "Date when the invoice was issued",
+      "title": "Invoice Date"
+    },
+    "dueDate": {
+      "type": "string",
+      "format": "date",
+      "description": "Payment due date",
+      "title": "Due Date"
+    },
+    "currency": {
+      "type": "string",
+      "description": "Currency code (ISO 4217)",
+      "pattern": "^[A-Z]{3}$",
+      "examples": ["USD", "EUR", "GBP"],
+      "title": "Currency"
+    },
+    "seller": {
+      "type": "object",
+      "description": "Information about the invoice issuer",
+      "required": ["name", "address"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Company or individual name",
+          "title": "Seller Name"
+        },
+        "address": {
+          "type": "object",
+          "required": ["street", "city", "country"],
+          "properties": {
+            "street": {
+              "type": "string",
+              "title": "Street"
+            },
+            "city": {
+              "type": "string",
+              "title": "City"
+            },
+            "state": {
+              "type": "string",
+              "title": "State"
+            },
+            "postalCode": {
+              "type": "string",
+              "title": "Postal Code"
+            },
+            "country": {
+              "type": "string",
+              "title": "Country"
+            }
+          },
+          "title": "Seller Address"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "title": "Email"
+        },
+        "phone": {
+          "type": "string",
+          "title": "Phone"
+        }
+      },
+      "title": "Seller"
+    },
+    "buyer": {
+      "type": "object",
+      "description": "Information about the invoice recipient",
+      "required": ["name", "address"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Customer company or individual name",
+          "title": "Buyer Name"
+        },
+        "address": {
+          "type": "object",
+          "required": ["street", "city", "country"],
+          "properties": {
+            "street": {
+              "type": "string",
+              "title": "Street"
+            },
+            "city": {
+              "type": "string",
+              "title": "City"
+            },
+            "state": {
+              "type": "string",
+              "title": "State"
+            },
+            "postalCode": {
+              "type": "string",
+              "title": "Postal Code"
+            },
+            "country": {
+              "type": "string",
+              "title": "Country"
+            }
+          },
+          "title": "Buyer Address"
+        }
+      },
+      "title": "Buyer"
+    },
+    "items": {
+      "type": "array",
+      "description": "List of invoice line items",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["description", "quantity", "unitPrice", "total"],
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "Item description",
+            "title": "Description"
+          },
+          "quantity": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Quantity of items",
+            "title": "Quantity"
+          },
+          "unitPrice": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Price per unit",
+            "title": "Unit Price"
+          },
+          "total": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Total amount for this line item",
+            "title": "Total"
+          }
+        }
+      },
+      "title": "Items",
+      "ui:widget": "table"
+    },
+    "totals": {
+      "type": "object",
+      "description": "Invoice total calculations",
+      "required": ["subtotal", "total"],
+      "properties": {
+        "subtotal": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Sum of all line items before tax",
+          "title": "Subtotal"
+        },
+        "tax": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Total tax amount",
+          "title": "Tax"
+        },
+        "total": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Final total amount due",
+          "title": "Total"
+        }
+      },
+      "title": "Totals"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes or payment instructions",
+      "title": "Notes"
+    }
+  }
+}

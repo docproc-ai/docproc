@@ -17,7 +17,7 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files
-.env
+.env*
 
 # vercel
 .vercel
@@ -28,3 +28,10 @@ next-env.d.ts
 
 # data directory (filesystem storage)
 /data/
+
+/.clinerules/
+
+Dockerfile
+.dockerignore
+.git
+compose.yml
