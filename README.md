@@ -1,4 +1,4 @@
-# AI Document Processor
+# DocProc
 
 A human-in-the-loop document extraction web platform that uses AI to extract structured data from documents based on custom JSON schemas, with manual review and approval workflows.
 
@@ -85,8 +85,8 @@ A human-in-the-loop document extraction web platform that uses AI to extract str
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/bherbruck/ai-document-processor.git
-   cd ai-document-processor
+   git clone https://github.com/docproc-ai/docproc.git
+   cd docproc
    ```
 
 2. **Create environment file**
@@ -111,6 +111,20 @@ A human-in-the-loop document extraction web platform that uses AI to extract str
 
    # Storage
    DOCUMENT_STORAGE_DIR="./data/documents"
+   ```
+
+### Docker Deployment
+
+1. **Using Docker Compose** (Recommended)
+
+   ```bash
+   docker compose up
+   ```
+
+2. **Manual Docker Build**
+   ```bash
+   docker build -t docproc .
+   docker run -p 3000:3000 docproc
    ```
 
 ### Development Setup
@@ -145,20 +159,6 @@ A human-in-the-loop document extraction web platform that uses AI to extract str
 5. **Access the application**
    - Open [http://localhost:3000](http://localhost:3000)
    - Login with your configured admin credentials
-
-### Docker Deployment
-
-1. **Using Docker Compose** (Recommended)
-
-   ```bash
-   docker compose up
-   ```
-
-2. **Manual Docker Build**
-   ```bash
-   docker build -t ai-document-processor .
-   docker run -p 3000:3000 ai-document-processor
-   ```
 
 ## 📖 Usage Guide
 
@@ -273,24 +273,6 @@ src/
 ├── hooks/                # Custom React hooks
 └── lib/                  # Utility functions and actions
 ```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🆘 Support
-
-- **Issues**: [GitHub Issues](https://github.com/bherbruck/ai-document-processor/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/bherbruck/ai-document-processor/discussions)
-- **Documentation**: Check the `memory-bank/` directory for additional documentation
 
 ## 🙏 Acknowledgments
 

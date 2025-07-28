@@ -9,7 +9,7 @@ import { Toaster } from '@/components/ui/sonner'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'AI Document Processor',
+  title: 'DocProc',
   description: 'Upload, process, and correct documents with AI.',
   generator: 'v0.dev',
 }

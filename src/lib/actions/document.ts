@@ -80,7 +80,7 @@ async function triggerWebhook(documentType: any, document: Document) {
     method,
     headers: {
       'Content-Type': 'application/json',
-      'User-Agent': 'AI-Document-Processor/1.0',
+      'User-Agent': 'Docproc/1.0',
     },
     body: JSON.stringify(payload),
   })
