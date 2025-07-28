@@ -24,6 +24,7 @@ import { SettingsDialog } from '@/components/settings-dialog'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { UserMenu } from '@/components/user-menu'
 import { authClient } from '@/lib/auth-client'
+import { ANTHROPIC_MODELS } from '@/lib/models/anthropic'
 const initialSchema: JsonSchema = {
   type: 'object',
   title: 'New Document',
@@ -48,6 +49,7 @@ export default function NewDocumentTypePage() {
   const [name, setName] = useState('')
   const [webhookUrl, setWebhookUrl] = useState('')
   const [webhookMethod, setWebhookMethod] = useState('POST')
+  const [modelName, setModelName] = useState('')
   const [schemaText, setSchemaText] = useState(JSON.stringify(initialSchema, null, 2))
   const [isLoading, setIsLoading] = useState(false)
 
@@ -99,6 +101,7 @@ export default function NewDocumentTypePage() {
       formData.append('schema', JSON.stringify(schema))
       formData.append('webhookUrl', webhookUrl)
       formData.append('webhookMethod', webhookMethod)
+      formData.append('modelName', modelName === '__none__' ? '' : modelName)
 
       const result = await createDocumentType(formData)
 
@@ -154,6 +157,22 @@ export default function NewDocumentTypePage() {
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g., Invoices"
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="modelName">AI Model (Optional)</Label>
+                <Select value={modelName} onValueChange={setModelName}>
+                  <SelectTrigger id="modelName">
+                    <SelectValue placeholder="Select a model (uses system default if not specified)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Use system default</SelectItem>
+                    {ANTHROPIC_MODELS.map((model) => (
+                      <SelectItem key={model} value={model}>
+                        {model}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="flex flex-row gap-4">
                 <div className="flex-1 space-y-2">

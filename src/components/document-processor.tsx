@@ -12,9 +12,17 @@ import { FormRenderer } from './form-renderer'
 import { toast } from 'sonner'
 import { Bot, Loader2, CheckCircle, ArrowLeft, Undo2 } from 'lucide-react'
 import { Button } from './ui/button'
-import { useSettings } from '@/hooks/use-settings'
-import { SettingsDialog } from './settings-dialog'
 import { ThemeToggle } from './theme-toggle'
+import { ANTHROPIC_MODELS, DEFAULT_MODEL } from '@/lib/models/anthropic'
+import { authClient } from '@/lib/auth-client'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
 import dynamic from 'next/dynamic'
 
 const DocumentViewer = dynamic(() => import('@/components/document-viewer'), {
@@ -28,12 +36,13 @@ interface DocumentProcessorProps {
     id: string
     name: string
     schema: any
+    modelName?: string | null
   }
   initialDocuments?: Document[]
 }
 
 export function DocumentProcessor({ documentType, initialDocuments = [] }: DocumentProcessorProps) {
-  const { model } = useSettings()
+  const { data: session } = authClient.useSession()
   const [documents, setDocuments] = useState<Document[]>(initialDocuments)
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null)
   const [formData, setFormData] = useState<any>(null)
@@ -46,6 +55,12 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
   const [isPending, startTransition] = useTransition()
   const viewerRef = useRef<any>(null)
   const [currentPageImageData, setCurrentPageImageData] = useState<string | null>(null)
+  const [overrideModel, setOverrideModel] = useState<string>(
+    documentType.modelName || DEFAULT_MODEL,
+  )
+
+  // Check if user is admin
+  const isAdmin = session?.user?.role === 'admin'
 
   const handleDocumentSelect = (doc: Document | null) => {
     setSelectedDocument(doc)
@@ -84,7 +99,10 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
         'schema',
         JSON.stringify(selectedDocument.schemaSnapshot || documentType.schema),
       )
-      formData.append('model', model)
+      // Add override model if admin has selected one that's different from document type default
+      if (isAdmin && overrideModel && overrideModel !== (documentType.modelName || DEFAULT_MODEL)) {
+        formData.append('model', overrideModel)
+      }
 
       const result = await processDocument(formData)
 
@@ -174,6 +192,22 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
           </span>
         </h1>
         <div className="ml-auto flex items-center gap-2">
+          {/* Model Override - Admin only */}
+          {isAdmin && (
+            <Select value={overrideModel} onValueChange={setOverrideModel}>
+              <SelectTrigger id="model-override" className="">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ANTHROPIC_MODELS.map((model) => (
+                  <SelectItem key={model} value={model}>
+                    {model}
+                    {model === (documentType.modelName || DEFAULT_MODEL) ? ' (default)' : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <Button
             onClick={handleAiProcessing}
             disabled={isProcessing || !selectedDocument}
@@ -213,7 +247,6 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
             </Button>
           )}
           <div className="border-border flex items-center gap-2 border-l pl-2">
-            <SettingsDialog />
             <ThemeToggle />
           </div>
         </div>

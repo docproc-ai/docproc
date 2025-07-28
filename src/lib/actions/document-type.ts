@@ -84,6 +84,7 @@ export async function createDocumentType(formData: FormData) {
     const schemaString = formData.get('schema') as string
     const webhookUrl = formData.get('webhookUrl') as string
     const webhookMethod = formData.get('webhookMethod') as string
+    const modelName = formData.get('modelName') as string
 
     if (!name || !schemaString) {
       return { success: false, error: 'Name and schema are required' }
@@ -103,6 +104,7 @@ export async function createDocumentType(formData: FormData) {
         schema,
         webhookUrl: webhookUrl || null,
         webhookMethod: webhookMethod || 'POST',
+        modelName: modelName || null,
       })
       .returning()
 
@@ -126,6 +128,7 @@ export async function updateDocumentType(id: number, formData: FormData) {
     const schemaString = formData.get('schema') as string
     const webhookUrl = formData.get('webhookUrl') as string
     const webhookMethod = formData.get('webhookMethod') as string
+    const modelName = formData.get('modelName') as string
 
     if (!name || !schemaString) {
       return { success: false, error: 'Name and schema are required' }
@@ -145,6 +148,7 @@ export async function updateDocumentType(id: number, formData: FormData) {
         schema,
         webhookUrl: webhookUrl || null,
         webhookMethod: webhookMethod || 'POST',
+        modelName: modelName || null,
         updatedAt: new Date(),
       })
       .where(eq(documentType.id, id))

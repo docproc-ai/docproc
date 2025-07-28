@@ -23,7 +23,8 @@ export default async function ProcessPage({ params }: { params: Promise<{ id: st
         documentType={{
           id: documentType.id.toString(),
           name: documentType.name,
-          schema: documentType.schema
+          schema: documentType.schema,
+          modelName: documentType.modelName
         }}
         initialDocuments={initialDocuments}
       />

@@ -1,6 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDocumentType } from '@/lib/actions/document-type'
 import { createDocument, processDocument } from '@/lib/actions/document'
+import { DEFAULT_MODEL } from '@/lib/models/anthropic'
+import { validateAdminUser } from '@/lib/auth-utils'
+
+/**
+ * Get the model to use for processing a document type
+ * Priority: overrideModel > documentType.modelName > system default
+ */
+async function getModelForProcessing(documentTypeId: number, overrideModel?: string): Promise<string> {
+  if (overrideModel) {
+    return overrideModel
+  }
+  
+  const docType = await getDocumentType(documentTypeId)
+  if (docType?.modelName) {
+    return docType.modelName
+  }
+  
+  // System default
+  return DEFAULT_MODEL
+}
 
 export async function POST(
   request: NextRequest,
@@ -29,7 +49,17 @@ export async function POST(
     // Get autoProcess flag from query params
     const { searchParams } = new URL(request.url)
     const autoProcess = searchParams.get('autoProcess') === 'true'
-    const model = searchParams.get('model') || 'claude-3-7-sonnet-latest'
+    let overrideModel = searchParams.get('model')
+
+    // Validate admin privileges for model override
+    if (overrideModel) {
+      const adminSession = await validateAdminUser()
+      if (!adminSession) {
+        // Non-admin users cannot override models - ignore the parameter
+        overrideModel = null
+        console.warn('Non-admin user attempted to override model, ignoring parameter')
+      }
+    }
 
     // Parse form data
     const formData = await request.formData()
@@ -73,7 +103,9 @@ export async function POST(
             processFormData.append('documentId', document.id.toString())
             processFormData.append('documentTypeId', documentTypeId.toString())
             processFormData.append('schema', JSON.stringify(docType.schema))
-            processFormData.append('model', model)
+            if (overrideModel) {
+              processFormData.append('model', overrideModel)
+            }
 
             // Trigger processing (this will happen in background)
             await processDocument(processFormData)

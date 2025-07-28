@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server'
-import { getDocumentType, updateDocumentType, deleteDocumentType } from '@/lib/actions/document-type'
+import {
+  getDocumentType,
+  updateDocumentType,
+  deleteDocumentType,
+} from '@/lib/actions/document-type'
 
 // GET a single document type by ID
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -10,19 +14,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     if (!docType) {
       return NextResponse.json({ error: 'Document type not found' }, { status: 404 })
     }
-    
-    // Return simplified data for external API consumers
-    const simplifiedType = {
-      id: docType.id,
-      name: docType.name,
-      schema: docType.schema,
-      webhookUrl: docType.webhookUrl,
-      webhookMethod: docType.webhookMethod,
-      createdAt: docType.createdAt,
-      updatedAt: docType.updatedAt,
-    }
-    
-    return NextResponse.json(simplifiedType)
+
+    return NextResponse.json(docType)
   } catch (error) {
     console.error('Failed to fetch document type:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
@@ -79,11 +72,11 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     )
   } catch (error: any) {
     console.error(`Failed to delete document type ${id}:`, error)
-    
+
     if (error.message === 'Admin access required') {
       return NextResponse.json({ error: error.message }, { status: 403 })
     }
-    
+
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }

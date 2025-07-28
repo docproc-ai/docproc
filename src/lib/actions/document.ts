@@ -11,9 +11,30 @@ import { randomUUID } from 'crypto'
 import { getStorageDir } from '@/lib/storage'
 import { anthropic } from '@ai-sdk/anthropic'
 import { generateObject, jsonSchema } from 'ai'
+import { getDocumentType } from './document-type'
+import { DEFAULT_MODEL } from '@/lib/models/anthropic'
+import { validateAdminUser } from '@/lib/auth-utils'
 
 export type Document = InferSelectModel<typeof document>
 export type NewDocument = InferInsertModel<typeof document>
+
+/**
+ * Get the model to use for processing a document type
+ * Priority: overrideModel > documentType.modelName > system default
+ */
+async function getModelForProcessing(documentTypeId: number, overrideModel?: string): Promise<string> {
+  if (overrideModel) {
+    return overrideModel
+  }
+  
+  const docType = await getDocumentType(documentTypeId)
+  if (docType?.modelName) {
+    return docType.modelName
+  }
+  
+  // System default
+  return DEFAULT_MODEL
+}
 
 function getMimeType(extension: string): string {
   const mimeTypes: { [key: string]: string } = {
@@ -31,15 +52,15 @@ function getMimeType(extension: string): string {
   return mimeTypes[extension] || 'application/octet-stream'
 }
 
-async function triggerWebhook(docType: any, document: Document) {
-  if (!docType.webhookUrl) return
+async function triggerWebhook(documentType: any, document: Document) {
+  if (!documentType.webhookUrl) return
 
-  const method = docType.webhookMethod || 'POST'
+  const method = documentType.webhookMethod || 'POST'
   const payload = {
     event: 'document.approved',
     documentType: {
-      id: docType.id,
-      name: docType.name,
+      id: documentType.id,
+      name: documentType.name,
     },
     document: {
       id: document.id,
@@ -53,7 +74,7 @@ async function triggerWebhook(docType: any, document: Document) {
     timestamp: new Date().toISOString(),
   }
 
-  const response = await fetch(docType.webhookUrl, {
+  const response = await fetch(documentType.webhookUrl, {
     method,
     headers: {
       'Content-Type': 'application/json',
@@ -249,10 +270,20 @@ export async function processDocument(formData: FormData) {
     const documentId = parseInt(formData.get('documentId') as string)
     const documentTypeId = parseInt(formData.get('documentTypeId') as string)
     const schemaString = formData.get('schema') as string
-    const model = formData.get('model') as string
+    let overrideModel = formData.get('model') as string
 
     if (!documentId || !documentTypeId || !schemaString) {
       throw new Error('Document ID, document type ID, and schema are required')
+    }
+
+    // Validate admin privileges for model override
+    if (overrideModel) {
+      const adminSession = await validateAdminUser()
+      if (!adminSession) {
+        // Non-admin users cannot override models - ignore the parameter
+        overrideModel = ''
+        console.warn('Non-admin user attempted to override model in processDocument, ignoring parameter')
+      }
     }
 
     let schema
@@ -261,6 +292,9 @@ export async function processDocument(formData: FormData) {
     } catch {
       throw new Error('Invalid schema JSON')
     }
+
+    // Get the model to use (document type model or override)
+    const modelToUse = await getModelForProcessing(documentTypeId, overrideModel)
 
     // Get the document
     const doc = await getDocument(documentId)
@@ -309,7 +343,7 @@ export async function processDocument(formData: FormData) {
     }
 
     const { object } = await generateObject({
-      model: anthropic(model),
+      model: anthropic(modelToUse),
       schema: schemaForAI,
       system: `You are an expert document processor. Your task is to analyze the provided document (which could be a PDF or an image) and extract information into a structured JSON object based on the user-provided schema.
 

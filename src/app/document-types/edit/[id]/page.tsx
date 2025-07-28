@@ -26,6 +26,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { UserMenu } from '@/components/user-menu'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DeleteDocumentTypeDialog } from '@/components/delete-document-type-dialog'
+import { ANTHROPIC_MODELS } from '@/lib/models/anthropic'
 
 export default function EditDocumentTypePage() {
   const router = useRouter()
@@ -36,6 +37,7 @@ export default function EditDocumentTypePage() {
   const [name, setName] = useState('')
   const [webhookUrl, setWebhookUrl] = useState('')
   const [webhookMethod, setWebhookMethod] = useState('POST')
+  const [modelName, setModelName] = useState('')
   const [schemaText, setSchemaText] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isFetching, setIsFetching] = useState(true)
@@ -76,6 +78,7 @@ export default function EditDocumentTypePage() {
         setName(data.name)
         setWebhookUrl(data.webhookUrl || '')
         setWebhookMethod(data.webhookMethod || 'POST')
+        setModelName(data.modelName || '__none__')
         setSchemaText(JSON.stringify(data.schema, null, 2))
       } catch (error: any) {
         toast.error(`Error fetching data: ${error.message}`)
@@ -111,6 +114,7 @@ export default function EditDocumentTypePage() {
       formData.append('schema', JSON.stringify(schema))
       formData.append('webhookUrl', webhookUrl)
       formData.append('webhookMethod', webhookMethod)
+      formData.append('modelName', modelName === '__none__' ? '' : modelName)
 
       const result = await updateDocumentType(parseInt(id), formData)
 
@@ -206,6 +210,22 @@ export default function EditDocumentTypePage() {
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g., Invoices"
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="modelName">AI Model (Optional)</Label>
+                  <Select value={modelName} onValueChange={setModelName}>
+                    <SelectTrigger id="modelName">
+                      <SelectValue placeholder="Select a model (uses system default if not specified)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Use system default</SelectItem>
+                      {ANTHROPIC_MODELS.map((model) => (
+                        <SelectItem key={model} value={model}>
+                          {model}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="flex flex-row gap-4">
                   <div className="flex-1 space-y-2">
