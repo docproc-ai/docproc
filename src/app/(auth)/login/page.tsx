@@ -12,7 +12,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!isPending && session?.user) {
-      router.push('/document-types')
+      router.push('/')
     }
   }, [session, isPending, router])
 

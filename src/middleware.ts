@@ -6,11 +6,6 @@ export async function middleware(request: NextRequest) {
   const sessionCookie = getSessionCookie(request)
   const apiKey = request.headers.get('x-api-key')
 
-  // If user has session and tries to access login page, redirect to dashboard
-  if (sessionCookie && pathname === '/login') {
-    return NextResponse.redirect(new URL('/document-types', request.url))
-  }
-
   // For API routes (except auth), check for session or valid API key
   if (pathname.startsWith('/api/')) {
     const validApiKey = process.env.API_KEY

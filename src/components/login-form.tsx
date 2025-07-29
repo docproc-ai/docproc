@@ -18,7 +18,10 @@ export function LoginForm() {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [socialLoading, setSocialLoading] = useState<string | null>(null)
-  const [authConfig, setAuthConfig] = useState<AuthConfig>({ socialProviders: [], emailPasswordEnabled: false })
+  const [authConfig, setAuthConfig] = useState<AuthConfig>({
+    socialProviders: [],
+    emailPasswordEnabled: false,
+  })
   const router = useRouter()
 
   useEffect(() => {
@@ -208,7 +211,7 @@ export function LoginForm() {
                 <Separator className="w-full" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">Or</span>
+                <span className="bg-background text-muted-foreground px-2">Or</span>
               </div>
             </div>
           )}
