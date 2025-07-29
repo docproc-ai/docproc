@@ -2,6 +2,10 @@
 
 A human-in-the-loop document extraction web platform that uses AI to extract structured data from documents based on custom JSON schemas, with manual review and approval workflows.
 
+<!-- docs/media/gif/document-processing.gif -->
+
+![Document Processing GIF](docs/media/gif/document-processing.gif)
+
 ## 🚀 Features
 
 ### 📄 Human-in-the-Loop Document Extraction
