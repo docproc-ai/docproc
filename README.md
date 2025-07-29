@@ -2,8 +2,6 @@
 
 A human-in-the-loop document extraction web platform that uses AI to extract structured data from documents based on custom JSON schemas, with manual review and approval workflows.
 
-<!-- docs/media/gif/document-processing.gif -->
-
 ![Document Processing GIF](docs/media/gif/document-processing.gif)
 
 ## 🚀 Features
@@ -14,7 +12,7 @@ A human-in-the-loop document extraction web platform that uses AI to extract str
 - **Custom JSON Schemas**: Define extraction schemas tailored to your specific document types
 - **Human Review & Approval**: Manual verification and correction of AI-extracted data
 - **Multi-Format Support**: Process PDFs and images with built-in document viewer
-- **Extraction Workflow**: Upload → AI Extract → Human Review → Approve/Reject
+- **Extraction Workflow**: Upload → AI Extract → Human Review/Edit → Approve → Webhook/Export
 
 ### 🔧 Schema Management
 
@@ -23,99 +21,37 @@ A human-in-the-loop document extraction web platform that uses AI to extract str
 - **Validation**: Built-in validation with Zod schemas
 - **Versioning**: Schema snapshots for document consistency
 
-### 📋 Form System
-
-- **Dynamic Form Rendering**: Auto-generated forms based on schemas
-- **Data Editor**: Monaco editor for direct JSON manipulation
-- **Validation**: Real-time form validation and error handling
-- **Responsive Design**: Mobile-friendly interface
-
-### 🔐 Authentication & Security
-
-- **Better-auth Integration**: Secure authentication with session management
-- **Role-based Access**: Admin and user roles with appropriate permissions
-- **Protected Routes**: Middleware-based route protection
-- **Default Admin**: Automatic admin user creation on first run
-
-### 📊 Document Management
-
-- **Queue System**: Organized document processing queue
-- **Status Tracking**: Pending, processed, approved, and rejected states
-- **Approval Workflow**: Manual review and approval process
-- **File Storage**: Secure document storage with organized file system
-
-### 🎨 Modern UI/UX
-
-- **Shadcn/ui Components**: Beautiful, accessible UI components
-- **Dark/Light Theme**: Theme switching with next-themes
-- **Responsive Layout**: Resizable panels and mobile-optimized design
-- **Real-time Updates**: Live status updates and notifications
-
-## 🛠️ Tech Stack
-
-### Frontend
-
-- **Next.js 15** - React framework with App Router
-- **TypeScript** - Type-safe development
-- **Tailwind CSS** - Utility-first CSS framework
-- **Shadcn/ui** - Modern UI component library
-- **React Hook Form** - Form handling with validation
-- **Monaco Editor** - Code editor for JSON editing
-
-### Backend
-
-- **Next.js API Routes** - Server-side API endpoints
-- **Drizzle ORM** - Type-safe database operations
-- **PostgreSQL** - Primary database
-- **Better-auth** - Authentication and session management
-- **Anthropic AI SDK** - AI document processing
-
-### Infrastructure
-
-- **Docker** - Containerized deployment
-- **Docker Compose** - Multi-service orchestration
-- **File System Storage** - Document storage management
-
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- Node.js 22+
-- Docker and Docker Compose (for containerized setup)
-- PostgreSQL (if running locally)
+- Docker (with compose plugin)
 
-### Environment Setup
+### Download & Setup
 
-1. **Clone the repository**
+1. **Download the env file**
 
    ```bash
-   git clone https://github.com/docproc-ai/docproc.git
-   cd docproc
+   curl -o .env https://raw.githubusercontent.com/docproc-ai/docproc/refs/heads/main/.env.example
    ```
 
-2. **Create environment file**
+2. **Download the docker-compose file**
 
    ```bash
-   cp .env.example .env
+   curl -o docker-compose.yml https://raw.githubusercontent.com/docproc-ai/docproc/refs/heads/main/compose.yml
    ```
 
-3. **Configure environment variables**
+3. **Run the application**
 
    ```bash
-   # Authentication
-   AUTH_ADMIN_EMAIL="admin@example.com"
-   AUTH_ADMIN_PASSWORD="admin123"
-   BETTER_AUTH_SECRET="your-secret-key"
-
-   # Database
-   DATABASE_URL="postgresql://postgres:postgres@localhost:5432/postgres"
-
-   # AI Processing
-   ANTHROPIC_API_KEY="your-anthropic-api-key"
-
-   # Storage
-   DOCUMENT_STORAGE_DIR="./data/documents"
+   docker compose up -d
    ```
+
+4. **Access the application**
+   - Open [http://localhost:3000](http://localhost:3000)
+   - Login with the default admin credentials (or set your own in the `.env` file):
+     - Email: `admin@example.com`
+     - Password: `admin123`
 
 ### Docker Deployment
 
@@ -125,42 +61,7 @@ A human-in-the-loop document extraction web platform that uses AI to extract str
    docker compose up
    ```
 
-2. **Manual Docker Build**
-   ```bash
-   docker build -t docproc .
-   docker run -p 3000:3000 docproc
-   ```
-
-### Development Setup
-
-1. **Install dependencies**
-
-   ```bash
-   npm install
-   ```
-
-2. **Start PostgreSQL** (if running locally)
-
-   ```bash
-   # Using Docker
-   docker run --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres
-
-   # Or use your preferred PostgreSQL setup
-   ```
-
-3. **Push database schema**
-
-   ```bash
-   npm run db:push
-   ```
-
-4. **Start development server**
-
-   ```bash
-   npm run dev
-   ```
-
-5. **Access the application**
+2. **Access the application**
    - Open [http://localhost:3000](http://localhost:3000)
    - Login with your configured admin credentials
 
@@ -214,69 +115,34 @@ A human-in-the-loop document extraction web platform that uses AI to extract str
 - `DELETE /api/documents/[id]` - Delete document
 - `GET /api/documents/[id]/file` - Download document file
 
-## 🔒 Security
+## Development Setup
 
-- **Authentication**: Secure session-based authentication
-- **Authorization**: Role-based access control
-- **File Upload**: Validated file types and secure storage
-- **API Protection**: Middleware-based route protection
-- **Data Validation**: Zod schema validation throughout
+1. **Install dependencies**
 
-## 🚀 Deployment
+   ```bash
+   npm install
+   ```
 
-### Production Environment Variables
+2. **Start PostgreSQL** (if running locally)
 
-```bash
-# Required
-DATABASE_URL="your-production-database-url"
-ANTHROPIC_API_KEY="your-anthropic-api-key"
-BETTER_AUTH_SECRET="your-production-secret"
+   ```bash
+   # Using Docker
+   docker compose up -d postgres
 
-# Optional
-AUTH_ADMIN_EMAIL="admin@yourdomain.com"
-AUTH_ADMIN_PASSWORD="secure-password"
-DOCUMENT_STORAGE_DIR="/app/documents"
-```
+   # Or use your preferred PostgreSQL setup
+   ```
 
-### Docker Production
+3. **Push database schema**
 
-```bash
-# Build and deploy
-docker-compose -f docker-compose.prod.yml up -d
+   ```bash
+   npm run db:push
+   ```
 
-# Or with custom environment
-docker-compose --env-file .env.production up -d
-```
+4. **Start development server**
 
-## 🛠️ Development
-
-### Available Scripts
-
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run lint` - Run ESLint
-- `npm run format` - Format code with Prettier
-- `npm run db:push` - Push database schema
-- `npm run db:studio` - Open Drizzle Studio
-
-### Project Structure
-
-```
-src/
-├── app/                    # Next.js App Router pages
-│   ├── api/               # API routes
-│   ├── document-types/    # Document type management
-│   ├── process/           # Document processing
-│   └── users/             # User management
-├── components/            # React components
-│   ├── ui/               # Shadcn/ui components
-│   ├── form-renderer/    # Dynamic form components
-│   └── schema-builder/   # Schema building components
-├── db/                   # Database configuration
-├── hooks/                # Custom React hooks
-└── lib/                  # Utility functions and actions
-```
+   ```bash
+   npm run dev
+   ```
 
 ## 🙏 Acknowledgments
 
