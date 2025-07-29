@@ -368,13 +368,15 @@ export async function processDocument(formData: FormData) {
     const { object } = await generateObject({
       model: anthropic(modelToUse),
       schema: schemaForAI,
-      system: `You are an expert document processor. Your task is to analyze the provided document (which could be a PDF or an image) and extract information into a structured JSON object based on the user-provided schema.
+      system: `
+You are an expert document processor. Your task is to analyze the provided document (which could be a PDF or an image) and extract information into a structured JSON object based on the user-provided schema.
 
 **CRITICAL INSTRUCTIONS:**
 1.  **Analyze the ENTIRE document provided.**
 2.  **Date Formatting**: For any date field, you MUST format it as \`YYYY-MM-DD\`.
 3.  **Do NOT Guess**: If you cannot find information for a field, OMIT it from your response. Do not hallucinate data. Even if a field is required in the schema, if the information is not present in the document, it should not be included.
-4.  **Follow Schema**: Adhere strictly to the JSON schema for the output format. Pay close attention to field names, types, and nested structures. The exception is that you can omit fields that are not present in the document or that you are unsure of.`,
+4.  **Follow Schema**: Adhere strictly to the JSON schema for the output format. Pay close attention to field names, types, and nested structures. The exception is that you can omit fields that are not present in the document or that you are unsure of.
+`.trim(),
       messages: [
         {
           role: 'user',
