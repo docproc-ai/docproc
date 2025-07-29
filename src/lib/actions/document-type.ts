@@ -4,40 +4,23 @@ import { db } from '@/db'
 import { documentType, document } from '@/db/schema'
 import { eq, desc, count } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
-import { auth } from '@/lib/auth'
-import { headers } from 'next/headers'
 import { generateSlug } from '@/lib/generate-slug'
+import { checkDocumentTypePermissions } from '@/lib/auth-utils'
 import type { InferSelectModel, InferInsertModel } from 'drizzle-orm'
+import { headers } from 'next/headers'
+import { auth } from '../auth'
 
 export type DocumentType = InferSelectModel<typeof documentType>
 export type NewDocumentType = InferInsertModel<typeof documentType>
 
-async function checkAdminAccess() {
-  const headersList = await headers()
-
-  // Check for API key authentication first
-  const apiKey = headersList.get('x-api-key')
-  if (apiKey && apiKey === process.env.API_KEY) {
-    return { success: true }
-  }
-
-  // Fall back to session authentication
-  const session = await auth.api.getSession({
-    headers: headersList,
-  })
-
-  if (!session?.user) {
-    return { success: false, error: 'Authentication required' }
-  }
-
-  if (session.user.role !== 'admin') {
-    return { success: false, error: 'Admin access required' }
-  }
-
-  return { success: true }
-}
-
 export async function getDocumentTypes(): Promise<(DocumentType & { document_count: number })[]> {
+  // Check document type list permissions
+  const permissionCheck = await checkDocumentTypePermissions(['list'])
+  if (!permissionCheck.success) {
+    console.error('Permission denied for listing document types:', permissionCheck.error)
+    return []
+  }
+
   try {
     const documentTypes = await db.select().from(documentType).orderBy(desc(documentType.createdAt))
 
@@ -73,10 +56,10 @@ export async function getDocumentType(id: string): Promise<DocumentType | null> 
 }
 
 export async function createDocumentType(formData: FormData) {
-  // Check admin access
-  const adminCheck = await checkAdminAccess()
-  if (!adminCheck.success) {
-    return adminCheck
+  // Check document type creation permissions
+  const permissionCheck = await checkDocumentTypePermissions(['create'])
+  if (!permissionCheck.success) {
+    return permissionCheck
   }
 
   try {
@@ -120,10 +103,10 @@ export async function createDocumentType(formData: FormData) {
 }
 
 export async function updateDocumentType(id: string, formData: FormData) {
-  // Check admin access
-  const adminCheck = await checkAdminAccess()
-  if (!adminCheck.success) {
-    return adminCheck
+  // Check document type update permissions
+  const permissionCheck = await checkDocumentTypePermissions(['update'])
+  if (!permissionCheck.success) {
+    return permissionCheck
   }
 
   try {
@@ -171,10 +154,10 @@ export async function updateDocumentType(id: string, formData: FormData) {
 }
 
 export async function deleteDocumentType(id: string) {
-  // Check admin access
-  const adminCheck = await checkAdminAccess()
-  if (!adminCheck.success) {
-    throw new Error(adminCheck.error)
+  // Check document type delete permissions
+  const permissionCheck = await checkDocumentTypePermissions(['delete'])
+  if (!permissionCheck.success) {
+    throw new Error(permissionCheck.error)
   }
 
   try {

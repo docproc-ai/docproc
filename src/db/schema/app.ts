@@ -22,8 +22,8 @@ export const documentType = pgTable('document_type', {
   updatedAt: timestamp('updated_at')
     .defaultNow()
     .$onUpdate(() => new Date()),
-  createdBy: uuid('created_by').references(() => user.id),
-  updatedBy: uuid('updated_by').references(() => user.id),
+  createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' }),
+  updatedBy: uuid('updated_by').references(() => user.id, { onDelete: 'set null' }),
 })
 
 export const documentStatus = pgEnum('document_status', [
@@ -48,8 +48,8 @@ export const document = pgTable(
     updatedAt: timestamp('updated_at')
       .defaultNow()
       .$onUpdate(() => new Date()),
-    createdBy: uuid('created_by').references(() => user.id),
-    updatedBy: uuid('updated_by').references(() => user.id),
+    createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' }),
+    updatedBy: uuid('updated_by').references(() => user.id, { onDelete: 'set null' }),
   },
   (table) => [
     index('idx_document_document_type_id').on(table.documentTypeId),

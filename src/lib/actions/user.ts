@@ -5,8 +5,15 @@ import { user } from '@/db/schema/auth'
 import { eq } from 'drizzle-orm'
 import { auth } from '@/lib/auth'
 import { revalidatePath } from 'next/cache'
+import { checkAdminPermissions } from '@/lib/auth-utils'
 
 export async function getUsers() {
+  // Check user list permissions
+  const permissionCheck = await checkAdminPermissions(['list'])
+  if (!permissionCheck.success) {
+    throw new Error(permissionCheck.error)
+  }
+
   try {
     const users = await db
       .select({
@@ -29,6 +36,12 @@ export async function getUsers() {
 }
 
 export async function updateUserRole(userId: string, newRole: string) {
+  // Check user role management permissions
+  const permissionCheck = await checkAdminPermissions(['set-role'])
+  if (!permissionCheck.success) {
+    throw new Error(permissionCheck.error)
+  }
+
   try {
     await db
       .update(user)
@@ -47,6 +60,12 @@ export async function updateUserRole(userId: string, newRole: string) {
 }
 
 export async function deleteUser(userId: string) {
+  // Check user deletion permissions
+  const permissionCheck = await checkAdminPermissions(['delete'])
+  if (!permissionCheck.success) {
+    throw new Error(permissionCheck.error)
+  }
+
   try {
     await db.delete(user).where(eq(user.id, userId))
 
@@ -59,6 +78,12 @@ export async function deleteUser(userId: string) {
 }
 
 export async function createUser(formData: FormData) {
+  // Check user creation permissions
+  const permissionCheck = await checkAdminPermissions(['create'])
+  if (!permissionCheck.success) {
+    throw new Error(permissionCheck.error)
+  }
+
   try {
     const name = formData.get('name') as string
     const email = formData.get('email') as string
@@ -70,7 +95,7 @@ export async function createUser(formData: FormData) {
     }
 
     // Create user via better-auth
-    const result = await auth.api.signUpEmail({
+    const result = await auth.api.createUser({
       body: {
         email,
         password,
