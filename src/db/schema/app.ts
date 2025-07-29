@@ -1,13 +1,4 @@
-import {
-  pgTable,
-  text,
-  json,
-  timestamp,
-  uniqueIndex,
-  index,
-  pgEnum,
-  uuid,
-} from 'drizzle-orm/pg-core'
+import { pgTable, text, json, timestamp, index, pgEnum, uuid } from 'drizzle-orm/pg-core'
 import { user } from './auth'
 
 export const documentType = pgTable('document_type', {
