@@ -6,16 +6,6 @@ export async function middleware(request: NextRequest) {
   const sessionCookie = getSessionCookie(request)
   const apiKey = request.headers.get('x-api-key')
 
-  // Skip auth for API auth routes and static files
-  if (
-    pathname.startsWith('/api/auth/') ||
-    pathname.startsWith('/_next/') ||
-    pathname.includes('/favicon.ico') ||
-    pathname.includes('/placeholder')
-  ) {
-    return NextResponse.next()
-  }
-
   // If user has session and tries to access login page, redirect to dashboard
   if (sessionCookie && pathname === '/login') {
     return NextResponse.redirect(new URL('/document-types', request.url))
