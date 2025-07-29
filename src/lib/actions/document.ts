@@ -13,7 +13,7 @@ import { anthropic } from '@ai-sdk/anthropic'
 import { generateObject, jsonSchema } from 'ai'
 import { getDocumentType } from './document-type'
 import { DEFAULT_MODEL } from '@/lib/models/anthropic'
-import { validateAdminUser } from '@/lib/auth-utils'
+import { checkDocumentPermissions } from '@/lib/auth-utils'
 
 export type Document = InferSelectModel<typeof document>
 export type NewDocument = InferInsertModel<typeof document>
@@ -93,6 +93,13 @@ async function triggerWebhook(documentType: any, document: Document) {
 }
 
 export async function getDocuments(documentTypeId: string): Promise<Document[]> {
+  // Check document list permissions
+  const permissionCheck = await checkDocumentPermissions(['list'])
+  if (!permissionCheck.success) {
+    console.error('Permission denied for listing documents:', permissionCheck.error)
+    return []
+  }
+
   try {
     const documents = await db
       .select()
@@ -118,6 +125,12 @@ export async function getDocument(id: string): Promise<Document | null> {
 }
 
 export async function createDocument(formData: FormData) {
+  // Check document creation permissions
+  const permissionCheck = await checkDocumentPermissions(['create'])
+  if (!permissionCheck.success) {
+    throw new Error(permissionCheck.error)
+  }
+
   try {
     const file = formData.get('file') as File
     const documentTypeId = formData.get('documentTypeId') as string
@@ -162,6 +175,12 @@ export async function createDocument(formData: FormData) {
 }
 
 export async function updateDocument(id: string, formData: FormData) {
+  // Check document update permissions
+  const permissionCheck = await checkDocumentPermissions(['update'])
+  if (!permissionCheck.success) {
+    throw new Error(permissionCheck.error)
+  }
+
   try {
     const extractedDataString = formData.get('extractedData') as string
     const status = formData.get('status') as 'pending' | 'processed' | 'approved'
@@ -234,6 +253,12 @@ export async function updateDocument(id: string, formData: FormData) {
 }
 
 export async function deleteDocument(id: string) {
+  // Check document deletion permissions
+  const permissionCheck = await checkDocumentPermissions(['delete'])
+  if (!permissionCheck.success) {
+    throw new Error(permissionCheck.error)
+  }
+
   try {
     // Get document info before deletion
     const [doc] = await db.select().from(document).where(eq(document.id, id))
@@ -274,8 +299,8 @@ export async function processDocument(formData: FormData) {
 
     // Validate admin privileges for model override
     if (overrideModel) {
-      const adminSession = await validateAdminUser()
-      if (!adminSession) {
+      const permissionCheck = await checkDocumentPermissions(['update'])
+      if (!permissionCheck.success) {
         // Non-admin users cannot override models - ignore the parameter
         overrideModel = ''
         console.warn(

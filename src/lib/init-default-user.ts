@@ -26,18 +26,17 @@ export async function initDefaultUser() {
     // Create default admin user
     console.log('Creating default admin user...')
 
+    // use auth API to create user because we can't use the admin plugin directly here
     const result = await auth.api.createUser({
       body: {
         email: defaultEmail,
         password: defaultPassword,
         name: 'Admin',
+        role: 'admin',
       },
     })
 
     if (result) {
-      // Update user role to admin
-      await db.update(user).set({ role: 'admin' }).where(eq(user.email, defaultEmail))
-
       console.log('Default admin user created successfully')
     }
   } catch (error) {
