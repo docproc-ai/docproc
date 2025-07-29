@@ -11,7 +11,6 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'DocProc',
   description: 'Upload, process, and correct documents with AI.',
-  generator: 'v0.dev',
 }
 
 export default function RootLayout({

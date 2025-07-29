@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getDocumentType } from '@/lib/actions/document-type'
 import { createDocument, processDocument } from '@/lib/actions/document'
 import { DEFAULT_MODEL } from '@/lib/models/anthropic'
-import { validateAdminUser } from '@/lib/auth-utils'
+import { checkDocumentPermissions } from '@/lib/auth-utils'
 
 /**
  * Get the model to use for processing a document type
@@ -43,8 +43,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     // Validate admin privileges for model override
     if (overrideModel) {
-      const adminSession = await validateAdminUser()
-      if (!adminSession) {
+      const permissionCheck = await checkDocumentPermissions(['update'])
+      if (!permissionCheck.success) {
         // Non-admin users cannot override models - ignore the parameter
         overrideModel = null
         console.warn('Non-admin user attempted to override model, ignoring parameter')
