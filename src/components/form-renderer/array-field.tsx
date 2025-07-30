@@ -31,6 +31,7 @@ function FormField({
   onChange,
   required,
   isArrayItem = false,
+  isStreaming = false,
 }: {
   name: string
   schema: JsonSchema
@@ -38,6 +39,7 @@ function FormField({
   onChange: (value: any) => void
   required?: boolean
   isArrayItem?: boolean
+  isStreaming?: boolean
 }) {
   // Handle enum fields (dropdowns) for any type
   if (schema.enum) {
@@ -49,6 +51,7 @@ function FormField({
         onChange={onChange}
         required={required}
         isArrayItem={isArrayItem}
+        isStreaming={isStreaming}
       />
     )
   }
@@ -66,6 +69,7 @@ function FormField({
           onChange={onChange}
           required={required}
           isArrayItem={isArrayItem}
+          isStreaming={isStreaming}
         />
       )
     case 'number':
@@ -78,6 +82,7 @@ function FormField({
           onChange={onChange}
           required={required}
           isArrayItem={isArrayItem}
+          isStreaming={isStreaming}
         />
       )
     case 'boolean':
@@ -89,6 +94,7 @@ function FormField({
           onChange={onChange}
           required={required}
           isArrayItem={isArrayItem}
+          isStreaming={isStreaming}
         />
       )
     case 'object':
@@ -100,6 +106,7 @@ function FormField({
           onChange={onChange}
           required={required}
           isArrayItem={isArrayItem}
+          isStreaming={isStreaming}
         />
       )
     case 'array':
@@ -111,6 +118,7 @@ function FormField({
           onChange={onChange}
           required={required}
           isArrayItem={isArrayItem}
+          isStreaming={isStreaming}
         />
       )
     default:
@@ -123,6 +131,7 @@ function FormField({
           onChange={onChange}
           required={required}
           isArrayItem={isArrayItem}
+          isStreaming={isStreaming}
         />
       )
   }
@@ -132,10 +141,12 @@ function SpreadsheetCellInput({
   schema,
   value,
   onChange,
+  disabled = false,
 }: {
   schema: JsonSchema
   value: any
   onChange: (value: any) => void
+  disabled?: boolean
 }) {
   const fieldType = Array.isArray(schema.type) ? schema.type[0] : schema.type
   const inputClasses =
@@ -167,22 +178,24 @@ function SpreadsheetCellInput({
             inputClasses,
             '[-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
           )}
+          disabled={disabled}
         />
       )
     case 'boolean':
       return (
         <div className="flex h-full items-center justify-center">
-          <Checkbox checked={!!value} onCheckedChange={onChange} />
+          <Checkbox checked={!!value} onCheckedChange={onChange} disabled={disabled} />
         </div>
       )
     case 'string':
       if (schema.format === 'date') {
         return (
           <Input
-            type="date"
+            type={disabled ? 'text' : 'date'}
             value={value ?? ''}
             onChange={(e) => onChange(e.target.value)}
             className={cn(inputClasses, 'relative')}
+            disabled={disabled}
           />
         )
       }
@@ -192,6 +205,7 @@ function SpreadsheetCellInput({
           value={value ?? ''}
           onChange={(e) => onChange(e.target.value)}
           className={inputClasses}
+          disabled={disabled}
         />
       )
     default:
@@ -201,6 +215,7 @@ function SpreadsheetCellInput({
           value={value ?? ''}
           onChange={(e) => onChange(e.target.value)}
           className={inputClasses}
+          disabled={disabled}
         />
       )
   }
@@ -212,12 +227,14 @@ function ArrayTableField({
   value,
   onChange,
   required,
+  isStreaming = false,
 }: {
   name: string
   schema: JsonSchema
   value: any[]
   onChange: (value: any[]) => void
   required?: boolean
+  isStreaming?: boolean
 }) {
   const arrayValue = value || []
 
@@ -299,6 +316,7 @@ function ArrayTableField({
                         schema={cellSchema}
                         value={cellValue}
                         onChange={(newValue) => handleCellChange(rowIndex, columnKey, newValue)}
+                        disabled={isStreaming}
                       />
                     </TableCell>
                   )
@@ -313,15 +331,24 @@ function ArrayTableField({
           </TableBody>
         </Table>
       </div>
-      <Button type="button" variant="outline" size="sm" onClick={handleAddRow}>
-        <Plus className="h-4 w-4" />
-        Add Row
-      </Button>
+      {!isStreaming && (
+        <Button type="button" variant="outline" size="sm" onClick={handleAddRow}>
+          <Plus className="h-4 w-4" />
+          Add Row
+        </Button>
+      )}
     </div>
   )
 }
 
-export function ArrayField({ name, schema, value, onChange, required }: FormFieldProps) {
+export function ArrayField({
+  name,
+  schema,
+  value,
+  onChange,
+  required,
+  isStreaming,
+}: FormFieldProps) {
   const [expandedArrayItems, setExpandedArrayItems] = useState<Record<string, boolean>>({})
 
   if (schema.type !== 'array') return null
@@ -341,6 +368,7 @@ export function ArrayField({ name, schema, value, onChange, required }: FormFiel
         value={value}
         onChange={onChange}
         required={required}
+        isStreaming={isStreaming}
       />
     )
   }
@@ -412,6 +440,7 @@ export function ArrayField({ name, schema, value, onChange, required }: FormFiel
                     onChange(newArray)
                   }}
                   isArrayItem={true}
+                  isStreaming={isStreaming}
                 />
               </CollapsibleContent>
             </div>

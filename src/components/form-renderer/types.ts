@@ -4,6 +4,7 @@ export interface FormRendererProps {
   schema: JsonSchema
   data: any
   onChange: (data: any) => void
+  isStreaming?: boolean
 }
 
 export interface FormFieldProps {
@@ -13,4 +14,5 @@ export interface FormFieldProps {
   onChange: (value: any) => void
   required?: boolean
   isArrayItem?: boolean
+  isStreaming?: boolean
 }

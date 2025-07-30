@@ -12,7 +12,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import type { FormFieldProps } from './types'
 
-export function StringField({ name, schema, value, onChange, required }: FormFieldProps) {
+export function StringField({ name, schema, value, onChange, required, isStreaming }: FormFieldProps) {
   const fieldType = Array.isArray(schema.type) ? schema.type[0] : schema.type
 
   // Handle enums for any type, not just strings
@@ -26,7 +26,7 @@ export function StringField({ name, schema, value, onChange, required }: FormFie
         {schema.description && (
           <p className="text-muted-foreground text-sm">{schema.description}</p>
         )}
-        <Select value={String(value ?? '')} onValueChange={onChange}>
+        <Select value={String(value ?? '')} onValueChange={onChange} disabled={isStreaming}>
           <SelectTrigger>
             <SelectValue placeholder="Select an option" />
           </SelectTrigger>
@@ -61,6 +61,7 @@ export function StringField({ name, schema, value, onChange, required }: FormFie
           onChange={(e) => onChange(e.target.value)}
           placeholder={schema.default}
           rows={4}
+          disabled={isStreaming}
         />
       </div>
     )
@@ -78,10 +79,11 @@ export function StringField({ name, schema, value, onChange, required }: FormFie
         )}
         <Input
           id={name}
-          type="date"
+          type={isStreaming ? "text" : "date"}
           value={value ?? ''}
           onChange={(e) => onChange(e.target.value)}
           placeholder={schema.default}
+          disabled={isStreaming}
         />
       </div>
     )
@@ -100,6 +102,7 @@ export function StringField({ name, schema, value, onChange, required }: FormFie
         value={value ?? ''}
         onChange={(e) => onChange(e.target.value)}
         placeholder={schema.default}
+        disabled={isStreaming}
       />
     </div>
   )

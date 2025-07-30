@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { FormFieldProps } from './types'
 
-export function NumberField({ name, schema, value, onChange, required }: FormFieldProps) {
+export function NumberField({ name, schema, value, onChange, required, isStreaming }: FormFieldProps) {
   if (schema.type !== 'number' && schema.type !== 'integer') return null
 
   const fieldType = schema.type
@@ -37,6 +37,7 @@ export function NumberField({ name, schema, value, onChange, required }: FormFie
         min={schema.minimum}
         max={schema.maximum}
         className="[-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        disabled={isStreaming}
       />
     </div>
   )

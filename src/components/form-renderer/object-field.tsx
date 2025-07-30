@@ -15,6 +15,7 @@ function FormField({
   onChange,
   required,
   isArrayItem = false,
+  isStreaming = false,
 }: FormFieldProps) {
   // Handle enum fields (dropdowns) for any type
   if (schema.enum) {
@@ -26,6 +27,7 @@ function FormField({
         onChange={onChange}
         required={required}
         isArrayItem={isArrayItem}
+        isStreaming={isStreaming}
       />
     )
   }
@@ -43,6 +45,7 @@ function FormField({
           onChange={onChange}
           required={required}
           isArrayItem={isArrayItem}
+          isStreaming={isStreaming}
         />
       )
     case 'number':
@@ -55,6 +58,7 @@ function FormField({
           onChange={onChange}
           required={required}
           isArrayItem={isArrayItem}
+          isStreaming={isStreaming}
         />
       )
     case 'boolean':
@@ -66,6 +70,7 @@ function FormField({
           onChange={onChange}
           required={required}
           isArrayItem={isArrayItem}
+          isStreaming={isStreaming}
         />
       )
     case 'object':
@@ -77,6 +82,7 @@ function FormField({
           onChange={onChange}
           required={required}
           isArrayItem={isArrayItem}
+          isStreaming={isStreaming}
         />
       )
     case 'array':
@@ -88,6 +94,7 @@ function FormField({
           onChange={onChange}
           required={required}
           isArrayItem={isArrayItem}
+          isStreaming={isStreaming}
         />
       )
     default:
@@ -100,6 +107,7 @@ function FormField({
           onChange={onChange}
           required={required}
           isArrayItem={isArrayItem}
+          isStreaming={isStreaming}
         />
       )
   }
@@ -112,6 +120,7 @@ export function ObjectField({
   onChange,
   required,
   isArrayItem = false,
+  isStreaming,
 }: FormFieldProps) {
   if (schema.type !== 'object') return null
 
@@ -140,6 +149,7 @@ export function ObjectField({
             onChange={(newValue) => onChange({ ...objectValue, [key]: newValue })}
             required={schema.required?.includes(key)}
             isArrayItem={false}
+            isStreaming={isStreaming}
           />
         ))}
     </>
