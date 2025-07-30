@@ -1,16 +1,17 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import React, { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { updateDocument, deleteDocument, processDocument } from '@/lib/actions/document'
+import { updateDocument, deleteDocument } from '@/lib/actions/document'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import { DocumentQueue } from '@/components/document-queue'
+import { useStreamingJson } from '@/hooks/use-streaming-json'
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DataEditorTab } from './editor-tabs'
 import { FormRenderer } from './form-renderer'
 import { toast } from 'sonner'
-import { Bot, Loader2, CheckCircle, ArrowLeft, Undo2 } from 'lucide-react'
+import { Bot, Loader2, CheckCircle, ArrowLeft, Undo2, Square } from 'lucide-react'
 import { Button } from './ui/button'
 import { ThemeToggle } from './theme-toggle'
 import { ANTHROPIC_MODELS, DEFAULT_MODEL } from '@/lib/models/anthropic'
@@ -49,7 +50,6 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
     null,
   )
   const [activeTab, setActiveTab] = useState('form')
-  const [isProcessing, setIsProcessing] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [overrideModel, setOverrideModel] = useState<string>(
     documentType.modelName || DEFAULT_MODEL,
@@ -57,6 +57,42 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
 
   // Check if user is admin
   const isAdmin = session?.user?.role === 'admin'
+
+  // Custom streaming JSON hook
+  const { object, submit, isLoading, stop, error } = useStreamingJson({
+    api: '/api/process-document',
+    onUpdate: (partialObject) => {
+      // Update form data on every chunk during streaming
+      setFormData(partialObject)
+    },
+    onFinish: (finalObject) => {
+      if (finalObject && selectedDocument) {
+        // Update the form data with the final object
+        setFormData(finalObject)
+        
+        // Update the document in state
+        const updatedDoc = {
+          ...selectedDocument,
+          extractedData: finalObject,
+          status: 'processed' as const,
+        }
+        setSelectedDocument(updatedDoc)
+        setDocuments(documents.map((d) => (d.id === selectedDocument.id ? updatedDoc : d)))
+
+        toast.success('Document processed by AI.')
+      }
+    },
+    onError: (error) => {
+      toast.error(`Processing Error: ${error.message}`)
+    },
+  })
+
+  // Update form data when streaming object changes
+  React.useEffect(() => {
+    if (object) {
+      setFormData(object)
+    }
+  }, [object])
 
   const handleDocumentSelect = (doc: Document | null) => {
     if (doc && selectedDocument && doc.id === selectedDocument.id) {
@@ -88,38 +124,19 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
       return
     }
 
-    setIsProcessing(true)
-    try {
-      // Use Server Action for processing
-      const formData = new FormData()
-      formData.append('documentId', selectedDocument.id)
-      formData.append('documentTypeId', documentType.id)
-      formData.append(
-        'schema',
-        JSON.stringify(selectedDocument.schemaSnapshot || documentType.schema),
-      )
+    // Prepare the data for the streaming API
+    const requestData = {
+      documentId: selectedDocument.id,
+      documentTypeId: documentType.id,
+      schema: JSON.stringify(selectedDocument.schemaSnapshot || documentType.schema),
       // Add override model if admin has selected one that's different from document type default
-      if (isAdmin && overrideModel && overrideModel !== (documentType.modelName || DEFAULT_MODEL)) {
-        formData.append('model', overrideModel)
-      }
-
-      const result = await processDocument(formData)
-
-      setFormData(result.data)
-      const updatedDoc = {
-        ...selectedDocument,
-        extractedData: result.data,
-        status: 'processed' as const,
-      }
-      setSelectedDocument(updatedDoc)
-      setDocuments(documents.map((d) => (d.id === selectedDocument.id ? updatedDoc : d)))
-
-      toast.success('Document processed by AI.')
-    } catch (error: any) {
-      toast.error(`Processing Error: ${error.message}`)
-    } finally {
-      setIsProcessing(false)
+      ...(isAdmin && overrideModel && overrideModel !== (documentType.modelName || DEFAULT_MODEL) 
+        ? { model: overrideModel } 
+        : {}),
     }
+
+    // Start streaming with useObject
+    submit(requestData)
   }
 
   const handleStatusUpdate = async (status: 'approved' | 'processed') => {
@@ -207,18 +224,21 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
               </SelectContent>
             </Select>
           )}
-          <Button
-            onClick={handleAiProcessing}
-            disabled={isProcessing || !selectedDocument}
-            variant="outline"
-          >
-            {isProcessing ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
+          {isLoading ? (
+            <Button onClick={stop} variant="outline">
+              <Square className="h-4 w-4" />
+              Stop
+            </Button>
+          ) : (
+            <Button
+              onClick={handleAiProcessing}
+              disabled={isLoading || !selectedDocument}
+              variant="outline"
+            >
               <Bot className="h-4 w-4" />
-            )}
-            Process
-          </Button>
+              Process
+            </Button>
+          )}
           {selectedDocument?.status === 'approved' ? (
             <Button
               onClick={() => handleStatusUpdate('processed')}
@@ -272,14 +292,45 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
                 </TabsList>
                 <div className="flex-grow overflow-y-auto pt-4">
                   <TabsContent value="form" className="space-y-4">
+                    {isLoading && (
+                      <div className="sticky top-0 z-10 mb-4 rounded-md border border-blue-200 bg-blue-50 p-3 shadow-sm dark:border-blue-800 dark:bg-blue-950">
+                        <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Extracting data from document...
+                        </div>
+                      </div>
+                    )}
+                    {error && (
+                      <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-950">
+                        <div className="text-sm text-red-700 dark:text-red-300">
+                          Error: {error.message}
+                        </div>
+                      </div>
+                    )}
                     <FormRenderer
                       key={selectedDocument.id}
                       schema={selectedDocument.schemaSnapshot || documentType.schema}
                       data={formData || {}}
                       onChange={handleDataChange}
+                      isStreaming={isLoading}
                     />
                   </TabsContent>
                   <TabsContent value="data" className="m-0 h-full">
+                    {isLoading && (
+                      <div className="sticky top-0 z-10 mb-4 rounded-md border border-blue-200 bg-blue-50 p-3 shadow-sm dark:border-blue-800 dark:bg-blue-950">
+                        <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Extracting data from document...
+                        </div>
+                      </div>
+                    )}
+                    {error && (
+                      <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-950">
+                        <div className="text-sm text-red-700 dark:text-red-300">
+                          Error: {error.message}
+                        </div>
+                      </div>
+                    )}
                     <DataEditorTab
                       value={JSON.stringify(formData || {}, null, 2)}
                       onChange={(text) => handleDataChange(JSON.parse(text || '{}'))}

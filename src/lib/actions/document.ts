@@ -2,58 +2,17 @@
 
 import { db } from '@/db'
 import { document, documentType } from '@/db/schema'
-import { eq, desc } from 'drizzle-orm'
-import { revalidatePath } from 'next/cache'
-import type { InferSelectModel, InferInsertModel } from 'drizzle-orm'
-import { writeFile, unlink, mkdir, readFile } from 'fs/promises'
-import { join } from 'path'
-import { randomUUID } from 'crypto'
-import { getStorageDir } from '@/lib/storage'
-import { anthropic } from '@ai-sdk/anthropic'
-import { generateObject, jsonSchema } from 'ai'
-import { getDocumentType } from './document-type'
-import { DEFAULT_MODEL } from '@/lib/models/anthropic'
 import { checkDocumentPermissions } from '@/lib/auth-utils'
+import { getStorageDir } from '@/lib/storage'
+import { randomUUID } from 'crypto'
+import type { InferInsertModel, InferSelectModel } from 'drizzle-orm'
+import { desc, eq } from 'drizzle-orm'
+import { mkdir, unlink, writeFile } from 'fs/promises'
+import { revalidatePath } from 'next/cache'
+import { join } from 'path'
 
 export type Document = InferSelectModel<typeof document>
 export type NewDocument = InferInsertModel<typeof document>
-
-/**
- * Get the model to use for processing a document type
- * Priority: overrideModel > documentType.modelName > system default
- */
-async function getModelForProcessing(
-  documentTypeId: string,
-  overrideModel?: string,
-): Promise<string> {
-  if (overrideModel) {
-    return overrideModel
-  }
-
-  const docType = await getDocumentType(documentTypeId)
-  if (docType?.modelName) {
-    return docType.modelName
-  }
-
-  // System default
-  return DEFAULT_MODEL
-}
-
-function getMimeType(extension: string): string {
-  const mimeTypes: { [key: string]: string } = {
-    pdf: 'application/pdf',
-    png: 'image/png',
-    jpg: 'image/jpeg',
-    jpeg: 'image/jpeg',
-    gif: 'image/gif',
-    bmp: 'image/bmp',
-    webp: 'image/webp',
-    tiff: 'image/tiff',
-    tif: 'image/tiff',
-  }
-
-  return mimeTypes[extension] || 'application/octet-stream'
-}
 
 async function triggerWebhook(documentType: any, document: Document) {
   if (!documentType.webhookUrl) return
@@ -282,120 +241,6 @@ export async function deleteDocument(id: string) {
     revalidatePath(`/process/${doc.documentTypeId}`)
   } catch (error) {
     console.error('Failed to delete document:', error)
-    throw error
-  }
-}
-
-export async function processDocument(formData: FormData) {
-  try {
-    const documentId = formData.get('documentId') as string
-    const documentTypeId = formData.get('documentTypeId') as string
-    const schemaString = formData.get('schema') as string
-    let overrideModel = formData.get('model') as string
-
-    if (!documentId || !documentTypeId || !schemaString) {
-      throw new Error('Document ID, document type ID, and schema are required')
-    }
-
-    // Validate admin privileges for model override
-    if (overrideModel) {
-      const permissionCheck = await checkDocumentPermissions(['update'])
-      if (!permissionCheck.success) {
-        // Non-admin users cannot override models - ignore the parameter
-        overrideModel = ''
-        console.warn(
-          'Non-admin user attempted to override model in processDocument, ignoring parameter',
-        )
-      }
-    }
-
-    let schema
-    try {
-      schema = JSON.parse(schemaString)
-    } catch {
-      throw new Error('Invalid schema JSON')
-    }
-
-    // Get the model to use (document type model or override)
-    const modelToUse = await getModelForProcessing(documentTypeId, overrideModel)
-
-    // Get the document
-    const doc = await getDocument(documentId)
-    if (!doc) {
-      throw new Error('Document not found')
-    }
-
-    // Read the document file from storage
-    const filePath = join(getStorageDir(), doc.storagePath)
-    const fileBuffer = await readFile(filePath)
-
-    // Prepare the raw schema object, ensuring it has a root 'type' and 'properties'
-    const rawSchema = {
-      ...schema,
-      type: 'object',
-      properties: schema.properties || {},
-    }
-
-    // Use the `jsonSchema` helper from the AI SDK to create a compatible schema object
-    const schemaForAI = jsonSchema<any>(rawSchema)
-
-    // Determine file type from filename
-    const fileExtension = doc.filename.toLowerCase().split('.').pop()
-    const mimeType = getMimeType(fileExtension || '')
-
-    const messageContent: (
-      | { type: 'text'; text: string }
-      | { type: 'image'; image: Buffer }
-      | { type: 'file'; data: Buffer; mimeType?: string; filename?: string }
-    )[] = [
-      {
-        type: 'text',
-        text: `Please analyze the attached document and extract the data according to the provided schema.`,
-      },
-    ]
-
-    if (mimeType.startsWith('image/')) {
-      messageContent.push({ type: 'image', image: fileBuffer })
-    } else {
-      messageContent.push({
-        type: 'file',
-        data: fileBuffer,
-        mimeType: mimeType,
-        filename: doc.filename,
-      })
-    }
-
-    const { object } = await generateObject({
-      model: anthropic(modelToUse),
-      schema: schemaForAI,
-      system: `
-You are an expert document processor. Your task is to analyze the provided document (which could be a PDF or an image) and extract information into a structured JSON object based on the user-provided schema.
-
-**CRITICAL INSTRUCTIONS:**
-1.  **Analyze the ENTIRE document provided.**
-2.  **Date Formatting**: For any date field, you MUST format it as \`YYYY-MM-DD\`.
-3.  **Do NOT Guess**: If you cannot find information for a field, OMIT it from your response. Do not hallucinate data. Even if a field is required in the schema, if the information is not present in the document, it should not be included.
-4.  **Follow Schema**: Adhere strictly to the JSON schema for the output format. Pay close attention to field names, types, and nested structures. The exception is that you can omit fields that are not present in the document or that you are unsure of.
-`.trim(),
-      messages: [
-        {
-          role: 'user',
-          content: messageContent as any,
-        },
-      ],
-    })
-
-    // Update document with extracted data
-    const updateFormData = new FormData()
-    updateFormData.append('extractedData', JSON.stringify(object))
-    updateFormData.append('status', 'processed')
-    updateFormData.append('schemaSnapshot', JSON.stringify(schema))
-
-    const updatedDoc = await updateDocument(documentId, updateFormData)
-
-    return { data: object, document: updatedDoc }
-  } catch (error) {
-    console.error('Failed to process document:', error)
     throw error
   }
 }

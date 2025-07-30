@@ -7,7 +7,7 @@ import { ArrayField } from './array-field'
 import { ObjectField } from './object-field'
 import type { FormRendererProps, FormFieldProps } from './types'
 
-export function FormRenderer({ schema, data, onChange }: FormRendererProps) {
+export function FormRenderer({ schema, data, onChange, isStreaming }: FormRendererProps) {
   if (!schema || !schema.properties) {
     return (
       <div className="text-muted-foreground p-8 text-center">
@@ -27,6 +27,7 @@ export function FormRenderer({ schema, data, onChange }: FormRendererProps) {
             value={data?.[key]}
             onChange={(value) => onChange({ ...data, [key]: value })}
             required={schema.required?.includes(key)}
+            isStreaming={isStreaming}
           />
         </div>
       ))}
@@ -41,6 +42,7 @@ function FormField({
   onChange,
   required,
   isArrayItem = false,
+  isStreaming = false,
 }: FormFieldProps) {
   const handleChange = (newValue: any) => {
     onChange(newValue)
@@ -56,6 +58,7 @@ function FormField({
         onChange={handleChange}
         required={required}
         isArrayItem={isArrayItem}
+        isStreaming={isStreaming}
       />
     )
   }
@@ -73,6 +76,7 @@ function FormField({
           onChange={handleChange}
           required={required}
           isArrayItem={isArrayItem}
+          isStreaming={isStreaming}
         />
       )
     case 'number':
@@ -85,6 +89,7 @@ function FormField({
           onChange={handleChange}
           required={required}
           isArrayItem={isArrayItem}
+          isStreaming={isStreaming}
         />
       )
     case 'boolean':
@@ -96,6 +101,7 @@ function FormField({
           onChange={handleChange}
           required={required}
           isArrayItem={isArrayItem}
+          isStreaming={isStreaming}
         />
       )
     case 'object':
@@ -107,6 +113,7 @@ function FormField({
           onChange={handleChange}
           required={required}
           isArrayItem={isArrayItem}
+          isStreaming={isStreaming}
         />
       )
     case 'array':
@@ -118,6 +125,7 @@ function FormField({
           onChange={handleChange}
           required={required}
           isArrayItem={isArrayItem}
+          isStreaming={isStreaming}
         />
       )
     default:
@@ -130,6 +138,7 @@ function FormField({
           onChange={handleChange}
           required={required}
           isArrayItem={isArrayItem}
+          isStreaming={isStreaming}
         />
       )
   }
