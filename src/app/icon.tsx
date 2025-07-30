@@ -11,24 +11,25 @@ export default function Icon() {
     (
       <svg
         xmlns="http://www.w3.org/2000/svg"
-        width={size.width}
-        height={size.height}
+        width="32"
+        height="32"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
-        strokeWidth="2" // camelCase instead of stroke-width
-        strokeLinecap="round" // camelCase instead of stroke-linecap
-        strokeLinejoin="round" // camelCase instead of stroke-linejoin
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
       >
         <path d="M20 13V7l-5-5H6a2 2 0 0 0-2 2v9" />
         <path d="M14 2v4a2 2 0 0 0 2 2h4" />
         <path d="M2 13h20" />
-        <path d="M6 20v-3" />
-        <path d="M10 22v-5" />
-        <path d="M18 20v-3" />
-        <path d="M14 19v-2" />
+
+        <rect x="6" y="17" width="4" height="6" rx="2" />
+        <path d="M14 23h4" />
+        <path d="M14 17h2v6" />
       </svg>
     ),
+
     {
       ...size,
     },
