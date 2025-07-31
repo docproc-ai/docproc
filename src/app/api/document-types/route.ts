@@ -1,8 +1,18 @@
 import { NextResponse } from 'next/server'
 import { getDocumentTypes, createDocumentType } from '@/lib/actions/document-type'
+import { checkApiAuth } from '@/lib/api-auth'
 
 export async function GET() {
   try {
+    // Check if user has permission to list document types (or has valid API key)
+    const authCheck = await checkApiAuth({
+      documentType: ['list']
+    });
+
+    if (!authCheck.success) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
     const documentTypes = await getDocumentTypes()
 
     // Return simplified data for external API consumers
@@ -22,6 +32,15 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    // Check if user has permission to create document types (or has valid API key)
+    const authCheck = await checkApiAuth({
+      documentType: ['create']
+    });
+
+    if (!authCheck.success) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
     const body = await request.json()
 
     if (!body.name || !body.schema) {

@@ -5,9 +5,19 @@ import { eq } from 'drizzle-orm'
 import { readFile } from 'fs/promises'
 import { join } from 'path'
 import { getStorageDir } from '@/lib/storage'
+import { checkApiAuth } from '@/lib/api-auth'
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    // Check if user has permission to list documents (needed to access files) or has valid API key
+    const authCheck = await checkApiAuth({
+      document: ['list']
+    });
+
+    if (!authCheck.success) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
     const { id } = await params
 
     // Find document by ID directly

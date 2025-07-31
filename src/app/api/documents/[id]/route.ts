@@ -1,9 +1,19 @@
 import { NextResponse } from 'next/server'
 import { getDocument, updateDocument, deleteDocument } from '@/lib/actions/document'
+import { checkApiAuth } from '@/lib/api-auth'
 
 // GET a single document by ID
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    // Check if user has permission to list documents (or has valid API key)
+    const authCheck = await checkApiAuth({
+      document: ['list']
+    });
+
+    if (!authCheck.success) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
     const { id } = await params
     const document = await getDocument(id)
 
@@ -31,12 +41,21 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
 // PUT (update) a document by ID
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
-  if (!id) {
-    return NextResponse.json({ error: 'Document ID is required' }, { status: 400 })
-  }
-
   try {
+    // Check if user has permission to update documents (or has valid API key)
+    const authCheck = await checkApiAuth({
+      document: ['update']
+    });
+
+    if (!authCheck.success) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
+    const { id } = await params
+    if (!id) {
+      return NextResponse.json({ error: 'Document ID is required' }, { status: 400 })
+    }
+
     const body = await request.json()
 
     // Convert JSON body to FormData for server action
@@ -58,24 +77,33 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
     return NextResponse.json(updatedDocument)
   } catch (error) {
-    console.error(`Failed to update document ${id}:`, error)
+    console.error(`Failed to update document:`, error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }
 
 // DELETE a document by ID
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
-  if (!id) {
-    return NextResponse.json({ error: 'Document ID is required' }, { status: 400 })
-  }
-
   try {
+    // Check if user has permission to delete documents (or has valid API key)
+    const authCheck = await checkApiAuth({
+      document: ['delete']
+    });
+
+    if (!authCheck.success) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
+    const { id } = await params
+    if (!id) {
+      return NextResponse.json({ error: 'Document ID is required' }, { status: 400 })
+    }
+
     await deleteDocument(id)
 
     return NextResponse.json({ message: 'Document deleted successfully' }, { status: 200 })
   } catch (error) {
-    console.error(`Failed to delete document ${id}:`, error)
+    console.error(`Failed to delete document:`, error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }
