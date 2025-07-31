@@ -8,6 +8,8 @@ import { streamText } from 'ai'
 import { NextRequest } from 'next/server'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { checkApiAuth } from '@/lib/api-auth'
+import { checkAIRateLimit } from '@/lib/ai-rate-limit'
 
 /**
  * Get the model to use for processing a document type
@@ -59,12 +61,30 @@ You are an expert document processor. Your task is to analyze the provided docum
 
 export async function POST(req: NextRequest) {
   try {
+    // Check if user has permission to process documents (or has valid API key)
+    const authCheck = await checkApiAuth({
+      document: ['update'], // Processing documents requires update permission
+    })
+
+    if (!authCheck.success) {
+      return new Response('Insufficient permissions', { status: 403 })
+    }
+
     const body = await req.json()
     const { documentId, documentTypeId, schema: schemaString, model: overrideModel } = body
 
     if (!documentId || !documentTypeId || !schemaString) {
       return new Response('Document ID, document type ID, and schema are required', {
         status: 400,
+      })
+    }
+
+    // Check AI rate limit after parsing request body
+    try {
+      await checkAIRateLimit('process-document')
+    } catch (error) {
+      return new Response(error instanceof Error ? error.message : 'Rate limit exceeded', {
+        status: 429,
       })
     }
 

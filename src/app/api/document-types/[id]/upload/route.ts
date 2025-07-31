@@ -1,32 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDocumentType } from '@/lib/actions/document-type'
-import { createDocument, processDocument } from '@/lib/actions/document'
-import { DEFAULT_MODEL } from '@/lib/models/anthropic'
+import { createDocument } from '@/lib/actions/document'
+import { processDocument } from '@/lib/actions/process'
 import { checkDocumentPermissions } from '@/lib/auth-utils'
-
-/**
- * Get the model to use for processing a document type
- * Priority: overrideModel > documentType.modelName > system default
- */
-async function getModelForProcessing(
-  documentTypeId: string,
-  overrideModel?: string,
-): Promise<string> {
-  if (overrideModel) {
-    return overrideModel
-  }
-
-  const docType = await getDocumentType(documentTypeId)
-  if (docType?.modelName) {
-    return docType.modelName
-  }
-
-  // System default
-  return DEFAULT_MODEL
-}
+import { checkApiAuth } from '@/lib/api-auth'
+import { checkAIRateLimit } from '@/lib/ai-rate-limit'
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    // Check if user has permission to create documents (or has valid API key)
+    const authCheck = await checkApiAuth({
+      document: ['create'],
+    })
+
+    if (!authCheck.success) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+    }
+
     const { id } = await params
     const documentTypeId = id
 
@@ -63,6 +53,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     if (files.length === 0) {
       return NextResponse.json({ error: 'No files provided' }, { status: 400 })
+    }
+
+    // Check AI rate limit if auto-processing is enabled
+    if (autoProcess) {
+      try {
+        await checkAIRateLimit('upload-auto-process');
+      } catch (error) {
+        return NextResponse.json({ 
+          error: error instanceof Error ? error.message : 'Rate limit exceeded for auto-processing' 
+        }, { status: 429 });
+      }
     }
 
     const results = []

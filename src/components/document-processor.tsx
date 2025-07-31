@@ -301,9 +301,23 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
                       </div>
                     )}
                     {error && (
-                      <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-950">
-                        <div className="text-sm text-red-700 dark:text-red-300">
-                          Error: {error.message}
+                      <div className={`mb-4 rounded-md border p-3 ${
+                        error.message.includes('Rate limit exceeded') 
+                          ? 'border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950'
+                          : 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950'
+                      }`}>
+                        <div className={`text-sm ${
+                          error.message.includes('Rate limit exceeded')
+                            ? 'text-yellow-700 dark:text-yellow-300'
+                            : 'text-red-700 dark:text-red-300'
+                        }`}>
+                          {error.message.includes('Rate limit exceeded') ? (
+                            <>
+                              <strong>Rate Limit Reached:</strong> {error.message.replace('Rate limit exceeded: ', '')}
+                            </>
+                          ) : (
+                            <>Error: {error.message}</>
+                          )}
                         </div>
                       </div>
                     )}
@@ -325,9 +339,23 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
                       </div>
                     )}
                     {error && (
-                      <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-950">
-                        <div className="text-sm text-red-700 dark:text-red-300">
-                          Error: {error.message}
+                      <div className={`mb-4 rounded-md border p-3 ${
+                        error.message.includes('Rate limit exceeded') 
+                          ? 'border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950'
+                          : 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950'
+                      }`}>
+                        <div className={`text-sm ${
+                          error.message.includes('Rate limit exceeded')
+                            ? 'text-yellow-700 dark:text-yellow-300'
+                            : 'text-red-700 dark:text-red-300'
+                        }`}>
+                          {error.message.includes('Rate limit exceeded') ? (
+                            <>
+                              <strong>Rate Limit Reached:</strong> {error.message.replace('Rate limit exceeded: ', '')}
+                            </>
+                          ) : (
+                            <>Error: {error.message}</>
+                          )}
                         </div>
                       </div>
                     )}

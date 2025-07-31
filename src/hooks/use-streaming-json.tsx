@@ -74,7 +74,24 @@ export function useStreamingJson({
         })
 
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
+          // Handle rate limiting specifically
+          if (response.status === 429) {
+            const errorText = await response.text()
+            throw new Error(`Rate limit exceeded: ${errorText}`)
+          }
+          
+          // Handle other HTTP errors
+          let errorMessage = `HTTP error! status: ${response.status}`
+          try {
+            const errorText = await response.text()
+            if (errorText) {
+              errorMessage = errorText
+            }
+          } catch {
+            // If we can't read the error text, use the default message
+          }
+          
+          throw new Error(errorMessage)
         }
 
         const reader = response.body?.getReader()

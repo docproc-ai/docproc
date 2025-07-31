@@ -4,10 +4,20 @@ import {
   updateDocumentType,
   deleteDocumentType,
 } from '@/lib/actions/document-type'
+import { checkApiAuth } from '@/lib/api-auth'
 
 // GET a single document type by ID
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    // Check if user has permission to list document types (or has valid API key)
+    const authCheck = await checkApiAuth({
+      documentType: ['list']
+    });
+
+    if (!authCheck.success) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
     const { id } = await params
     const docType = await getDocumentType(id)
 
@@ -25,6 +35,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 // PUT (update) a document type by ID
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    // Check if user has permission to update document types (or has valid API key)
+    const authCheck = await checkApiAuth({
+      documentType: ['update']
+    });
+
+    if (!authCheck.success) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
     const { id } = await params
     const body = await request.json()
 
@@ -58,12 +77,21 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
 // DELETE a document type and all its associated documents/files
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
-  if (!id) {
-    return NextResponse.json({ error: 'Document Type ID is required' }, { status: 400 })
-  }
-
   try {
+    // Check if user has permission to delete document types (or has valid API key)
+    const authCheck = await checkApiAuth({
+      documentType: ['delete']
+    });
+
+    if (!authCheck.success) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
+    const { id } = await params
+    if (!id) {
+      return NextResponse.json({ error: 'Document Type ID is required' }, { status: 400 })
+    }
+
     await deleteDocumentType(id)
 
     return NextResponse.json(
@@ -71,7 +99,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       { status: 200 },
     )
   } catch (error: any) {
-    console.error(`Failed to delete document type ${id}:`, error)
+    console.error(`Failed to delete document type:`, error)
 
     if (error.message === 'Admin access required') {
       return NextResponse.json({ error: error.message }, { status: 403 })
