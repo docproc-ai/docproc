@@ -1,8 +1,84 @@
 # DocProc
 
-A human-in-the-loop document extraction web platform that uses AI to extract structured data from documents based on custom JSON schemas, with manual review and approval workflows.
+A human-in-the-loop document extraction platform that uses AI vision models to extract structured data from **any document type** - no training required, just define what you want extracted.
 
-![Document Processing GIF](docs/media/gif/document-processing.gif)
+<img src="docs/media/gif/document-processing.gif" alt="Document Processing GIF" width="100%">
+
+## 🤖 Universal AI Vision Extraction
+
+- **Any Document Type**: Process invoices, contracts, forms, receipts, medical records, legal documents, and more
+- **No Training Required**: Works out-of-the-box with any document format - no document-specific training needed
+- **Vision-Based Understanding**: AI reads documents like humans do, understanding layout, context, and visual cues
+- **Multi-Format Support**: PDFs, images, scanned documents, handwritten forms, and complex layouts
+
+## 🔍 Why AI Vision Models?
+
+Traditional document processing requires:
+
+- ❌ Document-specific templates and training
+- ❌ Rigid layouts and formats
+- ❌ Complex OCR preprocessing pipelines
+- ❌ Separate handling for different document types
+
+**DocProc's AI Vision approach:**
+
+- ✅ Works with any document immediately
+- ✅ Understands context, not just text extraction
+- ✅ Handles complex layouts, tables, and visual elements
+- ✅ One system for all your document types
+
+## 📋 Works With Any Document Type
+
+**Financial Documents**: Invoices, receipts, bank statements, tax forms
+**Legal Documents**: Contracts, agreements, court filings, compliance forms  
+**Medical Records**: Patient forms, lab results, prescriptions, insurance claims
+**Business Forms**: Applications, surveys, HR documents, compliance checklists
+**Academic Documents**: Transcripts, certificates, research papers, applications
+**Government Forms**: Permits, licenses, regulatory filings, applications
+**And many more** - if you can see it, DocProc can extract from it!
+
+_Simply define what data you want extracted (using our visual schema builder), then upload any document type - no document-specific training or templates required!_
+
+## 📖 Application Usage - Extract From Any Document in Minutes
+
+### 1. Define Document Types & Schemas
+
+![Schema Builder](docs/media/img/schmea-builder.png)
+
+- Navigate to **Document Types** to create extraction schemas for your document types
+- Use the **visual Schema Builder** to define what data fields should be extracted (no technical knowledge required)
+- Alternative options: build schemas without the visual editor, or ask AI to create schemas for you
+- Configure field types, validation rules, and structure for your specific use case
+- Set up webhooks for external integrations (optional)
+
+### 2. Human-in-the-Loop Extraction Workflow
+
+![Document Processing - Data View](docs/media/img/document-processing-data.png)
+_AI extracts structured data that humans can review in both form and JSON views_
+
+![Document Processing - Form View](docs/media/img/document-processing-form.png)
+_Intuitive form interface for reviewing and editing extracted data_
+
+- **Upload**: Select a document type and upload documents via drag-and-drop
+- **AI Extract**: Use the **Process** button to let AI extract data based on your schema
+- **Human Review**: Review AI-extracted data in the form interface or JSON editor
+- **Correct & Validate**: Edit any incorrect or missing data extracted by AI
+- **Approve**: Finalize the extraction by approving the reviewed data
+- **Export**: Use approved data for downstream processes via API or webhooks
+
+### 3. Schema Building
+
+- **String Fields**: Text inputs with optional patterns and validation
+- **Number Fields**: Numeric inputs with min/max constraints
+- **Boolean Fields**: Checkbox inputs
+- **Array Fields**: Dynamic lists of items
+- **Object Fields**: Nested object structures
+
+### 4. User Management
+
+- Access **Users** page (admin only) to manage user accounts
+- Create additional users with appropriate roles
+- Monitor user activity and permissions
 
 ## 🚀 Features
 
@@ -16,18 +92,19 @@ A human-in-the-loop document extraction web platform that uses AI to extract str
 
 ### 🔧 Schema Management
 
-- **Visual Schema Builder**: Drag-and-drop interface for creating document schemas
+- **Visual Schema Builder**: Drag-and-drop interface for creating document schemas (no technical knowledge required)
+- **Multiple Creation Methods**: Use the visual builder, write schemas manually, or ask AI to generate them
 - **Field Types**: Support for strings, numbers, booleans, arrays, and objects
 - **Validation**: Built-in validation with Zod schemas
 - **Versioning**: Schema snapshots for document consistency
 
-## 🚀 Quick Start
+## 🚀 Deployment Quick Start
 
 ### Prerequisites
 
 - Docker (with compose plugin)
 
-### Download & Setup
+### Technical Setup
 
 1. **Download the env file**
 
@@ -64,38 +141,6 @@ A human-in-the-loop document extraction web platform that uses AI to extract str
 2. **Access the application**
    - Open [http://localhost:3000](http://localhost:3000)
    - Login with your configured admin credentials
-
-## 📖 Usage Guide
-
-### 1. Define Document Types & Schemas
-
-- Navigate to **Document Types** to create extraction schemas for your document types
-- Use the **Schema Builder** to define what data fields should be extracted
-- Configure field types, validation rules, and structure for your specific use case
-- Set up webhooks for external integrations (optional)
-
-### 2. Human-in-the-Loop Extraction Workflow
-
-- **Upload**: Select a document type and upload documents via drag-and-drop
-- **AI Extract**: Use the **Process** button to let AI extract data based on your schema
-- **Human Review**: Review AI-extracted data in the form interface or JSON editor
-- **Correct & Validate**: Edit any incorrect or missing data extracted by AI
-- **Approve**: Finalize the extraction by approving the reviewed data
-- **Export**: Use approved data for downstream processes via API or webhooks
-
-### 3. Schema Building
-
-- **String Fields**: Text inputs with optional patterns and validation
-- **Number Fields**: Numeric inputs with min/max constraints
-- **Boolean Fields**: Checkbox inputs
-- **Array Fields**: Dynamic lists of items
-- **Object Fields**: Nested object structures
-
-### 4. User Management
-
-- Access **Users** page (admin only) to manage user accounts
-- Create additional users with appropriate roles
-- Monitor user activity and permissions
 
 ## 🔧 API Reference
 
