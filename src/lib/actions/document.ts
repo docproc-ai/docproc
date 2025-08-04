@@ -222,12 +222,13 @@ export async function updateDocument(id: string, formData: FormData) {
     if (status && status !== currentDoc.status && docType) {
       let webhookEvent: DocumentWebhookEventName | null = null
 
-      if (currentDoc.status === 'pending' && status === 'processed') {
-        webhookEvent = 'document.processed'
-      } else if (currentDoc.status === 'processed' && status === 'approved') {
-        webhookEvent = 'document.approved'
-      } else if (currentDoc.status === 'approved' && status === 'processed') {
+      // Check for unapproval first (leaving approved status)
+      if (currentDoc.status === 'approved' && (status === 'pending' || status === 'processed')) {
         webhookEvent = 'document.unapproved'
+      } else if (status === 'processed') {
+        webhookEvent = 'document.processed'
+      } else if (status === 'approved') {
+        webhookEvent = 'document.approved'
       }
 
       if (webhookEvent) {
