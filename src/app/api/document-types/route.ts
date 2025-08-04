@@ -51,8 +51,16 @@ export async function POST(request: Request) {
     const formData = new FormData()
     formData.append('name', body.name)
     formData.append('schema', JSON.stringify(body.schema))
-    formData.append('webhookUrl', body.webhookUrl || '')
-    formData.append('webhookMethod', body.webhookMethod || 'POST')
+    
+    // Handle new webhook config format
+    if (body.webhookConfig) {
+      formData.append('webhookConfig', JSON.stringify(body.webhookConfig))
+    }
+    // Legacy support for old webhook fields
+    else if (body.webhookUrl) {
+      formData.append('webhookUrl', body.webhookUrl)
+      formData.append('webhookMethod', body.webhookMethod || 'POST')
+    }
 
     const result = await createDocumentType(formData)
 

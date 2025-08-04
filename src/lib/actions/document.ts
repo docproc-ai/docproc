@@ -4,6 +4,7 @@ import { db } from '@/db'
 import { document, documentType } from '@/db/schema'
 import { checkDocumentPermissions } from '@/lib/auth-utils'
 import { getStorageDir } from '@/lib/storage'
+import { decryptWebhookConfig, type DocumentWebhookConfig, type DocumentWebhookEventName } from '@/lib/webhook-encryption'
 import { randomUUID } from 'crypto'
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm'
 import { desc, eq } from 'drizzle-orm'
@@ -14,41 +15,46 @@ import { join } from 'path'
 export type Document = InferSelectModel<typeof document>
 export type NewDocument = InferInsertModel<typeof document>
 
-async function triggerWebhook(documentType: any, document: Document) {
-  if (!documentType.webhookUrl) return
+async function triggerWebhook(documentType: any, document: Document, event: DocumentWebhookEventName) {
+  if (!documentType.webhookConfig) return
 
-  const method = documentType.webhookMethod || 'POST'
+  const webhookConfig = decryptWebhookConfig(documentType.webhookConfig as DocumentWebhookConfig)
+  const eventConfig = webhookConfig.events?.[event]
+
+  if (!eventConfig || !eventConfig.enabled || !eventConfig.url) return
+
   const payload = {
-    event: 'document.approved',
+    event,
     documentType: {
       id: documentType.id,
       name: documentType.name,
     },
-    document: {
-      id: document.id,
-      filename: document.filename,
-      status: document.status,
-      extractedData: document.extractedData,
-      createdAt: document.createdAt,
-      updatedAt: document.updatedAt,
-    },
+    document,
     timestamp: new Date().toISOString(),
   }
 
-  const response = await fetch(documentType.webhookUrl, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      'User-Agent': 'Docproc/1.0',
-    },
+  // Build headers
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'User-Agent': 'Docproc/1.0',
+  }
+
+  // Add custom headers
+  if (eventConfig.headers) {
+    for (const header of eventConfig.headers) {
+      headers[header.name] = header.value
+    }
+  }
+
+  const response = await fetch(eventConfig.url, {
+    method: eventConfig.method || 'POST',
+    headers,
     body: JSON.stringify(payload),
   })
 
   if (!response.ok) {
     throw new Error(`Webhook failed with status ${response.status}: ${response.statusText}`)
   }
-
-  console.log(`Webhook triggered successfully for document ${document.id}`)
 }
 
 export async function getDocuments(documentTypeId: string): Promise<Document[]> {
@@ -125,6 +131,22 @@ export async function createDocument(formData: FormData) {
       })
       .returning()
 
+    // Get document type for webhook trigger
+    const [docType] = await db
+      .select()
+      .from(documentType)
+      .where(eq(documentType.id, documentTypeId))
+
+    // Trigger uploaded webhook
+    if (docType) {
+      try {
+        await triggerWebhook(docType, result, 'document.uploaded')
+      } catch (webhookError) {
+        console.error('Webhook failed:', webhookError)
+        // Don't fail the creation if webhook fails
+      }
+    }
+
     revalidatePath(`/process/${documentTypeId}`)
     return result
   } catch (error) {
@@ -164,6 +186,12 @@ export async function updateDocument(id: string, formData: FormData) {
       }
     }
 
+    // Get current document to check previous status
+    const [currentDoc] = await db.select().from(document).where(eq(document.id, id))
+    if (!currentDoc) {
+      throw new Error('Document not found')
+    }
+
     const updateData: any = {
       extractedData,
       schemaSnapshot,
@@ -190,13 +218,25 @@ export async function updateDocument(id: string, formData: FormData) {
       .from(documentType)
       .where(eq(documentType.id, result.documentTypeId))
 
-    // Trigger webhook if document is approved and webhook is configured
-    if (status === 'approved' && docType?.webhookUrl) {
-      try {
-        await triggerWebhook(docType, result)
-      } catch (webhookError) {
-        console.error('Webhook failed:', webhookError)
-        // Don't fail the update if webhook fails
+    // Trigger appropriate webhook based on status change
+    if (status && status !== currentDoc.status && docType) {
+      let webhookEvent: DocumentWebhookEventName | null = null
+
+      if (currentDoc.status === 'pending' && status === 'processed') {
+        webhookEvent = 'document.processed'
+      } else if (currentDoc.status === 'processed' && status === 'approved') {
+        webhookEvent = 'document.approved'
+      } else if (currentDoc.status === 'approved' && status === 'processed') {
+        webhookEvent = 'document.unapproved'
+      }
+
+      if (webhookEvent) {
+        try {
+          await triggerWebhook(docType, result, webhookEvent)
+        } catch (webhookError) {
+          console.error('Webhook failed:', webhookError)
+          // Don't fail the update if webhook fails
+        }
       }
     }
 

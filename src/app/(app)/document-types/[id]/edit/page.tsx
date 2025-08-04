@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/select'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { SchemaBuilder, type JsonSchema } from '@/components/schema-builder'
+import { WebhookConfigComponent } from '@/components/webhook-config'
 import { toast } from 'sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { SchemaEditorTab } from '@/components/editor-tabs'
@@ -27,6 +28,7 @@ import { UserMenu } from '@/components/user-menu'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DeleteDocumentTypeDialog } from '@/components/delete-document-type-dialog'
 import { ANTHROPIC_MODELS } from '@/lib/models/anthropic'
+import { type WebhookConfig } from '@/lib/webhook-encryption'
 
 export default function EditDocumentTypePage() {
   const router = useRouter()
@@ -35,8 +37,7 @@ export default function EditDocumentTypePage() {
   const { data: session } = authClient.useSession()
 
   const [name, setName] = useState('')
-  const [webhookUrl, setWebhookUrl] = useState('')
-  const [webhookMethod, setWebhookMethod] = useState('POST')
+  const [webhookConfig, setWebhookConfig] = useState<WebhookConfig | null>(null)
   const [modelName, setModelName] = useState('')
   const [schemaText, setSchemaText] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -69,8 +70,8 @@ export default function EditDocumentTypePage() {
           throw new Error('Document type not found.')
         }
         setName(data.name)
-        setWebhookUrl(data.webhookUrl || '')
-        setWebhookMethod(data.webhookMethod || 'POST')
+        // Webhook config is already decrypted by the server action
+        setWebhookConfig(data.webhookConfig as WebhookConfig | null)
         setModelName(data.modelName || '__none__')
         setSchemaText(JSON.stringify(data.schema, null, 2))
       } catch (error: any) {
@@ -105,8 +106,9 @@ export default function EditDocumentTypePage() {
       const formData = new FormData()
       formData.append('name', name)
       formData.append('schema', JSON.stringify(schema))
-      formData.append('webhookUrl', webhookUrl)
-      formData.append('webhookMethod', webhookMethod)
+      if (webhookConfig) {
+        formData.append('webhookConfig', JSON.stringify(webhookConfig))
+      }
       formData.append('modelName', modelName === '__none__' ? '' : modelName)
 
       const result = await updateDocumentType(id, formData)
@@ -189,8 +191,7 @@ export default function EditDocumentTypePage() {
               <CardHeader>
                 <CardTitle>General Information</CardTitle>
                 <CardDescription>
-                  Give your document type a name and configure an optional webhook for when
-                  documents are approved.
+                  Give your document type a name and select an AI model.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -219,30 +220,18 @@ export default function EditDocumentTypePage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex flex-row gap-4">
-                  <div className="flex-1 space-y-2">
-                    <Label htmlFor="webhookUrl">Webhook URL (Optional)</Label>
-                    <Input
-                      id="webhookUrl"
-                      type="url"
-                      value={webhookUrl}
-                      onChange={(e) => setWebhookUrl(e.target.value)}
-                      placeholder="https://api.example.com/invoices"
-                    />
-                  </div>
-                  <div className="w-32 space-y-2">
-                    <Label htmlFor="webhookMethod">Method</Label>
-                    <Select value={webhookMethod} onValueChange={setWebhookMethod}>
-                      <SelectTrigger className="w-full" id="webhookMethod">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="POST">POST</SelectItem>
-                        <SelectItem value="PUT">PUT</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Webhook Configuration</CardTitle>
+                <CardDescription>
+                  Configure webhooks to be notified when documents reach different stages.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <WebhookConfigComponent config={webhookConfig} onChange={setWebhookConfig} />
               </CardContent>
             </Card>
 
