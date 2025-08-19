@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { db } from '@/db'
 import { document } from '@/db/schema'
 import { eq } from 'drizzle-orm'
-import { readFile } from 'fs/promises'
+import { readFile, stat } from 'fs/promises'
 import { join } from 'path'
 import { getStorageDir } from '@/lib/storage'
 import { checkApiAuth } from '@/lib/api-auth'
@@ -36,9 +36,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     }
 
     let buffer: Buffer
+    let fileStats: any
     try {
       const filePath = join(getStorageDir(), doc.storagePath)
       buffer = await readFile(filePath)
+      fileStats = await stat(filePath)
     } catch (error) {
       console.error(`Failed to read file from storage: ${doc.storagePath}`, error)
       return NextResponse.json({ error: 'Document file not found on disk' }, { status: 404 })
@@ -47,11 +49,25 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     // Use stored MIME type or determine from filename
     const contentType = getContentType(doc.filename)
 
-    return new NextResponse(buffer, {
+    // Use file modification time for ETag and cache control
+    const lastModified = fileStats.mtime.toUTCString()
+    const etag = `"${fileStats.size}-${fileStats.mtime.getTime()}"`
+    
+    // Check if client has current version (conditional request)
+    const ifNoneMatch = request.headers.get('if-none-match')
+    const ifModifiedSince = request.headers.get('if-modified-since')
+    
+    if (ifNoneMatch === etag || ifModifiedSince === lastModified) {
+      return new NextResponse(null, { status: 304 }) // Not Modified
+    }
+
+    return new NextResponse(buffer as any, {
       headers: {
         'Content-Type': contentType,
         'Content-Disposition': `inline; filename="${doc.filename}"`,
-        'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
+        'Last-Modified': lastModified,
+        'ETag': etag,
+        'Cache-Control': 'public, max-age=3600, must-revalidate', // Normal caching with revalidation
       },
     })
   } catch (error) {

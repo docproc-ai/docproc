@@ -2,7 +2,7 @@
 
 import React, { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { updateDocument, deleteDocument } from '@/lib/actions/document'
+import { updateDocument, deleteDocument, rotateDocument } from '@/lib/actions/document'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import { DocumentQueue } from '@/components/document-queue'
 import { useStreamingJson } from '@/hooks/use-streaming-json'
@@ -69,7 +69,7 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
       if (finalObject && selectedDocument) {
         // Update the form data with the final object
         setFormData(finalObject)
-        
+
         // Update the document in state
         const updatedDoc = {
           ...selectedDocument,
@@ -101,8 +101,8 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
     setSelectedDocument(doc)
     setFormData(doc?.extractedData || {})
     if (doc) {
-      // Create a URL with the document type ID as a query parameter for the file endpoint
-      const fileUrl = `/api/documents/${doc.id}/file?documentTypeId=${documentType.id}`
+      // Always cache bust on initial load to ensure we get current rotated state
+      const fileUrl = `/api/documents/${doc.id}/file?t=${Date.now()}`
       setViewerFile({
         name: doc.filename,
         url: fileUrl,
@@ -130,8 +130,8 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
       documentTypeId: documentType.id,
       schema: JSON.stringify(selectedDocument.schemaSnapshot || documentType.schema),
       // Add override model if admin has selected one that's different from document type default
-      ...(isAdmin && overrideModel && overrideModel !== (documentType.modelName || DEFAULT_MODEL) 
-        ? { model: overrideModel } 
+      ...(isAdmin && overrideModel && overrideModel !== (documentType.modelName || DEFAULT_MODEL)
+        ? { model: overrideModel }
         : {}),
     }
 
@@ -301,19 +301,24 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
                       </div>
                     )}
                     {error && (
-                      <div className={`mb-4 rounded-md border p-3 ${
-                        error.message.includes('Rate limit exceeded') 
-                          ? 'border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950'
-                          : 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950'
-                      }`}>
-                        <div className={`text-sm ${
+                      <div
+                        className={`mb-4 rounded-md border p-3 ${
                           error.message.includes('Rate limit exceeded')
-                            ? 'text-yellow-700 dark:text-yellow-300'
-                            : 'text-red-700 dark:text-red-300'
-                        }`}>
+                            ? 'border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950'
+                            : 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950'
+                        }`}
+                      >
+                        <div
+                          className={`text-sm ${
+                            error.message.includes('Rate limit exceeded')
+                              ? 'text-yellow-700 dark:text-yellow-300'
+                              : 'text-red-700 dark:text-red-300'
+                          }`}
+                        >
                           {error.message.includes('Rate limit exceeded') ? (
                             <>
-                              <strong>Rate Limit Reached:</strong> {error.message.replace('Rate limit exceeded: ', '')}
+                              <strong>Rate Limit Reached:</strong>{' '}
+                              {error.message.replace('Rate limit exceeded: ', '')}
                             </>
                           ) : (
                             <>Error: {error.message}</>
@@ -339,19 +344,24 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
                       </div>
                     )}
                     {error && (
-                      <div className={`mb-4 rounded-md border p-3 ${
-                        error.message.includes('Rate limit exceeded') 
-                          ? 'border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950'
-                          : 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950'
-                      }`}>
-                        <div className={`text-sm ${
+                      <div
+                        className={`mb-4 rounded-md border p-3 ${
                           error.message.includes('Rate limit exceeded')
-                            ? 'text-yellow-700 dark:text-yellow-300'
-                            : 'text-red-700 dark:text-red-300'
-                        }`}>
+                            ? 'border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950'
+                            : 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950'
+                        }`}
+                      >
+                        <div
+                          className={`text-sm ${
+                            error.message.includes('Rate limit exceeded')
+                              ? 'text-yellow-700 dark:text-yellow-300'
+                              : 'text-red-700 dark:text-red-300'
+                          }`}
+                        >
                           {error.message.includes('Rate limit exceeded') ? (
                             <>
-                              <strong>Rate Limit Reached:</strong> {error.message.replace('Rate limit exceeded: ', '')}
+                              <strong>Rate Limit Reached:</strong>{' '}
+                              {error.message.replace('Rate limit exceeded: ', '')}
                             </>
                           ) : (
                             <>Error: {error.message}</>
@@ -375,7 +385,31 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
         </ResizablePanel>
         <ResizableHandle />
         <ResizablePanel defaultSize={36} minSize={25}>
-          <DocumentViewer file={viewerFile} />
+          <DocumentViewer
+            file={viewerFile}
+            documentId={selectedDocument?.id}
+            onRotationChange={async (degrees: number) => {
+              if (!selectedDocument) return
+
+              try {
+                // Physically rotate the file
+                await rotateDocument(selectedDocument.id, degrees)
+
+                // Simple cache busting with timestamp
+                const fileUrl = `/api/documents/${selectedDocument.id}/file?t=${Date.now()}`
+                setViewerFile({
+                  name: selectedDocument.filename,
+                  url: fileUrl,
+                  type: selectedDocument.filename.endsWith('.pdf')
+                    ? 'application/pdf'
+                    : 'image/png',
+                })
+              } catch (error) {
+                toast.error('Failed to rotate document')
+                console.error('Rotation error:', error)
+              }
+            }}
+          />
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>
