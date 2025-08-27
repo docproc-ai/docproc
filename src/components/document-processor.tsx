@@ -14,7 +14,8 @@ import { toast } from 'sonner'
 import { Bot, Loader2, CheckCircle, ArrowLeft, Undo2, Square } from 'lucide-react'
 import { Button } from './ui/button'
 import { ThemeToggle } from './theme-toggle'
-import { ANTHROPIC_MODELS, DEFAULT_MODEL } from '@/lib/models/anthropic'
+import { getAllModels, getAvailableProviders } from '@/lib/providers'
+import { DEFAULT_MODEL } from '@/lib/providers/anthropic'
 import { authClient } from '@/lib/auth-client'
 import {
   Select,
@@ -23,6 +24,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Combobox,
+  ComboboxTrigger,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxList,
+  ComboboxEmpty,
+  ComboboxGroup,
+  ComboboxItem,
+  ComboboxCreateNew,
+} from '@/components/ui/shadcn-io/combobox'
 import dynamic from 'next/dynamic'
 
 const DocumentViewer = dynamic(() => import('@/components/document-viewer'), {
@@ -36,6 +48,7 @@ interface DocumentProcessorProps {
     id: string
     name: string
     schema: any
+    providerName?: string | null
     modelName?: string | null
   }
   initialDocuments?: Document[]
@@ -52,8 +65,11 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
   const [activeTab, setActiveTab] = useState('form')
   const [isPending, startTransition] = useTransition()
   const [overrideModel, setOverrideModel] = useState<string>(
-    documentType.modelName || DEFAULT_MODEL,
+    documentType.modelName || '',
   )
+  
+  // Show all models from all providers in one dropdown for admin overrides
+  const allModels = getAllModels()
 
   // Check if user is admin
   const isAdmin = session?.user?.role === 'admin'
@@ -210,19 +226,45 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
         <div className="ml-auto flex items-center gap-2">
           {/* Model Override - Admin only */}
           {isAdmin && (
-            <Select value={overrideModel} onValueChange={setOverrideModel}>
-              <SelectTrigger id="model-override" className="">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ANTHROPIC_MODELS.map((model) => (
-                  <SelectItem key={model} value={model}>
-                    {model}
-                    {model === (documentType.modelName || DEFAULT_MODEL) ? ' (default)' : ''}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Combobox
+              data={allModels.map(model => ({ 
+                label: `${model.id}${model.id === documentType.modelName ? ' (configured)' : ''}`, 
+                value: model.id 
+              }))}
+              type="model"
+              value={overrideModel}
+              onValueChange={setOverrideModel}
+            >
+              <ComboboxTrigger className="w-64 justify-start text-left">
+                <span className="truncate text-left">
+                  {overrideModel || 'Override model...'}
+                </span>
+              </ComboboxTrigger>
+              <ComboboxContent popoverOptions={{ className: "w-96" }}>
+                <ComboboxInput placeholder="Search or type model..." />
+                <ComboboxList>
+                  <ComboboxEmpty />
+                  <ComboboxGroup>
+                    {allModels.map((model) => (
+                      <ComboboxItem key={model.id} value={model.id}>
+                        <span className="truncate">
+                          {model.id}
+                          {model.id === documentType.modelName ? ' (configured)' : ''}
+                        </span>
+                      </ComboboxItem>
+                    ))}
+                  </ComboboxGroup>
+                  <ComboboxCreateNew onCreateNew={(value) => setOverrideModel(value)}>
+                    {(inputValue) => (
+                      <span className="flex items-center gap-2">
+                        <span className="text-xs">Use custom model:</span>
+                        <span className="font-mono text-sm truncate">{inputValue}</span>
+                      </span>
+                    )}
+                  </ComboboxCreateNew>
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
           )}
           {isLoading ? (
             <Button onClick={stop} variant="outline">

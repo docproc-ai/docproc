@@ -88,6 +88,7 @@ export async function createDocumentType(formData: FormData) {
     const name = formData.get('name') as string
     const schemaString = formData.get('schema') as string
     const webhookConfigString = formData.get('webhookConfig') as string
+    const providerName = formData.get('providerName') as string
     const modelName = formData.get('modelName') as string
     
     // Legacy support for old webhook fields
@@ -141,6 +142,7 @@ export async function createDocumentType(formData: FormData) {
         slug,
         schema,
         webhookConfig,
+        providerName: providerName || null,
         modelName: modelName || null,
       })
       .returning()
@@ -164,6 +166,7 @@ export async function updateDocumentType(id: string, formData: FormData) {
     const name = formData.get('name') as string
     const schemaString = formData.get('schema') as string
     const webhookConfigString = formData.get('webhookConfig') as string
+    const providerName = formData.get('providerName') as string
     const modelName = formData.get('modelName') as string
     
     // Legacy support for old webhook fields
@@ -219,6 +222,7 @@ export async function updateDocumentType(id: string, formData: FormData) {
         name,
         schema,
         webhookConfig,
+        providerName: providerName || null,
         modelName: modelName || null,
         updatedAt: new Date(),
       })

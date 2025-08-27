@@ -2,33 +2,23 @@
 
 import { generateObject, streamObject, jsonSchema, ModelMessage } from 'ai'
 import { getDocument, updateDocument } from './document'
-import { anthropic } from '@ai-sdk/anthropic'
 import { getDocumentType } from './document-type'
-import { DEFAULT_MODEL } from '@/lib/models/anthropic'
+import { getModelForProcessing } from '@/lib/providers'
 import { checkDocumentPermissions } from '../auth-utils'
 import { join } from 'node:path'
 import { getStorageDir } from '../storage'
 import { readFile } from 'node:fs/promises'
 
 /**
- * Get the model to use for processing a document type
+ * Get the model and provider to use for processing a document type
  * Priority: overrideModel > documentType.modelName > system default
  */
-async function getModelForProcessing(
+async function getModelAndProviderForProcessing(
   documentTypeId: string,
   overrideModel?: string,
-): Promise<string> {
-  if (overrideModel) {
-    return overrideModel
-  }
-
+) {
   const docType = await getDocumentType(documentTypeId)
-  if (docType?.modelName) {
-    return docType.modelName
-  }
-
-  // System default
-  return DEFAULT_MODEL
+  return getModelForProcessing(docType?.providerName, docType?.modelName, overrideModel)
 }
 
 function getMimeType(extension: string): string {
@@ -47,21 +37,36 @@ function getMimeType(extension: string): string {
   return mimeTypes[extension] || 'application/octet-stream'
 }
 
-const SYSTEM_PROMPT = `
+function getSystemPrompt(): string {
+  const currentDate = new Date()
+  const isoDate = currentDate.toISOString().split('T')[0]
+  const readableDate = currentDate.toLocaleDateString('en-US', { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  })
+  
+  return `
 You are an expert document processor. Your task is to analyze the provided document (which could be a PDF or an image) and extract information into a structured JSON object based on the user-provided schema.
+
+**CURRENT DATE**: ${isoDate} (${readableDate})
 
 **CRITICAL INSTRUCTIONS:**
 1.  **Analyze the ENTIRE document provided.**
 2.  **Date Formatting**: For any date field, you MUST format it as \`YYYY-MM-DD\`.
 3.  **Do NOT Guess**: If you cannot find information for a field, OMIT it from your response. Do not hallucinate data. Even if a field is required in the schema, if the information is not present in the document, it should not be included.
 4.  **Follow Schema**: Adhere strictly to the JSON schema for the output format. Pay close attention to field names, types, and nested structures. The exception is that you can omit fields that are not present in the document or that you are unsure of.
+5.  **Date Context**: Use the current date above as reference when interpreting relative dates or incomplete dates in documents (e.g., "last month", "Q1", etc.).
 `.trim()
+}
 
 interface PreprocessedDocumentData {
   documentId: string
   documentTypeId: string
   schema: any
-  modelToUse: string
+  provider: any
+  modelName: string
   doc: any
   fileBuffer: Buffer
   messages: ModelMessage[]
@@ -97,8 +102,8 @@ async function preprocessDocument(formData: FormData): Promise<PreprocessedDocum
     throw new Error('Invalid schema JSON')
   }
 
-  // Get the model to use (document type model or override)
-  const modelToUse = await getModelForProcessing(documentTypeId, overrideModel)
+  // Get the model and provider to use
+  const { provider, modelName } = await getModelAndProviderForProcessing(documentTypeId, overrideModel)
 
   // Get the document
   const doc = await getDocument(documentId)
@@ -159,7 +164,8 @@ async function preprocessDocument(formData: FormData): Promise<PreprocessedDocum
     documentId,
     documentTypeId,
     schema,
-    modelToUse,
+    provider,
+    modelName,
     doc,
     fileBuffer,
     messages,
@@ -169,13 +175,13 @@ async function preprocessDocument(formData: FormData): Promise<PreprocessedDocum
 
 export async function processDocument(formData: FormData) {
   try {
-    const { documentId, schema, modelToUse, messages, schemaForAI } =
+    const { documentId, schema, provider, modelName, messages, schemaForAI } =
       await preprocessDocument(formData)
 
     const { object } = await generateObject({
-      model: anthropic(modelToUse),
+      model: provider.getModel(modelName),
       schema: schemaForAI,
-      system: SYSTEM_PROMPT,
+      system: getSystemPrompt(),
       messages,
     })
 
@@ -196,13 +202,13 @@ export async function processDocument(formData: FormData) {
 
 export async function processDocumentStream(formData: FormData) {
   try {
-    const { documentId, schema, modelToUse, messages, schemaForAI } =
+    const { documentId, schema, provider, modelName, messages, schemaForAI } =
       await preprocessDocument(formData)
 
     const { partialObjectStream } = await streamObject({
-      model: anthropic(modelToUse),
+      model: provider.getModel(modelName),
       schema: schemaForAI,
-      system: SYSTEM_PROMPT,
+      system: getSystemPrompt(),
       messages,
     })
 

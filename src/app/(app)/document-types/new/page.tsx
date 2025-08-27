@@ -25,8 +25,19 @@ import { PageLoadingSkeleton, ButtonLoadingSkeleton } from '@/components/ui/load
 import { ThemeToggle } from '@/components/theme-toggle'
 import { UserMenu } from '@/components/user-menu'
 import { authClient } from '@/lib/auth-client'
-import { ANTHROPIC_MODELS } from '@/lib/models/anthropic'
-import type { WebhookConfig } from '@/lib/webhook-encryption'
+import { getAvailableProviders } from '@/lib/providers'
+import {
+  Combobox,
+  ComboboxTrigger,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxList,
+  ComboboxEmpty,
+  ComboboxGroup,
+  ComboboxItem,
+  ComboboxCreateNew,
+} from '@/components/ui/shadcn-io/combobox'
+import type { DocumentWebhookConfig as WebhookConfig } from '@/lib/webhook-encryption'
 const initialSchema: JsonSchema = {
   type: 'object',
   title: 'New Document',
@@ -50,9 +61,13 @@ export default function NewDocumentTypePage() {
   const { data: session } = authClient.useSession()
   const [name, setName] = useState('')
   const [webhookConfig, setWebhookConfig] = useState<WebhookConfig | null>(null)
+  const [providerName, setProviderName] = useState('')
   const [modelName, setModelName] = useState('')
   const [schemaText, setSchemaText] = useState(JSON.stringify(initialSchema, null, 2))
   const [isLoading, setIsLoading] = useState(false)
+
+  const availableProviders = getAvailableProviders()
+  const selectedProvider = availableProviders.find(p => p.name === providerName)
 
   // Redirect non-admin users
   useEffect(() => {
@@ -88,6 +103,11 @@ export default function NewDocumentTypePage() {
   }, [])
 
   const handleSubmit = async () => {
+    if (!providerName || !modelName) {
+      toast.error('Provider and model are required')
+      return
+    }
+    
     setIsLoading(true)
     try {
       const formData = new FormData()
@@ -96,7 +116,8 @@ export default function NewDocumentTypePage() {
       if (webhookConfig) {
         formData.append('webhookConfig', JSON.stringify(webhookConfig))
       }
-      formData.append('modelName', modelName === '__none__' ? '' : modelName)
+      formData.append('providerName', providerName)
+      formData.append('modelName', modelName)
 
       const result = await createDocumentType(formData)
 
@@ -152,20 +173,65 @@ export default function NewDocumentTypePage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="modelName">AI Model (Optional)</Label>
-                <Select value={modelName} onValueChange={setModelName}>
-                  <SelectTrigger id="modelName">
-                    <SelectValue placeholder="Select a model (uses system default if not specified)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">Use system default</SelectItem>
-                    {ANTHROPIC_MODELS.map((model) => (
-                      <SelectItem key={model} value={model}>
-                        {model}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>AI Provider and Model *</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="providerName" className="text-sm text-muted-foreground">Provider</Label>
+                    <Select value={providerName} onValueChange={(value) => {
+                      setProviderName(value)
+                      setModelName('') // Reset model when provider changes
+                    }}>
+                      <SelectTrigger id="providerName">
+                        <SelectValue placeholder="Select provider" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableProviders.map((provider) => (
+                          <SelectItem key={provider.name} value={provider.name}>
+                            {provider.displayName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {providerName && selectedProvider && (
+                    <div>
+                      <Label htmlFor="modelName" className="text-sm text-muted-foreground">Model</Label>
+                      <Combobox
+                        data={selectedProvider.models.map(model => ({ label: model, value: model }))}
+                        type="model"
+                        value={modelName}
+                        onValueChange={setModelName}
+                      >
+                        <ComboboxTrigger className="w-full justify-start text-left">
+                          <span className="truncate text-left">
+                            {modelName || 'Select or type model...'}
+                          </span>
+                        </ComboboxTrigger>
+                        <ComboboxContent popoverOptions={{ className: "w-96" }}>
+                          <ComboboxInput placeholder="Search or type model..." />
+                          <ComboboxList>
+                            <ComboboxEmpty />
+                            <ComboboxGroup>
+                              {selectedProvider.models.map((model) => (
+                                <ComboboxItem key={model} value={model}>
+                                  <span className="truncate">{model}</span>
+                                </ComboboxItem>
+                              ))}
+                            </ComboboxGroup>
+                            <ComboboxCreateNew onCreateNew={(value) => setModelName(value)}>
+                              {(inputValue) => (
+                                <span className="flex items-center gap-2">
+                                  <span className="text-xs">Use custom model:</span>
+                                  <span className="font-mono text-sm truncate">{inputValue}</span>
+                                </span>
+                              )}
+                            </ComboboxCreateNew>
+                          </ComboboxList>
+                        </ComboboxContent>
+                      </Combobox>
+                    </div>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
