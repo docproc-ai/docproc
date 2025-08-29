@@ -3,7 +3,7 @@
 import type React from 'react'
 import { useState, useRef, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
-import { UploadCloud, Loader2, Trash2 } from 'lucide-react'
+import { UploadCloud, Loader2, Trash2, Bot } from 'lucide-react'
 import {
   DocumentStatusIcon,
   PendingStatusIcon,
@@ -32,18 +32,26 @@ interface DocumentQueueProps {
   documentTypeId: string
   documents: Document[]
   selectedDocument: Document | null
+  processingDocuments?: Set<string>
+  currentlyProcessing?: string | null
+  processingQueue?: string[]
   onSelect: (doc: Document) => void
   onUploadSuccess: () => void
   onDelete: (docId: string) => void
+  onProcessAll: (docIds: string[]) => void
 }
 
 export function DocumentQueue({
   documentTypeId,
   documents,
   selectedDocument,
+  processingDocuments = new Set(),
+  currentlyProcessing,
+  processingQueue = [],
   onSelect,
   onUploadSuccess,
   onDelete,
+  onProcessAll,
 }: DocumentQueueProps) {
   const [isUploading, setIsUploading] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string[]>(['pending', 'processed'])
@@ -150,6 +158,15 @@ export function DocumentQueue({
           )}
           Upload
         </Button>
+        <Button
+          onClick={() => onProcessAll(filteredDocuments.map(d => d.id))}
+          className="w-full"
+          variant="outline"
+          disabled={filteredDocuments.length === 0}
+        >
+          <Bot className="h-4 w-4" />
+          Process All ({filteredDocuments.length})
+        </Button>
         <ToggleGroup
           type="multiple"
           value={statusFilter}
@@ -206,13 +223,27 @@ export function DocumentQueue({
                   onClick={() => onSelect(doc)}
                   className="flex flex-1 cursor-pointer items-center gap-3 overflow-hidden p-4"
                 >
-                  <DocumentStatusIcon status={doc.status} />
+                  {processingDocuments.has(doc.id) ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                  ) : (
+                    <DocumentStatusIcon status={doc.status} />
+                  )}
                   <div className="flex-1 overflow-hidden">
-                    <p className="truncate text-sm font-medium">{doc.filename}</p>
+                    <p className="flex items-center gap-2 text-sm font-medium">
+                      <span className="truncate">{doc.filename}</span>
+                    </p>
                     <p className="text-muted-foreground text-xs">
-                      {doc.createdAt
-                        ? formatDistanceToNow(new Date(doc.createdAt), { addSuffix: true })
-                        : 'Unknown'}
+                      {currentlyProcessing === doc.id ? (
+                        <span className="text-blue-600 font-medium">Processing now...</span>
+                      ) : processingQueue.includes(doc.id) ? (
+                        <span className="text-orange-600 font-medium">
+                          Queued ({processingQueue.indexOf(doc.id) + 1})
+                        </span>
+                      ) : doc.createdAt ? (
+                        formatDistanceToNow(new Date(doc.createdAt), { addSuffix: true })
+                      ) : (
+                        'Unknown'
+                      )}
                     </p>
                   </div>
                 </div>

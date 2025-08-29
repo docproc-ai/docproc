@@ -1,45 +1,22 @@
 'use client'
 
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { getDocumentType, updateDocumentType } from '@/lib/actions/document-type'
 import { authClient } from '@/lib/auth-client'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { SchemaBuilder, type JsonSchema } from '@/components/schema-builder'
-import { WebhookConfigComponent } from '@/components/webhook-config'
 import { toast } from 'sonner'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { SchemaEditorTab } from '@/components/editor-tabs'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { PageLoadingSkeleton } from '@/components/ui/loading-skeletons'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { UserMenu } from '@/components/user-menu'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DeleteDocumentTypeDialog } from '@/components/delete-document-type-dialog'
-import { getAvailableProviders } from '@/lib/providers'
-import {
-  Combobox,
-  ComboboxTrigger,
-  ComboboxContent,
-  ComboboxInput,
-  ComboboxList,
-  ComboboxEmpty,
-  ComboboxGroup,
-  ComboboxItem,
-  ComboboxCreateNew,
-} from '@/components/ui/shadcn-io/combobox'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { DocumentTypeForm } from '@/components/document-type-form'
 import { type DocumentWebhookConfig as WebhookConfig } from '@/lib/webhook-encryption'
+import { type JsonSchema } from '@/components/schema-builder'
 
 export default function EditDocumentTypePage() {
   const router = useRouter()
@@ -47,16 +24,23 @@ export default function EditDocumentTypePage() {
   const id = params.id as string
   const { data: session } = authClient.useSession()
 
-  const [name, setName] = useState('')
-  const [webhookConfig, setWebhookConfig] = useState<WebhookConfig | null>(null)
-  const [providerName, setProviderName] = useState('')
-  const [modelName, setModelName] = useState('')
-  const [schemaText, setSchemaText] = useState('')
+  const [initialData, setInitialData] = useState<{
+    name: string
+    webhookConfig: WebhookConfig | null
+    providerName: string
+    modelName: string
+    schema: JsonSchema
+  } | null>(null)
+  const [formData, setFormData] = useState<{
+    name: string
+    webhookConfig: WebhookConfig | null
+    providerName: string
+    modelName: string
+    schema: JsonSchema
+    isValid: boolean
+  } | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isFetching, setIsFetching] = useState(true)
-  
-  const availableProviders = getAvailableProviders()
-  const selectedProvider = availableProviders.find(p => p.name === providerName)
 
   // Redirect non-admin users
   useEffect(() => {
@@ -84,12 +68,13 @@ export default function EditDocumentTypePage() {
         if (!data) {
           throw new Error('Document type not found.')
         }
-        setName(data.name)
-        // Webhook config is already decrypted by the server action
-        setWebhookConfig(data.webhookConfig as WebhookConfig | null)
-        setProviderName(data.providerName || '')
-        setModelName(data.modelName || '')
-        setSchemaText(JSON.stringify(data.schema, null, 2))
+        setInitialData({
+          name: data.name,
+          webhookConfig: data.webhookConfig as WebhookConfig | null,
+          providerName: data.providerName || '',
+          modelName: data.modelName || '',
+          schema: data.schema as JsonSchema,
+        })
       } catch (error: any) {
         toast.error(`Error fetching data: ${error.message}`)
         router.push('/document-types')
@@ -100,44 +85,28 @@ export default function EditDocumentTypePage() {
     fetchDocumentType()
   }, [id, router])
 
-  const schema: JsonSchema = useMemo(() => {
-    try {
-      return JSON.parse(schemaText)
-    } catch (e) {
-      return { type: 'object', title: 'Invalid Schema', properties: {} }
-    }
-  }, [schemaText])
-
-  const handleSchemaTextChange = useCallback((text: string | undefined) => {
-    setSchemaText(text || '')
-  }, [])
-
-  const handleSchemaBuilderChange = useCallback((newSchema: JsonSchema) => {
-    setSchemaText(JSON.stringify(newSchema, null, 2))
-  }, [])
-
   const handleSubmit = async () => {
-    if (!providerName || !modelName) {
-      toast.error('Provider and model are required')
+    if (!formData || !formData.isValid) {
+      toast.error('Please fill in all required fields')
       return
     }
-    
+
     setIsLoading(true)
     try {
-      const formData = new FormData()
-      formData.append('name', name)
-      formData.append('schema', JSON.stringify(schema))
-      if (webhookConfig) {
-        formData.append('webhookConfig', JSON.stringify(webhookConfig))
+      const submitData = new FormData()
+      submitData.append('name', formData.name)
+      submitData.append('schema', JSON.stringify(formData.schema))
+      if (formData.webhookConfig) {
+        submitData.append('webhookConfig', JSON.stringify(formData.webhookConfig))
       }
-      formData.append('providerName', providerName)
-      formData.append('modelName', modelName)
+      submitData.append('providerName', formData.providerName)
+      submitData.append('modelName', formData.modelName)
 
-      const result = await updateDocumentType(id, formData)
+      const result = await updateDocumentType(id, submitData)
 
       if (result.success) {
-        toast.success(`Document type "${name}" has been updated.`)
-        router.push('/document-types')
+        toast.success(`Document type "${formData.name}" has been updated.`)
+        // Stay on the page after saving - don't redirect
       } else {
         toast.error('error' in result ? result.error : 'Failed to update document type')
       }
@@ -195,140 +164,24 @@ export default function EditDocumentTypePage() {
         </Button>
         <h1 className="text-xl font-semibold">Edit Document Type</h1>
         <div className="ml-auto flex items-center gap-2">
-          <DeleteDocumentTypeDialog documentTypeId={id} documentTypeName={name} />
-          <Button onClick={handleSubmit} disabled={isLoading || isFetching || !name}>
+          <DeleteDocumentTypeDialog
+            documentTypeId={id}
+            documentTypeName={formData?.name || initialData?.name || ''}
+          />
+          <Button onClick={handleSubmit} disabled={isLoading || isFetching || !formData?.isValid}>
             {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-            Save Changes
+            Save
           </Button>
           <ThemeToggle />
           <UserMenu />
         </div>
       </header>
-      <main className="flex-grow overflow-auto p-6">
-        {isFetching ? (
-          renderSkeleton()
-        ) : (
-          <div className="mx-auto max-w-4xl space-y-8">
-            <Card>
-              <CardHeader>
-                <CardTitle>General Information</CardTitle>
-                <CardDescription>
-                  Give your document type a name and select an AI model.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Name</Label>
-                  <Input
-                    id="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g., Invoices"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>AI Provider and Model *</Label>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="providerName" className="text-sm text-muted-foreground">Provider</Label>
-                      <Select value={providerName} onValueChange={(value) => {
-                        setProviderName(value)
-                        setModelName('') // Reset model when provider changes
-                      }}>
-                        <SelectTrigger id="providerName">
-                          <SelectValue placeholder="Select provider" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableProviders.map((provider) => (
-                            <SelectItem key={provider.name} value={provider.name}>
-                              {provider.displayName}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {providerName && selectedProvider && (
-                      <div>
-                        <Label htmlFor="modelName" className="text-sm text-muted-foreground">Model</Label>
-                        <Combobox
-                          data={selectedProvider.models.map(model => ({ label: model, value: model }))}
-                          type="model"
-                          value={modelName}
-                          onValueChange={setModelName}
-                        >
-                          <ComboboxTrigger className="w-full justify-start text-left">
-                            <span className="truncate text-left">
-                              {modelName || 'Select or type model...'}
-                            </span>
-                          </ComboboxTrigger>
-                          <ComboboxContent popoverOptions={{ className: "w-96" }}>
-                            <ComboboxInput placeholder="Search or type model..." />
-                            <ComboboxList>
-                              <ComboboxEmpty />
-                              <ComboboxGroup>
-                                {selectedProvider.models.map((model) => (
-                                  <ComboboxItem key={model} value={model}>
-                                    <span className="truncate">{model}</span>
-                                  </ComboboxItem>
-                                ))}
-                              </ComboboxGroup>
-                              <ComboboxCreateNew onCreateNew={(value) => setModelName(value)}>
-                                {(inputValue) => (
-                                  <span className="flex items-center gap-2">
-                                    <span className="text-xs">Use custom model:</span>
-                                    <span className="font-mono text-sm truncate">{inputValue}</span>
-                                  </span>
-                                )}
-                              </ComboboxCreateNew>
-                            </ComboboxList>
-                          </ComboboxContent>
-                        </Combobox>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Webhook Configuration</CardTitle>
-                <CardDescription>
-                  Configure webhooks to be notified when documents reach different stages.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <WebhookConfigComponent config={webhookConfig} onChange={setWebhookConfig} />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Schema Definition</CardTitle>
-                <CardDescription>
-                  Define the structure of the data you want to extract. Use the builder for a visual
-                  experience or edit the JSON directly.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Tabs defaultValue="builder" className="flex h-full flex-col">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="builder">Builder</TabsTrigger>
-                    <TabsTrigger value="schema">JSON</TabsTrigger>
-                  </TabsList>
-                  <div className="flex-grow overflow-auto pt-4">
-                    <TabsContent value="builder">
-                      <SchemaBuilder schema={schema} onChange={handleSchemaBuilderChange} />
-                    </TabsContent>
-                    <TabsContent value="schema" className="h-full">
-                      <SchemaEditorTab value={schemaText} onChange={handleSchemaTextChange} />
-                    </TabsContent>
-                  </div>
-                </Tabs>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+      <main className="flex-grow overflow-auto p-6 pb-96">
+        {isFetching
+          ? renderSkeleton()
+          : initialData && (
+              <DocumentTypeForm initialData={initialData} onFormDataChange={setFormData} />
+            )}
       </main>
     </div>
   )

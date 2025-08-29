@@ -166,6 +166,7 @@ export async function createDocument(formData: FormData) {
 }
 
 export async function updateDocument(id: string, formData: FormData) {
+  console.log('📥 updateDocument called for:', id)
   // Check document update permissions
   const permissionCheck = await checkDocumentPermissions(['update'])
   if (!permissionCheck.success) {
@@ -212,6 +213,7 @@ export async function updateDocument(id: string, formData: FormData) {
       updateData.status = status
     }
 
+    console.log('💾 Updating document in database:', { id, updateData })
     const [result] = await db
       .update(document)
       .set(updateData)
@@ -221,6 +223,7 @@ export async function updateDocument(id: string, formData: FormData) {
     if (!result) {
       throw new Error('Document not found')
     }
+    console.log('✅ Document updated successfully:', result)
 
     // Get document type for webhook and revalidation
     const [docType] = await db

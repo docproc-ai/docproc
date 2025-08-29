@@ -3,21 +3,19 @@ import { getDocumentType } from '@/lib/actions/document-type'
 import { checkDocumentPermissions } from '@/lib/auth-utils'
 import { getModelForProcessing } from '@/lib/providers'
 import { getStorageDir } from '@/lib/storage'
-import { streamText } from 'ai'
+import { streamText, generateText } from 'ai'
 import { NextRequest } from 'next/server'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { checkApiAuth } from '@/lib/api-auth'
 import { checkAIRateLimit } from '@/lib/ai-rate-limit'
+import { jsonrepair } from 'jsonrepair'
 
 /**
  * Get the model and provider to use for processing a document type
  * Priority: overrideModel > documentType.modelName > system default
  */
-async function getModelAndProviderForProcessing(
-  documentTypeId: string,
-  overrideModel?: string,
-) {
+async function getModelAndProviderForProcessing(documentTypeId: string, overrideModel?: string) {
   const docType = await getDocumentType(documentTypeId)
   return getModelForProcessing(docType?.providerName, docType?.modelName, overrideModel)
 }
@@ -41,13 +39,13 @@ function getMimeType(extension: string): string {
 function getSystemPrompt(): string {
   const currentDate = new Date()
   const isoDate = currentDate.toISOString().split('T')[0]
-  const readableDate = currentDate.toLocaleDateString('en-US', { 
-    weekday: 'long', 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
+  const readableDate = currentDate.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
   })
-  
+
   return `
 You are an expert document processor. Your task is to analyze the provided document (which could be a PDF or an image) and extract information into a structured JSON object based on the user-provided schema.
 
@@ -73,6 +71,10 @@ export async function POST(req: NextRequest) {
     if (!authCheck.success) {
       return new Response('Insufficient permissions', { status: 403 })
     }
+
+    // Check if streaming mode is requested
+    const url = new URL(req.url)
+    const isStreamMode = url.searchParams.get('stream') === 'true'
 
     const body = await req.json()
     const { documentId, documentTypeId, schema: schemaString, model: overrideModel } = body
@@ -113,7 +115,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Get the model and provider to use
-    const { provider, modelName } = await getModelAndProviderForProcessing(documentTypeId, validatedOverrideModel)
+    const { provider, modelName } = await getModelAndProviderForProcessing(
+      documentTypeId,
+      validatedOverrideModel,
+    )
 
     // Get the document
     const doc = await getDocument(documentId)
@@ -134,17 +139,18 @@ export async function POST(req: NextRequest) {
       | { type: 'text'; text: string }
       | { type: 'image'; image: Buffer }
       | { type: 'file'; data: Buffer; mediaType: string; filename?: string }
-    > = [
-      {
-        type: 'text',
-        text: `Please analyze the attached document and extract the data according to the provided schema.
+    > = []
+
+    // Include schema in the message for text generation
+    messageContent.push({
+      type: 'text',
+      text: `Please analyze the attached document and extract the data according to the provided schema.
 
 Schema to follow:
 ${JSON.stringify(schema, null, 2)}
 
 Remember: Output ONLY valid JSON that matches this schema. No explanatory text.`,
-      },
-    ]
+    })
 
     if (mimeType.startsWith('image/')) {
       messageContent.push({ type: 'image', image: fileBuffer })
@@ -165,15 +171,46 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text.`
       },
     ]
 
-    const result = streamText({
-      model: provider.getModel(modelName),
-      system: getSystemPrompt(),
-      messages,
-    })
+    if (isStreamMode) {
+      // Streaming mode for single document processing
+      console.log('🔄 Processing document in STREAMING mode:', documentId)
+      const result = streamText({
+        model: provider.getModel(modelName),
+        system: getSystemPrompt(),
+        messages,
+      })
 
-    return result.toTextStreamResponse()
+      return result.toTextStreamResponse()
+    } else {
+      // Non-streaming mode for batch processing
+      console.log('⚡ Processing document in NON-STREAMING mode:', documentId)
+
+      const { text } = await generateText({
+        model: provider.getModel(modelName),
+        system: getSystemPrompt(),
+        messages,
+      })
+
+      // Parse the JSON response using jsonrepair (same as streaming hook)
+      let extractedData
+      try {
+        const repairedJson = jsonrepair(text.trim())
+        extractedData = JSON.parse(repairedJson)
+        console.log('✅ Successfully parsed extracted data for document:', documentId)
+      } catch (parseError) {
+        console.error('❌ Failed to parse JSON response for document:', documentId, parseError)
+        console.error('Raw response text:', text)
+        return new Response('Failed to parse AI response as JSON', { status: 500 })
+      }
+
+      return Response.json({
+        success: true,
+        data: extractedData,
+        documentId,
+      })
+    }
   } catch (error) {
-    console.error('Failed to process document stream:', error)
+    console.error('Failed to process document:', error)
     return new Response('Internal server error', { status: 500 })
   }
 }
