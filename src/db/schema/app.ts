@@ -7,6 +7,7 @@ export const documentType = pgTable('document_type', {
   slug: text('slug').notNull().unique(),
   schema: json('schema').notNull(),
   webhookConfig: json('webhook_config'),
+  providerName: text('provider_name'),
   modelName: text('model_name'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at')

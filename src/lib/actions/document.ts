@@ -344,7 +344,6 @@ export async function rotateDocument(documentId: string, rotationDegrees: number
     // Revalidate any cached data
     revalidatePath(`/api/documents/${documentId}/file`)
 
-    console.log(`Successfully rotated document ${documentId} by ${rotationDegrees} degrees`)
     return { success: true }
   } catch (error) {
     console.error('Error rotating document:', error)
