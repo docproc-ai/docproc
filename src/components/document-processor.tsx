@@ -76,6 +76,9 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
   const [overrideModel, setOverrideModel] = useState<string>(documentType.modelName || '')
   const [processingDocuments, setProcessingDocuments] = useState<Set<string>>(new Set())
   const processingDocumentsRef = React.useRef<Set<string>>(new Set())
+  const [isBatchProcessing, setIsBatchProcessing] = useState(false)
+  const batchProcessingController = React.useRef<AbortController | null>(null)
+  const [batchQueue, setBatchQueue] = useState<string[]>([])
 
   // Show all models from all providers in one dropdown for admin overrides
   const allModels = getAllModels()
@@ -102,27 +105,21 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
       if (processingId && partialObject) {
         // Always cache the streaming data for this document
         processingDataCache.current.set(processingId, partialObject)
-        console.log('🔄 Cached streaming data for doc:', processingId, 'keys:', Object.keys(partialObject))
-        
+
         // Only update form data if we're viewing the currently processing document
         if (selectedDocument?.id === processingId) {
           setFormData(partialObject)
-          console.log('📝 Updated form UI for currently viewed doc:', processingId)
-        } else {
-          console.log('💾 Cached data for background processing doc:', processingId, '(viewing:', selectedDocument?.id, ')')
         }
       }
     },
     onFinish: (finalObject) => {
       const processingId = processingDocumentId.current
       if (finalObject && processingId) {
-        console.log('🎯 Processing completed for doc:', processingId, 'with data:', finalObject)
         handleProcessingCompletion(processingId, finalObject)
       }
     },
     onError: (error) => {
       const processingId = processingDocumentId.current
-      console.log('Processing error for doc:', processingId, error)
       toast.error(`Processing Error: ${error.message}`)
 
       if (processingId) {
@@ -144,23 +141,15 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
   // Function to process the next document in the queue
   const processNextInQueue = () => {
     if (!isProcessingComplete.current) {
-      console.log('⏸️  Cannot start next document - current processing not complete')
       return
     }
 
     setProcessingQueue((queue) => {
       if (queue.length === 0) {
-        console.log('✅ Processing queue is empty - all documents completed')
         return queue
       }
 
       const [nextDocId, ...remainingQueue] = queue
-      console.log(
-        '🚀 Starting next document in queue:',
-        nextDocId,
-        'remaining:',
-        remainingQueue.length,
-      )
 
       // Start processing immediately
       setTimeout(() => startProcessingDocument(nextDocId), 100)
@@ -173,14 +162,11 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
   const startProcessingDocument = (docId: string) => {
     const doc = documents.find((d) => d.id === docId)
     if (!doc) {
-      console.log('Document not found:', docId)
       // Mark as complete so we can continue with next document
       isProcessingComplete.current = true
       processNextInQueue()
       return
     }
-
-    console.log('🚀 Starting processing for document:', docId)
 
     // Mark processing as not complete
     isProcessingComplete.current = false
@@ -198,8 +184,6 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
         : {}),
     }
 
-    console.log('📤 Submitting processing request for doc:', docId, requestData)
-
     // Store the docId we're about to process so the streaming callbacks can access it
     processingDocumentId.current = docId
     submit(requestData)
@@ -207,135 +191,148 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
 
   // Process multiple documents using non-streaming API (much more reliable for batch)
   const processBatchDocuments = async (docIds: string[]) => {
-    const newDocIds = docIds.filter((id) => !processingDocuments.has(id))
+    const newDocIds = docIds.filter((id) => !processingDocuments.has(id) && !batchQueue.includes(id))
 
     if (newDocIds.length === 0) {
-      console.log('No new documents to process in batch')
       return
     }
 
-    console.log('🚀 Starting BATCH processing for documents:', newDocIds)
+    // Create new AbortController for this batch
+    const controller = new AbortController()
+    batchProcessingController.current = controller
 
-    // Add all to processing set
-    setProcessingDocuments((prev) => {
-      const newSet = new Set(prev)
-      newDocIds.forEach((id) => newSet.add(id))
-      return newSet
-    })
+    setIsBatchProcessing(true)
+    
+    // Set up the batch queue (show clock icons)
+    setBatchQueue(newDocIds)
 
-    // Process each document sequentially using non-streaming API
-    for (const docId of newDocIds) {
-      try {
-        console.log(`⚡ Processing document ${docId} (non-streaming)`)
-
-        const doc = documents.find((d) => d.id === docId)
-        if (!doc) {
-          console.error('Document not found:', docId)
-          continue
+    try {
+      // Process each document sequentially using non-streaming API
+      for (const docId of newDocIds) {
+        // Check if processing was cancelled
+        if (controller.signal.aborted) {
+          break
         }
 
-        // Check if document was originally pending
-        const wasOriginallyPending = doc.status === 'pending'
+        try {
+          // Move from queue to processing (clock → spinner)
+          setBatchQueue(prev => prev.filter(id => id !== docId))
+          setProcessingDocuments((prev) => {
+            const newSet = new Set(prev)
+            newSet.add(docId)
+            return newSet
+          })
 
-        const requestData = {
-          documentId: docId,
-          documentTypeId: documentType.id,
-          schema: JSON.stringify(doc.schemaSnapshot || documentType.schema),
-          // Add override model if admin has selected one
-          ...(isAdmin &&
-          overrideModel &&
-          overrideModel !== (documentType.modelName || DEFAULT_MODEL)
-            ? { model: overrideModel }
-            : {}),
-        }
-
-        // Use non-streaming API (no ?stream=true parameter)
-        const response = await fetch('/api/process-document', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(requestData),
-        })
-
-        if (!response.ok) {
-          throw new Error(`API request failed: ${response.status} ${response.statusText}`)
-        }
-
-        const result = await response.json()
-
-        if (!result.success) {
-          throw new Error('Processing failed')
-        }
-
-        const extractedData = result.data
-        console.log(
-          '✅ Successfully processed document:',
-          docId,
-          'keys:',
-          Object.keys(extractedData),
-        )
-
-        // Update document state immediately
-        setDocuments((prev) =>
-          prev.map((d) => {
-            if (d.id === docId) {
-              const updatedDoc = {
-                ...d,
-                extractedData,
-                status: 'processed' as const,
-              }
-
-              // Update form if we're viewing this document
-              if (selectedDocument?.id === docId) {
-                setFormData(extractedData)
-                setSelectedDocument(updatedDoc)
-                toast.success('Document processed by AI.')
-              } else {
-                toast.success(`Document "${d.filename}" processed by AI.`)
-              }
-
-              return updatedDoc
-            }
-            return d
-          }),
-        )
-
-        // Auto-save if document was originally pending
-        if (wasOriginallyPending) {
-          console.log('💾 Auto-saving processed document:', docId)
-
-          const formDataToSubmit = new FormData()
-          formDataToSubmit.append('extractedData', JSON.stringify(extractedData))
-          formDataToSubmit.append('status', 'processed')
-          formDataToSubmit.append(
-            'schemaSnapshot',
-            JSON.stringify(doc.schemaSnapshot || documentType.schema),
-          )
-
-          const savedDoc = await updateDocument(docId, formDataToSubmit)
-          console.log('✅ Auto-saved document:', docId)
-
-          // Update documents state with saved version
-          setDocuments((prev) => prev.map((d) => (d.id === docId ? savedDoc : d)))
-          if (selectedDocument?.id === docId) {
-            setSelectedDocument(savedDoc)
+          const doc = documents.find((d) => d.id === docId)
+          if (!doc) {
+            setProcessingDocuments((prev) => {
+              const newSet = new Set(prev)
+              newSet.delete(docId)
+              return newSet
+            })
+            continue
           }
 
-          toast.success(`Document "${savedDoc.filename}" auto-saved as processed.`)
+          // Check if document was originally pending
+          const wasOriginallyPending = doc.status === 'pending'
+
+          const requestData = {
+            documentId: docId,
+            documentTypeId: documentType.id,
+            schema: JSON.stringify(doc.schemaSnapshot || documentType.schema),
+            // Add override model if admin has selected one
+            ...(isAdmin &&
+            overrideModel &&
+            overrideModel !== (documentType.modelName || DEFAULT_MODEL)
+              ? { model: overrideModel }
+              : {}),
+          }
+
+          // Use non-streaming API (no ?stream=true parameter) with abort signal
+          const response = await fetch('/api/process-document', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestData),
+            signal: controller.signal,
+          })
+
+          if (!response.ok) {
+            throw new Error(`API request failed: ${response.status} ${response.statusText}`)
+          }
+
+          const result = await response.json()
+
+          if (!result.success) {
+            throw new Error('Processing failed')
+          }
+
+          const extractedData = result.data
+
+          // Update document state immediately
+          setDocuments((prev) =>
+            prev.map((d) => {
+              if (d.id === docId) {
+                const updatedDoc = {
+                  ...d,
+                  extractedData,
+                  status: 'processed' as const,
+                }
+
+                // Update form if we're viewing this document
+                if (selectedDocument?.id === docId) {
+                  setFormData(extractedData)
+                  setSelectedDocument(updatedDoc)
+                }
+
+                return updatedDoc
+              }
+              return d
+            }),
+          )
+
+          // Auto-save if document was originally pending
+          if (wasOriginallyPending) {
+            const formDataToSubmit = new FormData()
+            formDataToSubmit.append('extractedData', JSON.stringify(extractedData))
+            formDataToSubmit.append('status', 'processed')
+            formDataToSubmit.append(
+              'schemaSnapshot',
+              JSON.stringify(doc.schemaSnapshot || documentType.schema),
+            )
+
+            const savedDoc = await updateDocument(docId, formDataToSubmit)
+
+            // Update documents state with saved version
+            setDocuments((prev) => prev.map((d) => (d.id === docId ? savedDoc : d)))
+            if (selectedDocument?.id === docId) {
+              setSelectedDocument(savedDoc)
+            }
+          }
+        } catch (error: any) {
+          // Handle AbortError separately from other errors
+          if (error.name !== 'AbortError') {
+            console.error('❌ Failed to process document:', docId, error)
+            toast.error(`Failed to process document: ${error.message}`)
+          }
         }
-      } catch (error: any) {
-        console.error('❌ Failed to process document:', docId, error)
-        toast.error(`Failed to process document: ${error.message}`)
+
+        // Remove from processing set
+        setProcessingDocuments((prev) => {
+          const newSet = new Set(prev)
+          newSet.delete(docId)
+          return newSet
+        })
       }
-
-      // Remove from processing set
-      setProcessingDocuments((prev) => {
-        const newSet = new Set(prev)
-        newSet.delete(docId)
-        return newSet
-      })
+    } catch (error: any) {
+      if (error.name !== 'AbortError') {
+        console.error('❌ Batch processing failed:', error)
+      }
+    } finally {
+      // Always clean up, whether completed or cancelled
+      setIsBatchProcessing(false)
+      setBatchQueue([])
+      batchProcessingController.current = null
     }
-
-    console.log('🎉 Batch processing completed')
   }
 
   // Add documents to processing queue (streaming mode - for single documents)
@@ -345,11 +342,8 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
     )
 
     if (newDocIds.length === 0) {
-      console.log('No new documents to add to queue')
       return
     }
-
-    console.log('Adding to processing queue:', newDocIds)
 
     // If nothing is currently processing, start the first one immediately
     if (
@@ -369,8 +363,6 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
       if (restDocs.length > 0) {
         setProcessingQueue(restDocs)
       }
-
-      console.log('🎬 Starting first document immediately:', firstDoc)
 
       startProcessingDocument(firstDoc)
     } else {
@@ -394,11 +386,6 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
       prev.map((doc) => {
         if (doc.id === processingId) {
           wasOriginallyPending = doc.status === 'pending'
-          console.log('🔍 Document status check:', {
-            docId: doc.id,
-            currentStatus: doc.status,
-            wasOriginallyPending,
-          })
           updatedDoc = {
             ...doc,
             extractedData: finalObject,
@@ -409,10 +396,6 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
           if (selectedDocument?.id === processingId) {
             setFormData(finalObject)
             setSelectedDocument(updatedDoc)
-            toast.success('Document processed by AI.')
-          } else {
-            // Show notification that background processing completed
-            toast.success(`Document "${doc.filename}" processed by AI.`)
           }
 
           return updatedDoc
@@ -423,8 +406,6 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
 
     // Auto-save if document was originally pending (first time processing)
     if (wasOriginallyPending && updatedDoc) {
-      console.log('🔄 Auto-saving document that went from pending -> processed:', processingId)
-      
       startTransition(async () => {
         try {
           const formDataToSubmit = new FormData()
@@ -436,8 +417,6 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
           )
 
           const result = await updateDocument(processingId, formDataToSubmit)
-          console.log('✅ Auto-save completed successfully for doc:', processingId, result)
-          toast.success(`Document "${result.filename}" auto-saved as processed.`)
 
           // Update the document in our state with the saved version
           if (result) {
@@ -457,7 +436,7 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
     setCurrentlyProcessing(null)
     processingDocumentId.current = null
     isProcessingComplete.current = true
-    
+
     setProcessingDocuments((prev) => {
       const newSet = new Set(prev)
       newSet.delete(processingId)
@@ -474,14 +453,6 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
     }
 
     const processingId = processingDocumentId.current
-    console.log(
-      'Document selection changing from',
-      selectedDocument?.id,
-      'to',
-      doc?.id,
-      'currently processing:',
-      processingId,
-    )
 
     setSelectedDocument(doc)
 
@@ -498,25 +469,15 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
     const cachedStreamingData = processingDataCache.current.get(doc.id)
 
     if (doc.id === processingId && cachedStreamingData) {
-      console.log(
-        '📺 Switching to ACTIVELY processing document - using live streaming data:',
-        cachedStreamingData,
-      )
       setFormData(cachedStreamingData)
     } else if (cachedStreamingData && !processingDocuments.has(doc.id)) {
       // Document was processed and we have final streaming data, but it's not currently processing
-      console.log(
-        '🎯 Using cached FINAL streaming data from completed processing:',
-        cachedStreamingData,
-      )
       setFormData(cachedStreamingData)
     } else if (processingDocuments.has(doc.id)) {
       // Document is queued for processing but not started yet
-      console.log('⏳ Switching to QUEUED document - using database data until processing starts')
       setFormData(doc.extractedData || {})
     } else {
       // Normal document, use database data
-      console.log('💾 Setting form data from database for non-processing document')
       setFormData(doc.extractedData || {})
     }
 
@@ -544,8 +505,15 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
       return
     }
 
-    console.log('Adding document to processing queue:', selectedDocument.id)
-    addToProcessingQueue([selectedDocument.id])
+    // Add to processing set for UI feedback
+    setProcessingDocuments((prev) => {
+      const newSet = new Set(prev)
+      newSet.add(selectedDocument.id)
+      return newSet
+    })
+
+    // Process immediately, bypassing any queue
+    startProcessingDocument(selectedDocument.id)
   }
 
   // Process all pending documents using batch processing (non-streaming)
@@ -556,25 +524,67 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
       return
     }
 
-    console.log(
-      '🚀 Starting batch processing for all pending documents:',
-      pendingDocs.map((d) => d.id),
-    )
-    toast.success(`Processing ${pendingDocs.length} documents in batch mode...`)
-
     // Use batch processing (non-streaming) which is much more reliable
     await processBatchDocuments(pendingDocs.map((d) => d.id))
   }
 
-  // Stop all processing
-  const handleStopAllProcessing = () => {
+  // Stop only the currently viewed document if it's being processed
+  const handleStopCurrentDocument = () => {
+    if (!selectedDocument) return
+    
+    // Stop streaming processing if this is the document being streamed
+    if (currentlyProcessing === selectedDocument.id && isLoading) {
+      stop()
+      setCurrentlyProcessing(null)
+      processingDocumentId.current = null
+      isProcessingComplete.current = true
+      // Continue with next document in queue
+      processNextInQueue()
+    }
+    
+    // Remove this document from processing state (works for both streaming and batch)
+    setProcessingDocuments((prev) => {
+      const newSet = new Set(prev)
+      newSet.delete(selectedDocument.id)
+      return newSet
+    })
+    
+    toast.success('Document processing stopped.')
+  }
+
+  // Stop single document processing (streaming) and clear queue
+  const handleStopCurrentProcessing = () => {
     if (isLoading) {
       stop()
     }
+
+    // Clear the processing queue and reset state
     setProcessingQueue([])
     setCurrentlyProcessing(null)
     setProcessingDocuments(new Set())
-    toast.success('Processing stopped and queue cleared.')
+    processingDocumentId.current = null
+    isProcessingComplete.current = true
+  }
+
+  // Stop all processing (both single and batch)
+  const handleStopAllProcessing = () => {
+    // Stop streaming processing
+    if (isLoading) {
+      stop()
+    }
+
+    // Abort batch processing if running
+    if (batchProcessingController.current) {
+      batchProcessingController.current.abort()
+    }
+
+    setProcessingQueue([])
+    setBatchQueue([])
+    setCurrentlyProcessing(null)
+    setProcessingDocuments(new Set())
+    setIsBatchProcessing(false)
+    processingDocumentId.current = null
+    isProcessingComplete.current = true
   }
 
   const handleStatusUpdate = async (status: 'approved' | 'processed') => {
@@ -686,25 +696,16 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
             </Combobox>
           )}
           <div className="flex items-center gap-2">
-            {isLoading || processingQueue.length > 0 ? (
-              <>
-                <Button onClick={handleStopAllProcessing} variant="outline">
-                  <Square className="h-4 w-4" />
-                  Stop All
-                </Button>
-                {processingQueue.length > 0 && (
-                  <span className="text-muted-foreground text-xs">
-                    Queue: {processingQueue.length}
-                  </span>
-                )}
-              </>
+            {selectedDocument && processingDocuments.has(selectedDocument.id) ? (
+              <Button onClick={handleStopCurrentDocument} variant="outline">
+                <Square className="h-4 w-4" />
+                Stop
+              </Button>
             ) : (
-              <>
-                <Button onClick={handleAiProcessing} disabled={!selectedDocument} variant="outline">
-                  <Bot className="h-4 w-4" />
-                  Process
-                </Button>
-              </>
+              <Button onClick={handleAiProcessing} disabled={!selectedDocument} variant="outline">
+                <Bot className="h-4 w-4" />
+                Process
+              </Button>
             )}
           </div>
           {selectedDocument?.status === 'approved' ? (
@@ -747,10 +748,13 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
             processingDocuments={processingDocuments}
             currentlyProcessing={currentlyProcessing}
             processingQueue={processingQueue}
+            batchQueue={batchQueue}
+            isBatchProcessing={isBatchProcessing}
             onSelect={handleDocumentSelect}
             onUploadSuccess={handleUploadSuccess}
             onDelete={handleDelete}
             onProcessAll={processBatchDocuments}
+            onStopAll={handleStopAllProcessing}
           />
         </ResizablePanel>
         <ResizableHandle />

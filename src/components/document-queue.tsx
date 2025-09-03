@@ -3,7 +3,7 @@
 import type React from 'react'
 import { useState, useRef, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
-import { UploadCloud, Loader2, Trash2, Bot } from 'lucide-react'
+import { UploadCloud, Loader2, Trash2, Bot, Square, Clock } from 'lucide-react'
 import {
   DocumentStatusIcon,
   PendingStatusIcon,
@@ -35,10 +35,13 @@ interface DocumentQueueProps {
   processingDocuments?: Set<string>
   currentlyProcessing?: string | null
   processingQueue?: string[]
+  batchQueue?: string[]
+  isBatchProcessing?: boolean
   onSelect: (doc: Document) => void
   onUploadSuccess: () => void
   onDelete: (docId: string) => void
   onProcessAll: (docIds: string[]) => void
+  onStopAll?: () => void
 }
 
 export function DocumentQueue({
@@ -48,10 +51,13 @@ export function DocumentQueue({
   processingDocuments = new Set(),
   currentlyProcessing,
   processingQueue = [],
+  batchQueue = [],
+  isBatchProcessing = false,
   onSelect,
   onUploadSuccess,
   onDelete,
   onProcessAll,
+  onStopAll,
 }: DocumentQueueProps) {
   const [isUploading, setIsUploading] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string[]>(['pending', 'processed'])
@@ -158,15 +164,26 @@ export function DocumentQueue({
           )}
           Upload
         </Button>
-        <Button
-          onClick={() => onProcessAll(filteredDocuments.map(d => d.id))}
-          className="w-full"
-          variant="outline"
-          disabled={filteredDocuments.length === 0}
-        >
-          <Bot className="h-4 w-4" />
-          Process All ({filteredDocuments.length})
-        </Button>
+        {isBatchProcessing ? (
+          <Button
+            onClick={onStopAll}
+            className="w-full"
+            variant="outline"
+          >
+            <Square className="h-4 w-4" />
+            Stop All
+          </Button>
+        ) : (
+          <Button
+            onClick={() => onProcessAll(filteredDocuments.map(d => d.id))}
+            className="w-full"
+            variant="outline"
+            disabled={filteredDocuments.length === 0}
+          >
+            <Bot className="h-4 w-4" />
+            Process All ({filteredDocuments.length})
+          </Button>
+        )}
         <ToggleGroup
           type="multiple"
           value={statusFilter}
@@ -225,6 +242,8 @@ export function DocumentQueue({
                 >
                   {processingDocuments.has(doc.id) ? (
                     <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                  ) : batchQueue.includes(doc.id) || processingQueue?.includes(doc.id) ? (
+                    <Clock className="h-4 w-4 text-orange-500" />
                   ) : (
                     <DocumentStatusIcon status={doc.status} />
                   )}

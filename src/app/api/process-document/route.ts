@@ -173,7 +173,6 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text.`
 
     if (isStreamMode) {
       // Streaming mode for single document processing
-      console.log('🔄 Processing document in STREAMING mode:', documentId)
       const result = streamText({
         model: provider.getModel(modelName),
         system: getSystemPrompt(),
@@ -183,7 +182,6 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text.`
       return result.toTextStreamResponse()
     } else {
       // Non-streaming mode for batch processing
-      console.log('⚡ Processing document in NON-STREAMING mode:', documentId)
 
       const { text } = await generateText({
         model: provider.getModel(modelName),
@@ -196,7 +194,6 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text.`
       try {
         const repairedJson = jsonrepair(text.trim())
         extractedData = JSON.parse(repairedJson)
-        console.log('✅ Successfully parsed extracted data for document:', documentId)
       } catch (parseError) {
         console.error('❌ Failed to parse JSON response for document:', documentId, parseError)
         console.error('Raw response text:', text)
