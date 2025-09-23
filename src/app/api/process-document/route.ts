@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
 
     // Validate admin privileges for model override
     let validatedOverrideModel = overrideModel
-    if (overrideModel) {
+    if (overrideModel && !authCheck.isApiKey) {
       const permissionCheck = await checkDocumentPermissions(['update'])
       if (!permissionCheck.success) {
         // Non-admin users cannot override models - ignore the parameter
