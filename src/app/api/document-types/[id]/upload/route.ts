@@ -43,7 +43,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     // Parse form data
     const formData = await request.formData()
-    const files = formData.getAll('files[]') as File[]
+    const files = formData.getAll('files') as File[]
 
     // Also check for single file uploads
     const singleFile = formData.get('file') as File
