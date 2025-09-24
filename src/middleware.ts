@@ -8,6 +8,10 @@ export async function middleware(request: NextRequest) {
 
   // For API routes (except auth), check for session or valid API key
   if (pathname.startsWith('/api/')) {
+    // Allow unauthenticated access to the health endpoint
+    if (pathname === '/api/health') {
+      return NextResponse.next()
+    }
     const validApiKey = process.env.API_KEY
 
     if (!sessionCookie && (!apiKey || !validApiKey || apiKey !== validApiKey)) {
@@ -35,6 +39,7 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      */
-    '/((?!api/auth|_next/static|_next/image|favicon.ico).*)',
+    // Exclude the health endpoint so it remains public
+    '/((?!api/auth|api/health|_next/static|_next/image|favicon.ico).*)',
   ],
 }
