@@ -70,7 +70,7 @@ async function triggerWebhook(
 export interface GetDocumentsOptions {
   page?: number
   pageSize?: number
-  status?: 'pending' | 'processed' | 'approved' | 'all' | string // Allow comma-separated values
+  status?: 'pending' | 'processed' | 'approved' | 'rejected' | 'all' | string // Allow comma-separated values
   search?: string
 }
 
@@ -235,8 +235,9 @@ export async function updateDocument(id: string, formData: FormData) {
 
   try {
     const extractedDataString = formData.get('extractedData') as string
-    const status = formData.get('status') as 'pending' | 'processed' | 'approved'
+    const status = formData.get('status') as 'pending' | 'processed' | 'approved' | 'rejected'
     const schemaSnapshotString = formData.get('schemaSnapshot') as string
+    const rejectionReason = formData.get('rejectionReason') as string | null
 
     let extractedData = {}
     let schemaSnapshot = null
@@ -271,6 +272,10 @@ export async function updateDocument(id: string, formData: FormData) {
 
     if (status) {
       updateData.status = status
+    }
+
+    if (rejectionReason !== undefined) {
+      updateData.rejectionReason = rejectionReason
     }
 
     const [result] = await db
