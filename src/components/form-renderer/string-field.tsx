@@ -1,7 +1,6 @@
 'use client'
 
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -10,6 +9,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { Field, FieldLabel, FieldDescription } from '@/components/ui/field'
 import type { FormFieldProps } from './types'
 
 export function StringField({ name, schema, value, onChange, required, isStreaming }: FormFieldProps) {
@@ -18,16 +18,16 @@ export function StringField({ name, schema, value, onChange, required, isStreami
   // Handle enums for any type, not just strings
   if (schema.enum) {
     return (
-      <div className="space-y-2">
-        <Label htmlFor={name}>
+      <Field>
+        <FieldLabel htmlFor={name}>
           {schema.title || name}
           {required && <span className="ml-1 text-red-500">*</span>}
-        </Label>
+        </FieldLabel>
         {schema.description && (
-          <p className="text-muted-foreground text-sm">{schema.description}</p>
+          <FieldDescription>{schema.description}</FieldDescription>
         )}
         <Select value={String(value ?? '')} onValueChange={onChange} disabled={isStreaming}>
-          <SelectTrigger>
+          <SelectTrigger id={name}>
             <SelectValue placeholder="Select an option" />
           </SelectTrigger>
           <SelectContent>
@@ -38,7 +38,7 @@ export function StringField({ name, schema, value, onChange, required, isStreami
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </Field>
     )
   }
 
@@ -47,13 +47,13 @@ export function StringField({ name, schema, value, onChange, required, isStreami
 
   if (schema['ui:widget'] === 'textarea') {
     return (
-      <div className="space-y-2">
-        <Label htmlFor={name}>
+      <Field>
+        <FieldLabel htmlFor={name}>
           {schema.title || name}
           {required && <span className="ml-1 text-red-500">*</span>}
-        </Label>
+        </FieldLabel>
         {schema.description && (
-          <p className="text-muted-foreground text-sm">{schema.description}</p>
+          <FieldDescription>{schema.description}</FieldDescription>
         )}
         <Textarea
           id={name}
@@ -63,19 +63,19 @@ export function StringField({ name, schema, value, onChange, required, isStreami
           rows={4}
           disabled={isStreaming}
         />
-      </div>
+      </Field>
     )
   }
 
   if (schema.format === 'date') {
     return (
-      <div className="space-y-2">
-        <Label htmlFor={name}>
+      <Field>
+        <FieldLabel htmlFor={name}>
           {schema.title || name}
           {required && <span className="ml-1 text-red-500">*</span>}
-        </Label>
+        </FieldLabel>
         {schema.description && (
-          <p className="text-muted-foreground text-sm">{schema.description}</p>
+          <FieldDescription>{schema.description}</FieldDescription>
         )}
         <Input
           id={name}
@@ -85,17 +85,17 @@ export function StringField({ name, schema, value, onChange, required, isStreami
           placeholder={schema.default}
           disabled={isStreaming}
         />
-      </div>
+      </Field>
     )
   }
 
   return (
-    <div className="space-y-2">
-      <Label htmlFor={name}>
+    <Field>
+      <FieldLabel htmlFor={name}>
         {schema.title || name}
         {required && <span className="ml-1 text-red-500">*</span>}
-      </Label>
-      {schema.description && <p className="text-muted-foreground text-sm">{schema.description}</p>}
+      </FieldLabel>
+      {schema.description && <FieldDescription>{schema.description}</FieldDescription>}
       <Input
         id={name}
         type="text"
@@ -104,6 +104,6 @@ export function StringField({ name, schema, value, onChange, required, isStreami
         placeholder={schema.default}
         disabled={isStreaming}
       />
-    </div>
+    </Field>
   )
 }
