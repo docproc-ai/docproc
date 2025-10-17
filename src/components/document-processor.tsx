@@ -301,7 +301,25 @@ export function DocumentProcessor({
           const result = await response.json()
 
           if (!response.ok || !result.success) {
-            // Extract meaningful error message from response
+            // Check if this is a validation rejection (422 status)
+            if (response.status === 422 && result.message?.includes('validation failed')) {
+              // Fetch updated document from database to get rejection info
+              const { getDocument } = await import('@/lib/actions/document')
+              const rejectedDoc = await getDocument(docId)
+
+              if (rejectedDoc) {
+                // Update UI with rejected document
+                setDocuments((prev) => prev.map((d) => (d.id === docId ? rejectedDoc : d)))
+                if (selectedDocument?.id === docId) {
+                  setSelectedDocument(rejectedDoc)
+                }
+              }
+
+              // Don't throw error toast for validation rejections - they're expected
+              continue
+            }
+
+            // Extract meaningful error message for other errors
             const errorMessage = result.message || result.error || `API request failed: ${response.status} ${response.statusText}`
             throw new Error(errorMessage)
           }
