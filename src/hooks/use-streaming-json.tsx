@@ -79,18 +79,25 @@ export function useStreamingJson({
             const errorText = await response.text()
             throw new Error(`Rate limit exceeded: ${errorText}`)
           }
-          
+
           // Handle other HTTP errors
           let errorMessage = `HTTP error! status: ${response.status}`
           try {
             const errorText = await response.text()
             if (errorText) {
-              errorMessage = errorText
+              // Try to parse as JSON first (for validation errors)
+              try {
+                const errorJson = JSON.parse(errorText)
+                errorMessage = errorJson.message || errorJson.error || errorText
+              } catch {
+                // Not JSON, use the raw text
+                errorMessage = errorText
+              }
             }
           } catch {
             // If we can't read the error text, use the default message
           }
-          
+
           throw new Error(errorMessage)
         }
 
