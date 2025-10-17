@@ -20,6 +20,11 @@ import {
   PlusIcon,
   ChevronsUpDownIcon,
   MousePointerClick,
+  ChevronDown,
+  Save,
+  XCircle,
+  RotateCcw,
+  AlertTriangle,
 } from 'lucide-react'
 import { Button } from './ui/button'
 import { Spinner } from './ui/spinner'
@@ -52,6 +57,14 @@ import {
   ComboboxItem,
   ComboboxCreateNew,
 } from '@/components/ui/shadcn-io/combobox'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { ButtonGroup } from '@/components/ui/button-group'
 import dynamic from 'next/dynamic'
 
 const DocumentViewer = dynamic(() => import('@/components/document-viewer'), {
@@ -336,7 +349,10 @@ export function DocumentProcessor({
         } catch (error: any) {
           // Handle AbortError separately from other errors
           if (error.name !== 'AbortError') {
-            console.error('❌ Failed to process document:', docId, error)
+            // Only log actual errors, not validation rejections
+            if (!error.message.includes('Document validation failed')) {
+              console.error('❌ Failed to process document:', docId, error)
+            }
             toast.error(`Failed to process document: ${error.message}`)
           }
         }
@@ -539,6 +555,81 @@ export function DocumentProcessor({
     startProcessingDocument(selectedDocument.id)
   }
 
+  const handleForceProcess = async () => {
+    if (!selectedDocument) {
+      toast.error('No document selected.')
+      return
+    }
+
+    // Add to processing set for UI feedback
+    setProcessingDocuments((prev) => {
+      const newSet = new Set(prev)
+      newSet.add(selectedDocument.id)
+      return newSet
+    })
+
+    try {
+      const requestData = {
+        documentId: selectedDocument.id,
+        documentTypeId: documentType.id,
+        schema: JSON.stringify(documentType.schema),
+        ...(isAdmin && overrideModel && overrideModel !== (documentType.modelName || DEFAULT_MODEL)
+          ? { model: overrideModel }
+          : {}),
+      }
+
+      // Use non-streaming API with skipValidation flag
+      const response = await fetch('/api/process-document?skipValidation=true', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestData),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        const errorMessage = result.message || result.error || `API request failed: ${response.status} ${response.statusText}`
+        throw new Error(errorMessage)
+      }
+
+      const extractedData = result.data
+
+      // Update document state immediately
+      const updatedDoc = {
+        ...selectedDocument,
+        extractedData,
+        status: 'processed' as const,
+        rejectionReason: null, // Clear rejection reason
+      }
+
+      setSelectedDocument(updatedDoc)
+      setFormData(extractedData)
+      setDocuments((prev) => prev.map((d) => (d.id === selectedDocument.id ? updatedDoc : d)))
+
+      // Save to database
+      const formDataToSubmit = new FormData()
+      formDataToSubmit.append('extractedData', JSON.stringify(extractedData))
+      formDataToSubmit.append('status', 'processed')
+      formDataToSubmit.append('schemaSnapshot', JSON.stringify(documentType.schema))
+
+      const savedDoc = await updateDocument(selectedDocument.id, formDataToSubmit)
+
+      setSelectedDocument(savedDoc)
+      setDocuments((prev) => prev.map((d) => (d.id === selectedDocument.id ? savedDoc : d)))
+
+      toast.success('Document force-processed successfully (validation bypassed)')
+    } catch (error: any) {
+      toast.error(`Force Process Error: ${error.message}`)
+    } finally {
+      // Remove from processing set
+      setProcessingDocuments((prev) => {
+        const newSet = new Set(prev)
+        newSet.delete(selectedDocument.id)
+        return newSet
+      })
+    }
+  }
+
   // Process all pending documents using batch processing (non-streaming)
   const handleProcessAllPending = async () => {
     const pendingDocs = documents.filter((doc) => doc.status === 'pending')
@@ -610,7 +701,7 @@ export function DocumentProcessor({
     isProcessingComplete.current = true
   }
 
-  const handleStatusUpdate = async (status: 'approved' | 'processed') => {
+  const handleStatusUpdate = async (status: 'approved' | 'processed' | 'pending' | 'rejected') => {
     if (!selectedDocument) return
 
     startTransition(async () => {
@@ -631,11 +722,59 @@ export function DocumentProcessor({
         const message = `Document "${updatedDoc.filename}" status set to ${status}.`
         if (status === 'approved') {
           toast.success(`Approved! ${message}`)
+        } else if (status === 'rejected') {
+          toast.success(`Rejected: ${message}`)
+        } else if (status === 'pending') {
+          toast.success(`Cleared: ${message}`)
         } else {
           toast.success(`Status Updated: ${message}`)
         }
       } catch (error: any) {
         toast.error(`Save Error: ${error.message}`)
+      }
+    })
+  }
+
+  const handleSaveWithoutStatusChange = async () => {
+    if (!selectedDocument) return
+
+    startTransition(async () => {
+      try {
+        const formDataToSubmit = new FormData()
+        formDataToSubmit.append('extractedData', JSON.stringify(formData))
+        // Keep current status
+        formDataToSubmit.append('status', selectedDocument.status)
+
+        const updatedDoc = await updateDocument(selectedDocument.id, formDataToSubmit)
+
+        setSelectedDocument(updatedDoc)
+        setDocuments(documents.map((d) => (d.id === updatedDoc.id ? updatedDoc : d)))
+
+        toast.success(`Saved changes to "${updatedDoc.filename}"`)
+      } catch (error: any) {
+        toast.error(`Save Error: ${error.message}`)
+      }
+    })
+  }
+
+  const handleClearDocument = async () => {
+    if (!selectedDocument) return
+
+    startTransition(async () => {
+      try {
+        const formDataToSubmit = new FormData()
+        formDataToSubmit.append('extractedData', JSON.stringify({})) // Clear data
+        formDataToSubmit.append('status', 'pending')
+
+        const updatedDoc = await updateDocument(selectedDocument.id, formDataToSubmit)
+
+        setSelectedDocument(updatedDoc)
+        setDocuments(documents.map((d) => (d.id === updatedDoc.id ? updatedDoc : d)))
+        setFormData({}) // Clear form data in UI
+
+        toast.success(`Cleared document "${updatedDoc.filename}"`)
+      } catch (error: any) {
+        toast.error(`Clear Error: ${error.message}`)
       }
     })
   }
@@ -718,45 +857,108 @@ export function DocumentProcessor({
               </ComboboxContent>
             </Combobox>
           )}
-          <div className="flex items-center gap-2">
-            {selectedDocument && processingDocuments.has(selectedDocument.id) ? (
-              <Button onClick={handleStopCurrentDocument} variant="outline">
-                <Square className="h-4 w-4" />
-                Stop
-              </Button>
-            ) : (
+          {selectedDocument && processingDocuments.has(selectedDocument.id) ? (
+            <Button onClick={handleStopCurrentDocument} variant="outline">
+              <Square className="h-4 w-4" />
+              Stop
+            </Button>
+          ) : (
+            <ButtonGroup>
               <Button onClick={handleAiProcessing} disabled={!selectedDocument} variant="outline">
                 <Bot className="h-4 w-4" />
                 Process
               </Button>
-            )}
-          </div>
-          {selectedDocument?.status === 'approved' ? (
-            <Button
-              onClick={() => handleStatusUpdate('processed')}
-              disabled={isPending || !selectedDocument}
-              variant="secondary"
-            >
-              {isPending ? (
-                <Spinner />
-              ) : (
-                <Undo2 className="h-4 w-4" />
-              )}
-              Unapprove
-            </Button>
-          ) : (
-            <Button
-              onClick={() => handleStatusUpdate('approved')}
-              disabled={isPending || !selectedDocument}
-            >
-              {isPending ? (
-                <Spinner />
-              ) : (
-                <CheckCircle className="h-4 w-4" />
-              )}
-              Approve
-            </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" disabled={!selectedDocument}>
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleForceProcess} disabled={!selectedDocument}>
+                    <AlertTriangle className="h-4 w-4" />
+                    Force Process
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </ButtonGroup>
           )}
+          <ButtonGroup>
+            {selectedDocument?.status === 'approved' ? (
+              <>
+                <Button
+                  onClick={() => handleStatusUpdate('processed')}
+                  disabled={isPending || !selectedDocument}
+                  variant="secondary"
+                >
+                  {isPending ? (
+                    <Spinner />
+                  ) : (
+                    <Undo2 className="h-4 w-4" />
+                  )}
+                  Unapprove
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="secondary" size="icon" disabled={isPending || !selectedDocument}>
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={handleSaveWithoutStatusChange} disabled={isPending}>
+                      <Save className="h-4 w-4" />
+                      Save
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => handleStatusUpdate('rejected')} disabled={isPending}>
+                      <XCircle className="h-4 w-4" />
+                      Reject
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleClearDocument} disabled={isPending}>
+                      <RotateCcw className="h-4 w-4" />
+                      Clear
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            ) : (
+              <>
+                <Button
+                  onClick={() => handleStatusUpdate('approved')}
+                  disabled={isPending || !selectedDocument}
+                >
+                  {isPending ? (
+                    <Spinner />
+                  ) : (
+                    <CheckCircle className="h-4 w-4" />
+                  )}
+                  Approve
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="icon" disabled={isPending || !selectedDocument}>
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={handleSaveWithoutStatusChange} disabled={isPending}>
+                      <Save className="h-4 w-4" />
+                      Save
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => handleStatusUpdate('rejected')} disabled={isPending}>
+                      <XCircle className="h-4 w-4" />
+                      Reject
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleClearDocument} disabled={isPending}>
+                      <RotateCcw className="h-4 w-4" />
+                      Clear
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            )}
+          </ButtonGroup>
           <div className="border-border flex items-center gap-2 border-l pl-2">
             <ThemeToggle />
           </div>
@@ -792,7 +994,7 @@ export function DocumentProcessor({
                 </TabsList>
                 <div className="flex-grow overflow-y-auto pt-4">
                   <TabsContent value="form" className="space-y-4">
-                    {isLoading && (
+                    {isLoading && selectedDocument?.id === currentlyProcessing && (
                       <div className="sticky top-0 z-10 mb-4 rounded-md border border-blue-200 bg-blue-50 p-3 shadow-sm dark:border-blue-800 dark:bg-blue-950">
                         <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
                           <Spinner />
@@ -800,7 +1002,7 @@ export function DocumentProcessor({
                         </div>
                       </div>
                     )}
-                    {error && (
+                    {error && selectedDocument?.id === currentlyProcessing && (
                       <div
                         className={`mb-4 rounded-md border p-3 ${
                           error.message.includes('Rate limit exceeded')
@@ -823,6 +1025,29 @@ export function DocumentProcessor({
                           ) : (
                             <>Error: {error.message}</>
                           )}
+                        </div>
+                      </div>
+                    )}
+                    {selectedDocument?.status === 'rejected' && selectedDocument?.rejectionReason && (
+                      <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-950">
+                        <div className="text-sm text-red-700 dark:text-red-300">
+                          <strong>Document Rejected:</strong> {selectedDocument.rejectionReason}
+                        </div>
+                        <div className="mt-3 flex justify-end">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={handleForceProcess}
+                            disabled={processingDocuments.has(selectedDocument.id)}
+                            className="border-red-300 text-red-700 hover:bg-red-100 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-900"
+                          >
+                            {processingDocuments.has(selectedDocument.id) ? (
+                              <Spinner className="h-3 w-3" />
+                            ) : (
+                              <AlertTriangle className="h-3 w-3" />
+                            )}
+                            Force Process
+                          </Button>
                         </div>
                       </div>
                     )}
@@ -835,7 +1060,7 @@ export function DocumentProcessor({
                     />
                   </TabsContent>
                   <TabsContent value="data" className="m-0 h-full">
-                    {isLoading && (
+                    {isLoading && selectedDocument?.id === currentlyProcessing && (
                       <div className="sticky top-0 z-10 mb-4 rounded-md border border-blue-200 bg-blue-50 p-3 shadow-sm dark:border-blue-800 dark:bg-blue-950">
                         <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
                           <Spinner />
@@ -843,7 +1068,7 @@ export function DocumentProcessor({
                         </div>
                       </div>
                     )}
-                    {error && (
+                    {error && selectedDocument?.id === currentlyProcessing && (
                       <div
                         className={`mb-4 rounded-md border p-3 ${
                           error.message.includes('Rate limit exceeded')
@@ -866,6 +1091,29 @@ export function DocumentProcessor({
                           ) : (
                             <>Error: {error.message}</>
                           )}
+                        </div>
+                      </div>
+                    )}
+                    {selectedDocument?.status === 'rejected' && selectedDocument?.rejectionReason && (
+                      <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-950">
+                        <div className="text-sm text-red-700 dark:text-red-300">
+                          <strong>Document Rejected:</strong> {selectedDocument.rejectionReason}
+                        </div>
+                        <div className="mt-3 flex justify-end">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={handleForceProcess}
+                            disabled={processingDocuments.has(selectedDocument.id)}
+                            className="border-red-300 text-red-700 hover:bg-red-100 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-900"
+                          >
+                            {processingDocuments.has(selectedDocument.id) ? (
+                              <Spinner className="h-3 w-3" />
+                            ) : (
+                              <AlertTriangle className="h-3 w-3" />
+                            )}
+                            Force Process
+                          </Button>
                         </div>
                       </div>
                     )}
