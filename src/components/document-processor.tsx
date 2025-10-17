@@ -160,9 +160,30 @@ export function DocumentProcessor({
         handleProcessingCompletion(processingId, finalObject)
       }
     },
-    onError: (error) => {
+    onError: async (error) => {
       const processingId = processingDocumentId.current
-      toast.error(`Processing Error: ${error.message}`)
+
+      // Check if this is a validation rejection
+      const isValidationError = error.message.includes('validation failed') || error.message.includes('Document validation failed')
+
+      if (isValidationError && processingId) {
+        // Fetch updated document from database to get rejection info
+        const { getDocument } = await import('@/lib/actions/document')
+        const rejectedDoc = await getDocument(processingId)
+
+        if (rejectedDoc) {
+          // Update UI with rejected document
+          setDocuments((prev) => prev.map((d) => (d.id === processingId ? rejectedDoc : d)))
+          if (selectedDocument?.id === processingId) {
+            setSelectedDocument(rejectedDoc)
+          }
+        }
+
+        // Don't show error toast for validation rejections - they're expected
+      } else {
+        // Show error toast for actual errors
+        toast.error(`Processing Error: ${error.message}`)
+      }
 
       if (processingId) {
         setProcessingDocuments((prev) => {
