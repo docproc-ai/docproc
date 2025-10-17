@@ -384,80 +384,79 @@ export function DocumentQueue({
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon" title="Actions">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {selectedDocIds.size === 0 ? (
-                    <DropdownMenuItem onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
-                      {isUploading ? <Spinner className="h-4 w-4" /> : <UploadCloud className="h-4 w-4" />}
-                      Upload Documents
-                    </DropdownMenuItem>
-                  ) : (
-                    <>
-                      <DropdownMenuLabel>{selectedDocIds.size} selected</DropdownMenuLabel>
-                      {isBatchProcessing ? (
-                        <DropdownMenuItem onClick={onStopAll}>
-                          <Square className="h-4 w-4" />
-                          Stop Processing
-                        </DropdownMenuItem>
-                      ) : (
+              {isBatchProcessing ? (
+                <Button variant="outline" size="icon" title="Stop batch processing" onClick={onStopAll}>
+                  <Square className="h-4 w-4" />
+                </Button>
+              ) : (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="icon" title="Actions">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {selectedDocIds.size === 0 ? (
+                      <DropdownMenuItem onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                        {isUploading ? <Spinner className="h-4 w-4" /> : <UploadCloud className="h-4 w-4" />}
+                        Upload Documents
+                      </DropdownMenuItem>
+                    ) : (
+                      <>
+                        <DropdownMenuLabel>{selectedDocIds.size} selected</DropdownMenuLabel>
                         <DropdownMenuItem onClick={handleProcessSelected}>
                           <Bot className="h-4 w-4" />
                           Process
                         </DropdownMenuItem>
-                      )}
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => handleBulkStatusUpdate('pending')}>
-                        <PendingStatusIcon size="sm" />
-                        Mark as Pending
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleBulkStatusUpdate('processed')}>
-                        <ProcessedStatusIcon size="sm" />
-                        Mark as Processed
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleBulkStatusUpdate('approved')}>
-                        <ApprovedStatusIcon size="sm" />
-                        Mark as Approved
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleBulkStatusUpdate('rejected')}>
-                        <RejectedStatusIcon size="sm" />
-                        Mark as Rejected
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <DropdownMenuItem onSelect={(e) => e.preventDefault()} variant="destructive">
-                            <Trash2 className="h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete {selectedDocIds.size} documents?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will permanently delete {selectedDocIds.size} document(s) and their data.
-                              This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={handleBulkDelete}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Delete All
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => handleBulkStatusUpdate('pending')}>
+                          <PendingStatusIcon size="sm" />
+                          Mark as Pending
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleBulkStatusUpdate('processed')}>
+                          <ProcessedStatusIcon size="sm" />
+                          Mark as Processed
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleBulkStatusUpdate('approved')}>
+                          <ApprovedStatusIcon size="sm" />
+                          Mark as Approved
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleBulkStatusUpdate('rejected')}>
+                          <RejectedStatusIcon size="sm" />
+                          Mark as Rejected
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} variant="destructive">
+                              <Trash2 className="h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete {selectedDocIds.size} documents?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will permanently delete {selectedDocIds.size} document(s) and their data.
+                                This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={handleBulkDelete}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Delete All
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </ButtonGroup>
         </div>
         {filteredDocuments.length === 0 ? (
