@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Trash2, Plus, ChevronDown, ChevronRight } from 'lucide-react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -15,6 +14,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Field, FieldLabel, FieldDescription } from '@/components/ui/field'
+import { Item, ItemContent, ItemTitle, ItemActions, ItemGroup } from '@/components/ui/item'
 import { cn } from '@/lib/utils'
 import type { FormFieldProps } from './types'
 import type { JsonSchema } from '../schema-builder/types'
@@ -277,16 +278,14 @@ function ArrayTableField({
     : [itemsSchema.title || 'Value']
 
   return (
-    <div className="border-border space-y-2 rounded-lg border p-4">
-      <div>
-        <Label className="text-base font-semibold">
-          {schema.title || name}
-          {required && <span className="ml-1 text-red-500">*</span>}
-        </Label>
-        {schema.description && (
-          <p className="text-muted-foreground mt-1 text-sm">{schema.description}</p>
-        )}
-      </div>
+    <Field>
+      <FieldLabel>
+        {schema.title || name}
+        {required && <span className="ml-1 text-red-500">*</span>}
+      </FieldLabel>
+      {schema.description && (
+        <FieldDescription>{schema.description}</FieldDescription>
+      )}
       <div className="border-border overflow-x-auto rounded-md border">
         <Table>
           <TableHeader>
@@ -337,7 +336,7 @@ function ArrayTableField({
           Add Row
         </Button>
       )}
-    </div>
+    </Field>
   )
 }
 
@@ -354,10 +353,13 @@ export function ArrayField({
   if (schema.type !== 'array') return null
 
   const toggleArrayItem = (itemKey: string) => {
-    setExpandedArrayItems((prev) => ({
-      ...prev,
-      [itemKey]: !prev[itemKey],
-    }))
+    setExpandedArrayItems((prev) => {
+      const currentState = prev[itemKey] ?? true // Default to expanded if undefined
+      return {
+        ...prev,
+        [itemKey]: !currentState,
+      }
+    })
   }
 
   if (schema['ui:widget'] === 'table') {
@@ -375,78 +377,140 @@ export function ArrayField({
 
   const arrayValue = value || []
 
+  const allExpanded = arrayValue.every((_: any, index: number) => {
+    const itemKey = `${name}-${index}`
+    return expandedArrayItems[itemKey] !== false
+  })
+
+  const toggleAll = () => {
+    const newState: Record<string, boolean> = {}
+    arrayValue.forEach((_: any, index: number) => {
+      const itemKey = `${name}-${index}`
+      newState[itemKey] = !allExpanded
+    })
+    setExpandedArrayItems(newState)
+  }
+
   return (
-    <div className="border-border space-y-4 rounded-lg border p-4">
+    <Field>
       <div className="flex items-center justify-between">
         <div>
-          <Label className="text-base font-semibold">
+          <FieldLabel>
             {schema.title || name}
             {required && <span className="ml-1 text-red-500">*</span>}
-          </Label>
+          </FieldLabel>
           {schema.description && (
-            <p className="text-muted-foreground mt-1 text-sm">{schema.description}</p>
+            <FieldDescription>{schema.description}</FieldDescription>
           )}
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          onClick={() => onChange([...arrayValue, schema.items?.default ?? ''])}
-        >
-          <Plus className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-2">
+          {arrayValue.length > 1 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={toggleAll}
+            >
+              {allExpanded ? 'Collapse All' : 'Expand All'}
+            </Button>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const newIndex = arrayValue.length
+              const itemKey = `${name}-${newIndex}`
+              setExpandedArrayItems(prev => ({ ...prev, [itemKey]: true }))
+              onChange([...arrayValue, schema.items?.default ?? ''])
+            }}
+          >
+            <Plus className="h-4 w-4" />
+            Add
+          </Button>
+        </div>
       </div>
-      {arrayValue.map((item: any, index: number) => {
-        const itemKey = `${name}-${index}`
-        const isExpanded = expandedArrayItems[itemKey] !== false
+      <ItemGroup>
+        {arrayValue.map((item: any, index: number) => {
+          const itemKey = `${name}-${index}`
+          const isExpanded = expandedArrayItems[itemKey] !== false
 
-        return (
-          <Collapsible key={index} open={isExpanded} onOpenChange={() => toggleArrayItem(itemKey)}>
-            <div className="border-border space-y-4 rounded-lg border p-4">
-              <CollapsibleTrigger asChild>
-                <div className="flex cursor-pointer items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {isExpanded ? (
-                      <ChevronDown className="h-4 w-4" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4" />
-                    )}
-                    <Label className="text-muted-foreground text-sm font-medium">
-                      {schema.title || name}[{index}]
-                    </Label>
+          // Generate display text from template or value
+          const displayText = (() => {
+            const itemsSchema = schema.items || { type: 'string' }
+            const isObjectItem = itemsSchema.type === 'object'
+            const template = itemsSchema['ui:displayTemplate']
+
+            // For object items with template, use template
+            if (isObjectItem && template && typeof item === 'object') {
+              const result = template.replace(/\{\{\s*(\w+)\s*\}\}/g, (match, fieldName) => {
+                const value = item[fieldName]
+                return value !== undefined && value !== null && value !== '' ? String(value) : match
+              })
+              return result || `${schema.title || name}[${index}]`
+            }
+
+            // For non-object items, show the value directly
+            if (!isObjectItem && item !== undefined && item !== null && item !== '') {
+              return String(item)
+            }
+
+            // Fallback to index
+            return `${schema.title || name}[${index}]`
+          })()
+
+          return (
+            <Collapsible key={index} open={isExpanded} onOpenChange={() => toggleArrayItem(itemKey)}>
+              <Item variant="outline" className="flex-col !flex-nowrap">
+                <CollapsibleTrigger asChild>
+                  <div className="flex w-full cursor-pointer items-center justify-between">
+                    <ItemContent>
+                      <div className="flex items-center gap-2">
+                        {isExpanded ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                        <ItemTitle>
+                          {displayText}
+                        </ItemTitle>
+                      </div>
+                    </ItemContent>
+                    <ItemActions>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          const newArray = arrayValue.filter((_: any, i: number) => i !== index)
+                          onChange(newArray)
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </ItemActions>
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      const newArray = arrayValue.filter((_: any, i: number) => i !== index)
+                </CollapsibleTrigger>
+                <CollapsibleContent className="w-full pt-4">
+                  <FormField
+                    name={`${name}[${index}]`}
+                    schema={schema.items || { type: 'string' }}
+                    value={item}
+                    onChange={(newValue: any) => {
+                      const newArray = [...arrayValue]
+                      newArray[index] = newValue
                       onChange(newArray)
                     }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <FormField
-                  name={`${name}[${index}]`}
-                  schema={schema.items || { type: 'string' }}
-                  value={item}
-                  onChange={(newValue: any) => {
-                    const newArray = [...arrayValue]
-                    newArray[index] = newValue
-                    onChange(newArray)
-                  }}
-                  isArrayItem={true}
-                  isStreaming={isStreaming}
-                />
-              </CollapsibleContent>
-            </div>
-          </Collapsible>
-        )
-      })}
-    </div>
+                    isArrayItem={true}
+                    isStreaming={isStreaming}
+                  />
+                </CollapsibleContent>
+              </Item>
+            </Collapsible>
+          )
+        })}
+      </ItemGroup>
+    </Field>
   )
 }
