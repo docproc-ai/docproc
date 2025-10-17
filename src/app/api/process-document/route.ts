@@ -237,16 +237,16 @@ export async function POST(req: NextRequest) {
         const rejectionFormData = new FormData()
         rejectionFormData.append('status', 'rejected')
         rejectionFormData.append('rejectionReason', validation.reason || 'Document does not match expected type')
-        await updateDocument(documentId, rejectionFormData)
+        const rejectedDoc = await updateDocument(documentId, rejectionFormData)
 
-        return Response.json(
-          {
-            success: false,
-            error: 'Document validation failed',
-            message: validation.reason || 'Document does not match expected type',
-          },
-          { status: 422 }, // Unprocessable Entity
-        )
+        // Return 200 with success: false so the client can handle gracefully
+        return Response.json({
+          success: false,
+          rejected: true,
+          error: 'Document validation failed',
+          message: validation.reason || 'Document does not match expected type',
+          document: rejectedDoc,
+        })
       }
     }
 
@@ -319,14 +319,11 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text.`
         console.error('Raw response text:', text)
 
         // Model returned text instead of JSON - return the full message
-        return Response.json(
-          {
-            success: false,
-            error: 'Model returned text instead of JSON',
-            message: text,
-          },
-          { status: 422 } // Unprocessable Entity
-        )
+        return Response.json({
+          success: false,
+          error: 'Model returned text instead of JSON',
+          message: text,
+        })
       }
 
       return Response.json({

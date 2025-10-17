@@ -73,6 +73,10 @@ export function useStreamingJson({
           signal: abortControllerRef.current.signal,
         })
 
+        // For validation rejections, response will be ok with rejected flag
+        // But we need to check the response first
+        const contentType = response.headers.get('content-type')
+
         if (!response.ok) {
           // Handle rate limiting specifically
           if (response.status === 429) {
@@ -99,6 +103,23 @@ export function useStreamingJson({
           }
 
           throw new Error(errorMessage)
+        }
+
+        // Check if response is JSON (validation rejection or error) instead of stream
+        if (contentType?.includes('application/json')) {
+          const jsonResponse = await response.json()
+
+          // If this is a validation rejection, treat it as a successful finish with the rejected document
+          if (jsonResponse.rejected && jsonResponse.document) {
+            setObject(jsonResponse.document)
+            onFinish?.(jsonResponse.document)
+            return // Exit gracefully, not an error
+          }
+
+          // Other JSON errors (these ARE errors - like model returning text instead of JSON)
+          if (!jsonResponse.success) {
+            throw new Error(jsonResponse.message || jsonResponse.error || 'Processing failed')
+          }
         }
 
         const reader = response.body?.getReader()

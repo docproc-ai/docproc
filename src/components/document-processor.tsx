@@ -157,33 +157,39 @@ export function DocumentProcessor({
     onFinish: (finalObject) => {
       const processingId = processingDocumentId.current
       if (finalObject && processingId) {
-        handleProcessingCompletion(processingId, finalObject)
+        // Check if this is a rejected document (has status === 'rejected')
+        if (finalObject.status === 'rejected') {
+          // Update UI with rejected document
+          setDocuments((prev) => prev.map((d) => (d.id === processingId ? finalObject : d)))
+          if (selectedDocument?.id === processingId) {
+            setSelectedDocument(finalObject)
+          }
+
+          // Clean up processing state
+          setCurrentlyProcessing(null)
+          processingDocumentId.current = null
+          isProcessingComplete.current = true
+
+          setProcessingDocuments((prev) => {
+            const newSet = new Set(prev)
+            newSet.delete(processingId)
+            return newSet
+          })
+          processingDataCache.current.delete(processingId)
+
+          // Process next document in queue
+          processNextInQueue()
+        } else {
+          // Normal processing completion
+          handleProcessingCompletion(processingId, finalObject)
+        }
       }
     },
-    onError: async (error) => {
+    onError: (error) => {
       const processingId = processingDocumentId.current
 
-      // Check if this is a validation rejection
-      const isValidationError = error.message.includes('validation failed') || error.message.includes('Document validation failed')
-
-      if (isValidationError && processingId) {
-        // Fetch updated document from database to get rejection info
-        const { getDocument } = await import('@/lib/actions/document')
-        const rejectedDoc = await getDocument(processingId)
-
-        if (rejectedDoc) {
-          // Update UI with rejected document
-          setDocuments((prev) => prev.map((d) => (d.id === processingId ? rejectedDoc : d)))
-          if (selectedDocument?.id === processingId) {
-            setSelectedDocument(rejectedDoc)
-          }
-        }
-
-        // Don't show error toast for validation rejections - they're expected
-      } else {
-        // Show error toast for actual errors
-        toast.error(`Processing Error: ${error.message}`)
-      }
+      // Show error toast for actual errors (model returning text instead of JSON, etc.)
+      toast.error(`Processing Error: ${error.message}`)
 
       if (processingId) {
         setProcessingDocuments((prev) => {
@@ -321,25 +327,19 @@ export function DocumentProcessor({
 
           const result = await response.json()
 
-          if (!response.ok || !result.success) {
-            // Check if this is a validation rejection (422 status)
-            if (response.status === 422 && result.message?.includes('validation failed')) {
-              // Fetch updated document from database to get rejection info
-              const { getDocument } = await import('@/lib/actions/document')
-              const rejectedDoc = await getDocument(docId)
-
-              if (rejectedDoc) {
-                // Update UI with rejected document
-                setDocuments((prev) => prev.map((d) => (d.id === docId ? rejectedDoc : d)))
-                if (selectedDocument?.id === docId) {
-                  setSelectedDocument(rejectedDoc)
-                }
-              }
-
-              // Don't throw error toast for validation rejections - they're expected
-              continue
+          // Check if this is a validation rejection (rejected flag in response)
+          if (result.rejected && result.document) {
+            // Update UI with rejected document from response
+            setDocuments((prev) => prev.map((d) => (d.id === docId ? result.document : d)))
+            if (selectedDocument?.id === docId) {
+              setSelectedDocument(result.document)
             }
 
+            // Don't throw error toast for validation rejections - they're expected
+            continue
+          }
+
+          if (!response.ok || !result.success) {
             // Extract meaningful error message for other errors
             const errorMessage = result.message || result.error || `API request failed: ${response.status} ${response.statusText}`
             throw new Error(errorMessage)
