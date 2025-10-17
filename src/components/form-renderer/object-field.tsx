@@ -1,6 +1,6 @@
 'use client'
 
-import { Label } from '@/components/ui/label'
+import { Field, FieldLabel, FieldDescription } from '@/components/ui/field'
 import type { FormFieldProps } from './types'
 import { StringField } from './string-field'
 import { NumberField } from './number-field'
@@ -130,12 +130,12 @@ export function ObjectField({
     <>
       {!isArrayItem && (
         <div>
-          <Label className="text-base font-semibold">
+          <FieldLabel>
             {schema.title || name}
             {required && <span className="ml-1 text-red-500">*</span>}
-          </Label>
+          </FieldLabel>
           {schema.description && (
-            <p className="text-muted-foreground mt-1 text-sm">{schema.description}</p>
+            <FieldDescription>{schema.description}</FieldDescription>
           )}
         </div>
       )}
@@ -159,5 +159,5 @@ export function ObjectField({
     return <div className="space-y-4">{objectContent}</div>
   }
 
-  return <div className="border-border space-y-4 rounded-lg border p-4">{objectContent}</div>
+  return <Field>{objectContent}</Field>
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Field, FieldLabel, FieldDescription } from '@/components/ui/field'
 import type { FormFieldProps } from './types'
 
 export function NumberField({ name, schema, value, onChange, required, isStreaming }: FormFieldProps) {
@@ -10,12 +10,12 @@ export function NumberField({ name, schema, value, onChange, required, isStreami
   const fieldType = schema.type
 
   return (
-    <div className="space-y-2">
-      <Label htmlFor={name}>
+    <Field>
+      <FieldLabel htmlFor={name}>
         {schema.title || name}
         {required && <span className="ml-1 text-red-500">*</span>}
-      </Label>
-      {schema.description && <p className="text-muted-foreground text-sm">{schema.description}</p>}
+      </FieldLabel>
+      {schema.description && <FieldDescription>{schema.description}</FieldDescription>}
       <Input
         id={name}
         type="number"
@@ -39,6 +39,6 @@ export function NumberField({ name, schema, value, onChange, required, isStreami
         className="[-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         disabled={isStreaming}
       />
-    </div>
+    </Field>
   )
 }

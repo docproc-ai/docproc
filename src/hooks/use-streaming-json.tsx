@@ -122,10 +122,17 @@ export function useStreamingJson({
         }
 
         // Final parse attempt
-        const finalObject = parsePartialJson(accumulatedTextRef.current)
+        const finalText = accumulatedTextRef.current.trim()
+        const finalObject = parsePartialJson(finalText)
+
         if (finalObject) {
           setObject(finalObject)
           onFinish?.(finalObject)
+        } else if (finalText) {
+          // Model returned text instead of JSON - treat as error with full message
+          const error = new Error(finalText)
+          setError(error)
+          onError?.(error)
         }
       } catch (err) {
         // Don't log or set error state for intentional aborts

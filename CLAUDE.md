@@ -99,6 +99,12 @@ npm run db:studio    # Open Drizzle Studio for database management
 
 ## Development Notes
 
+### CRITICAL: Build Policy
+- **NEVER run `npm run build` without explicitly asking the user first**
+- Build commands can break the development environment
+- Always use `npm run dev` for development work
+- Only build when user explicitly requests it
+
 ### Database Schema Management
 - Use Drizzle migrations in `/drizzle` folder
 - Schema files organized in `/src/db/schema/`

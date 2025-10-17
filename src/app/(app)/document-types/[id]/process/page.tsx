@@ -3,14 +3,35 @@ import { getDocumentType } from '@/lib/actions/document-type'
 import { getDocuments } from '@/lib/actions/document'
 import { DocumentProcessor } from '@/components/document-processor'
 
-export default async function ProcessPage({ params }: { params: Promise<{ id: string }> }) {
+// Force dynamic rendering for this page since we use searchParams
+export const dynamic = 'force-dynamic'
+
+export default async function ProcessPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
   const { id } = await params
   const documentTypeId = id
+  const search = await searchParams
+
+  // Parse search params
+  const page = parseInt((search.page as string) || '1', 10)
+  const pageSize = parseInt((search.pageSize as string) || '50', 10)
+  const status = (search.status as 'pending' | 'processed' | 'approved' | 'all') || 'all'
+  const searchQuery = (search.search as string) || undefined
 
   // Load both document type and documents server-side
-  const [documentType, initialDocuments] = await Promise.all([
+  const [documentType, initialDocumentsResult] = await Promise.all([
     getDocumentType(documentTypeId),
-    getDocuments(documentTypeId),
+    getDocuments(documentTypeId, {
+      page,
+      pageSize,
+      status,
+      search: searchQuery,
+    }),
   ])
 
   if (!documentType) {
@@ -26,7 +47,7 @@ export default async function ProcessPage({ params }: { params: Promise<{ id: st
           schema: documentType.schema,
           modelName: documentType.modelName,
         }}
-        initialDocuments={initialDocuments}
+        initialDocumentsResult={initialDocumentsResult}
       />
     </div>
   )

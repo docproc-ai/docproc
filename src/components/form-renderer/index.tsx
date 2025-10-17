@@ -5,15 +5,18 @@ import { NumberField } from './number-field'
 import { BooleanField } from './boolean-field'
 import { ArrayField } from './array-field'
 import { ObjectField } from './object-field'
+import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from '@/components/ui/empty'
 import type { FormRendererProps, FormFieldProps } from './types'
 
 export function FormRenderer({ schema, data, onChange, isStreaming }: FormRendererProps) {
   if (!schema || !schema.properties) {
     return (
-      <div className="text-muted-foreground p-8 text-center">
-        <p>No schema properties defined.</p>
-        <p className="text-sm">Select a document or define a schema to get started.</p>
-      </div>
+      <Empty>
+        <EmptyHeader>
+          <EmptyTitle>No schema properties defined</EmptyTitle>
+          <EmptyDescription>Select a document or define a schema to get started.</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     )
   }
 
