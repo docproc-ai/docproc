@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useTransition } from 'react'
+import React, { useState, useTransition, useEffect } from 'react'
 import Link from 'next/link'
 import { updateDocument, deleteDocument, rotateDocument } from '@/lib/actions/document'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
@@ -20,8 +20,16 @@ import {
   Square,
   PlusIcon,
   ChevronsUpDownIcon,
+  MousePointerClick,
 } from 'lucide-react'
 import { Button } from './ui/button'
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+} from './ui/empty'
 import { ThemeToggle } from './theme-toggle'
 import { getAllModels, getAvailableProviders } from '@/lib/providers'
 import { DEFAULT_MODEL } from '@/lib/providers/anthropic'
@@ -51,6 +59,7 @@ const DocumentViewer = dynamic(() => import('@/components/document-viewer'), {
 })
 
 import type { DocumentSelect as Document } from '@/db/schema/app'
+import type { GetDocumentsResult } from '@/lib/actions/document'
 
 interface DocumentProcessorProps {
   documentType: {
@@ -60,12 +69,21 @@ interface DocumentProcessorProps {
     providerName?: string | null
     modelName?: string | null
   }
-  initialDocuments?: Document[]
+  initialDocumentsResult?: GetDocumentsResult
 }
 
-export function DocumentProcessor({ documentType, initialDocuments = [] }: DocumentProcessorProps) {
+export function DocumentProcessor({
+  documentType,
+  initialDocumentsResult = { documents: [], total: 0, page: 1, pageSize: 50, totalPages: 0 },
+}: DocumentProcessorProps) {
   const { data: session } = authClient.useSession()
-  const [documents, setDocuments] = useState<Document[]>(initialDocuments)
+  const [documents, setDocuments] = useState<Document[]>(initialDocumentsResult.documents)
+  const [pagination, setPagination] = useState({
+    page: initialDocumentsResult.page,
+    pageSize: initialDocumentsResult.pageSize,
+    total: initialDocumentsResult.total,
+    totalPages: initialDocumentsResult.totalPages,
+  })
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null)
   const [formData, setFormData] = useState<any>(null)
   const [viewerFile, setViewerFile] = useState<{ name: string; url: string; type: string } | null>(
@@ -96,6 +114,17 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
   const processingDocumentId = React.useRef<string | null>(null)
   // Flag to prevent processing next document until current one is completely done (including auto-save)
   const isProcessingComplete = React.useRef<boolean>(true)
+
+  // Sync initial documents result when it changes (e.g., after pagination)
+  useEffect(() => {
+    setDocuments(initialDocumentsResult.documents)
+    setPagination({
+      page: initialDocumentsResult.page,
+      pageSize: initialDocumentsResult.pageSize,
+      total: initialDocumentsResult.total,
+      totalPages: initialDocumentsResult.totalPages,
+    })
+  }, [initialDocumentsResult])
 
   // Main streaming hook for processing (back to simple text streaming)
   const { object, submit, isLoading, stop, error } = useStreamingJson({
@@ -256,14 +285,12 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
             signal: controller.signal,
           })
 
-          if (!response.ok) {
-            throw new Error(`API request failed: ${response.status} ${response.statusText}`)
-          }
-
           const result = await response.json()
 
-          if (!result.success) {
-            throw new Error('Processing failed')
+          if (!response.ok || !result.success) {
+            // Extract meaningful error message from response
+            const errorMessage = result.message || result.error || `API request failed: ${response.status} ${response.statusText}`
+            throw new Error(errorMessage)
           }
 
           const extractedData = result.data
@@ -750,6 +777,7 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
             processingQueue={processingQueue}
             batchQueue={batchQueue}
             isBatchProcessing={isBatchProcessing}
+            pagination={pagination}
             onSelect={handleDocumentSelect}
             onUploadSuccess={handleUploadSuccess}
             onDelete={handleDelete}
@@ -853,9 +881,17 @@ export function DocumentProcessor({ documentType, initialDocuments = [] }: Docum
                 </div>
               </Tabs>
             ) : (
-              <div className="flex h-full items-center justify-center">
-                <p className="text-muted-foreground">Select a document to begin processing.</p>
-              </div>
+              <Empty className="h-full border-0">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <MousePointerClick />
+                  </EmptyMedia>
+                  <EmptyTitle>No document selected</EmptyTitle>
+                  <EmptyDescription>
+                    Select a document from the sidebar to view and edit its extracted data.
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             )}
           </div>
         </ResizablePanel>
