@@ -206,7 +206,7 @@ export function DocumentProcessor({
     const requestData = {
       documentId: docId,
       documentTypeId: documentType.id,
-      schema: JSON.stringify(doc.schemaSnapshot || documentType.schema),
+      schema: JSON.stringify(documentType.schema), // Always use latest schema for processing
       // Add override model if admin has selected one that's different from document type default
       ...(isAdmin && overrideModel && overrideModel !== (documentType.modelName || DEFAULT_MODEL)
         ? { model: overrideModel }
@@ -268,7 +268,7 @@ export function DocumentProcessor({
           const requestData = {
             documentId: docId,
             documentTypeId: documentType.id,
-            schema: JSON.stringify(doc.schemaSnapshot || documentType.schema),
+            schema: JSON.stringify(documentType.schema), // Always use latest schema for processing
             // Add override model if admin has selected one
             ...(isAdmin &&
             overrideModel &&
@@ -317,23 +317,21 @@ export function DocumentProcessor({
             }),
           )
 
-          // Auto-save if document was originally pending
-          if (wasOriginallyPending) {
-            const formDataToSubmit = new FormData()
-            formDataToSubmit.append('extractedData', JSON.stringify(extractedData))
-            formDataToSubmit.append('status', 'processed')
-            formDataToSubmit.append(
-              'schemaSnapshot',
-              JSON.stringify(doc.schemaSnapshot || documentType.schema),
-            )
+          // Always save after processing (both first time and reprocessing)
+          const formDataToSubmit = new FormData()
+          formDataToSubmit.append('extractedData', JSON.stringify(extractedData))
+          formDataToSubmit.append('status', 'processed')
+          formDataToSubmit.append(
+            'schemaSnapshot',
+            JSON.stringify(documentType.schema), // Save current schema as snapshot
+          )
 
-            const savedDoc = await updateDocument(docId, formDataToSubmit)
+          const savedDoc = await updateDocument(docId, formDataToSubmit)
 
-            // Update documents state with saved version
-            setDocuments((prev) => prev.map((d) => (d.id === docId ? savedDoc : d)))
-            if (selectedDocument?.id === docId) {
-              setSelectedDocument(savedDoc)
-            }
+          // Update documents state with saved version
+          setDocuments((prev) => prev.map((d) => (d.id === docId ? savedDoc : d)))
+          if (selectedDocument?.id === docId) {
+            setSelectedDocument(savedDoc)
           }
         } catch (error: any) {
           // Handle AbortError separately from other errors
@@ -431,33 +429,31 @@ export function DocumentProcessor({
       }),
     )
 
-    // Auto-save if document was originally pending (first time processing)
-    if (wasOriginallyPending && updatedDoc) {
-      startTransition(async () => {
-        try {
-          const formDataToSubmit = new FormData()
-          formDataToSubmit.append('extractedData', JSON.stringify(finalObject))
-          formDataToSubmit.append('status', 'processed')
-          formDataToSubmit.append(
-            'schemaSnapshot',
-            JSON.stringify(updatedDoc.schemaSnapshot || documentType.schema),
-          )
+    // Always save after processing (both first time and reprocessing)
+    startTransition(async () => {
+      try {
+        const formDataToSubmit = new FormData()
+        formDataToSubmit.append('extractedData', JSON.stringify(finalObject))
+        formDataToSubmit.append('status', 'processed')
+        formDataToSubmit.append(
+          'schemaSnapshot',
+          JSON.stringify(documentType.schema), // Save current schema as snapshot
+        )
 
-          const result = await updateDocument(processingId, formDataToSubmit)
+        const result = await updateDocument(processingId, formDataToSubmit)
 
-          // Update the document in our state with the saved version
-          if (result) {
-            setDocuments((prev) => prev.map((d) => (d.id === processingId ? result : d)))
-            if (selectedDocument?.id === processingId) {
-              setSelectedDocument(result)
-            }
+        // Update the document in our state with the saved version
+        if (result) {
+          setDocuments((prev) => prev.map((d) => (d.id === processingId ? result : d)))
+          if (selectedDocument?.id === processingId) {
+            setSelectedDocument(result)
           }
-        } catch (error: any) {
-          console.error('❌ Failed to auto-save processed document:', error)
-          toast.error(`Failed to save processed document: ${error.message}`)
         }
-      })
-    }
+      } catch (error: any) {
+        console.error('❌ Failed to auto-save processed document:', error)
+        toast.error(`Failed to save processed document: ${error.message}`)
+      }
+    })
 
     // Clean up processing state
     setCurrentlyProcessing(null)
