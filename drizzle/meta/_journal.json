@@ -22,6 +22,13 @@
       "when": 1756921186744,
       "tag": "0002_simple_slipstream",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1760732415344,
+      "tag": "0003_whole_jack_power",
+      "breakpoints": true
     }
   ]
 }
