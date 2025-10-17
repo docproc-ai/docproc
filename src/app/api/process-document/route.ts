@@ -197,7 +197,16 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text.`
       } catch (parseError) {
         console.error('❌ Failed to parse JSON response for document:', documentId, parseError)
         console.error('Raw response text:', text)
-        return new Response('Failed to parse AI response as JSON', { status: 500 })
+
+        // Model returned text instead of JSON - return the full message
+        return Response.json(
+          {
+            success: false,
+            error: 'Model returned text instead of JSON',
+            message: text,
+          },
+          { status: 422 } // Unprocessable Entity
+        )
       }
 
       return Response.json({
