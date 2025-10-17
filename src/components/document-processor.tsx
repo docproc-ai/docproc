@@ -335,6 +335,13 @@ export function DocumentProcessor({
               setSelectedDocument(result.document)
             }
 
+            // Remove from processing set before continuing
+            setProcessingDocuments((prev) => {
+              const newSet = new Set(prev)
+              newSet.delete(docId)
+              return newSet
+            })
+
             // Don't throw error toast for validation rejections - they're expected
             continue
           }
