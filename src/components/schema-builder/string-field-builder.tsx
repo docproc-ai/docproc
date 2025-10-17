@@ -1,6 +1,5 @@
 'use client'
 
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -9,6 +8,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Field, FieldLabel } from '@/components/ui/field'
 import { EnumBuilder } from './enum-builder'
 import type { JsonSchema } from './types'
 
@@ -25,15 +25,15 @@ export function StringFieldBuilder({ schema, onChange, fieldId }: StringFieldBui
     <div className="space-y-4">
       {!Array.isArray(schema.enum) && (
         <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor={`format-${fieldId}`}>Format</Label>
+          <Field>
+            <FieldLabel htmlFor={`format-${fieldId}`}>Format</FieldLabel>
             <Select
               value={schema.format || 'none'}
               onValueChange={(format) =>
                 onChange({ format: format === 'none' ? undefined : (format as any) })
               }
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger id={`format-${fieldId}`} className="w-full">
                 <SelectValue placeholder="Select a format" />
               </SelectTrigger>
               <SelectContent>
@@ -44,9 +44,9 @@ export function StringFieldBuilder({ schema, onChange, fieldId }: StringFieldBui
                 <SelectItem value="uri">URI</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor={`widget-${fieldId}`}>Widget</Label>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor={`widget-${fieldId}`}>Widget</FieldLabel>
             <Select
               value={schema['ui:widget'] || 'default'}
               onValueChange={(widget) =>
@@ -55,7 +55,7 @@ export function StringFieldBuilder({ schema, onChange, fieldId }: StringFieldBui
                 })
               }
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger id={`widget-${fieldId}`} className="w-full">
                 <SelectValue placeholder="Select a widget" />
               </SelectTrigger>
               <SelectContent>
@@ -63,41 +63,39 @@ export function StringFieldBuilder({ schema, onChange, fieldId }: StringFieldBui
                 <SelectItem value="textarea">Multi-line Text Area</SelectItem>
               </SelectContent>
             </Select>
-          </div>
+          </Field>
         </div>
       )}
 
-      <div className="space-y-2">
-        <div className="flex items-center space-x-2">
-          <Checkbox
-            id={`use-enum-${fieldId}`}
-            checked={Array.isArray(schema.enum)}
-            onCheckedChange={(checked) => {
-              if (checked) {
-                onChange({
-                  format: undefined,
-                  'ui:widget': undefined,
-                  enum: ['Option 1'],
-                })
-              } else {
-                onChange({
-                  enum: undefined,
-                })
-              }
-            }}
-          />
-          <Label htmlFor={`use-enum-${fieldId}`}>Use predefined options (enum)</Label>
-        </div>
+      <Field orientation="horizontal">
+        <Checkbox
+          id={`use-enum-${fieldId}`}
+          checked={Array.isArray(schema.enum)}
+          onCheckedChange={(checked) => {
+            if (checked) {
+              onChange({
+                format: undefined,
+                'ui:widget': undefined,
+                enum: ['Option 1'],
+              })
+            } else {
+              onChange({
+                enum: undefined,
+              })
+            }
+          }}
+        />
+        <FieldLabel htmlFor={`use-enum-${fieldId}`}>Use predefined options (enum)</FieldLabel>
+      </Field>
 
-        {Array.isArray(schema.enum) && (
-          <EnumBuilder
-            value={schema.enum}
-            onChange={(newEnum) => {
-              onChange({ enum: newEnum })
-            }}
-          />
-        )}
-      </div>
+      {Array.isArray(schema.enum) && (
+        <EnumBuilder
+          value={schema.enum}
+          onChange={(newEnum) => {
+            onChange({ enum: newEnum })
+          }}
+        />
+      )}
     </div>
   )
 }

@@ -1,7 +1,7 @@
 'use client'
 
-import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
+import { Field, FieldLabel } from '@/components/ui/field'
 import type { JsonSchema } from './types'
 
 interface NumberFieldBuilderProps {
@@ -15,10 +15,10 @@ export function NumberFieldBuilder({ schema, onChange, fieldId }: NumberFieldBui
 
   return (
     <div className="grid grid-cols-2 gap-4">
-      <div className="space-y-2">
-        <Label htmlFor={`minimum-${fieldId}`}>Minimum</Label>
+      <Field>
+        <FieldLabel htmlFor={`minimum-${fieldId}`}>Minimum</FieldLabel>
         <Input
-          id={`min-${fieldId}`}
+          id={`minimum-${fieldId}`}
           type="number"
           value={schema.minimum ?? ''}
           onChange={(e) =>
@@ -33,11 +33,11 @@ export function NumberFieldBuilder({ schema, onChange, fieldId }: NumberFieldBui
           }}
           placeholder="Minimum value"
         />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor={`max-${fieldId}`}>Maximum</Label>
+      </Field>
+      <Field>
+        <FieldLabel htmlFor={`maximum-${fieldId}`}>Maximum</FieldLabel>
         <Input
-          id={`max-${fieldId}`}
+          id={`maximum-${fieldId}`}
           type="number"
           value={schema.maximum ?? ''}
           onChange={(e) =>
@@ -52,7 +52,7 @@ export function NumberFieldBuilder({ schema, onChange, fieldId }: NumberFieldBui
           }}
           placeholder="Maximum value"
         />
-      </div>
+      </Field>
     </div>
   )
 }
