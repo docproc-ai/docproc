@@ -16,7 +16,8 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
-import { Trash2, Loader2 } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
+import { Spinner } from '@/components/ui/spinner'
 
 interface DeleteDocumentTypeDialogProps {
   documentTypeId: string
@@ -67,7 +68,7 @@ export function DeleteDocumentTypeDialog({
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
           <AlertDialogAction onClick={handleDelete} disabled={isLoading}>
-            {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+            {isLoading && <Spinner />}
             Yes, delete everything
           </AlertDialogAction>
         </AlertDialogFooter>

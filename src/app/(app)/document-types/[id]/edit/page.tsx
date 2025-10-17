@@ -7,8 +7,9 @@ import { authClient } from '@/lib/auth-client'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import { ArrowLeft, Loader2 } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { PageLoadingSkeleton } from '@/components/ui/loading-skeletons'
+import { Spinner } from '@/components/ui/spinner'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { UserMenu } from '@/components/user-menu'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -169,7 +170,7 @@ export default function EditDocumentTypePage() {
             documentTypeName={formData?.name || initialData?.name || ''}
           />
           <Button onClick={handleSubmit} disabled={isLoading || isFetching || !formData?.isValid}>
-            {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+            {isLoading && <Spinner />}
             Save
           </Button>
           <ThemeToggle />

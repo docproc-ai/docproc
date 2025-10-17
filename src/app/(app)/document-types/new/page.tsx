@@ -6,8 +6,9 @@ import { createDocumentType } from '@/lib/actions/document-type'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import { ArrowLeft, Loader2 } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { PageLoadingSkeleton } from '@/components/ui/loading-skeletons'
+import { Spinner } from '@/components/ui/spinner'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { UserMenu } from '@/components/user-menu'
 import { authClient } from '@/lib/auth-client'
@@ -89,7 +90,7 @@ export default function NewDocumentTypePage() {
         <h1 className="text-xl font-semibold">Create New Document Type</h1>
         <div className="ml-auto flex items-center gap-2">
           <Button onClick={handleSubmit} disabled={isLoading || !formData?.isValid}>
-            {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+            {isLoading && <Spinner />}
             Save
           </Button>
           <ThemeToggle />

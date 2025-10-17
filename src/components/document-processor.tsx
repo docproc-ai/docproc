@@ -13,7 +13,6 @@ import { FormRenderer } from './form-renderer'
 import { toast } from 'sonner'
 import {
   Bot,
-  Loader2,
   CheckCircle,
   ArrowLeft,
   Undo2,
@@ -23,6 +22,7 @@ import {
   MousePointerClick,
 } from 'lucide-react'
 import { Button } from './ui/button'
+import { Spinner } from './ui/spinner'
 import {
   Empty,
   EmptyHeader,
@@ -742,7 +742,7 @@ export function DocumentProcessor({
               variant="secondary"
             >
               {isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Spinner />
               ) : (
                 <Undo2 className="h-4 w-4" />
               )}
@@ -754,7 +754,7 @@ export function DocumentProcessor({
               disabled={isPending || !selectedDocument}
             >
               {isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Spinner />
               ) : (
                 <CheckCircle className="h-4 w-4" />
               )}
@@ -799,7 +799,7 @@ export function DocumentProcessor({
                     {isLoading && (
                       <div className="sticky top-0 z-10 mb-4 rounded-md border border-blue-200 bg-blue-50 p-3 shadow-sm dark:border-blue-800 dark:bg-blue-950">
                         <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <Spinner />
                           Extracting data from document...
                         </div>
                       </div>
@@ -842,7 +842,7 @@ export function DocumentProcessor({
                     {isLoading && (
                       <div className="sticky top-0 z-10 mb-4 rounded-md border border-blue-200 bg-blue-50 p-3 shadow-sm dark:border-blue-800 dark:bg-blue-950">
                         <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <Spinner />
                           Extracting data from document...
                         </div>
                       </div>

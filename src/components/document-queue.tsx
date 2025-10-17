@@ -4,7 +4,7 @@ import type React from 'react'
 import { useState, useRef, useTransition, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
-import { UploadCloud, Loader2, Trash2, Bot, Square, Clock, MoreHorizontal, CircleDashed, CheckCircle2, BadgeCheck, Search, Filter } from 'lucide-react'
+import { UploadCloud, Trash2, Bot, Square, Clock, MoreHorizontal, CircleDashed, CheckCircle2, BadgeCheck, Search, Filter } from 'lucide-react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import {
   DocumentStatusIcon,
@@ -35,6 +35,7 @@ import {
   EmptyDescription,
 } from '@/components/ui/empty'
 import { createDocument, bulkUpdateDocumentStatus } from '@/lib/actions/document'
+import { Spinner } from '@/components/ui/spinner'
 
 // Client-only date formatter to avoid hydration issues
 function ClientDate({ date }: { date: Date | null }) {
@@ -398,7 +399,7 @@ export function DocumentQueue({
                     disabled={isUploading}
                     title="Upload documents"
                   >
-                    {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
+                    {isUploading ? <Spinner /> : <UploadCloud className="h-4 w-4" />}
                   </Button>
                   {isBatchProcessing ? (
                     <Button
@@ -516,7 +517,7 @@ export function DocumentQueue({
                   className="flex flex-1 cursor-pointer items-center gap-3 overflow-hidden p-4"
                 >
                   {processingDocuments.has(doc.id) ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                    <Spinner className="text-blue-500" />
                   ) : batchQueue.includes(doc.id) || processingQueue?.includes(doc.id) ? (
                     <Clock className="h-4 w-4 text-orange-500" />
                   ) : (

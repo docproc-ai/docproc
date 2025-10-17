@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Separator } from '@/components/ui/separator'
-import { Loader2 } from 'lucide-react'
+import { Spinner } from '@/components/ui/spinner'
 
 export function LoginForm() {
   const [email, setEmail] = useState('')
@@ -198,7 +198,7 @@ export function LoginForm() {
                 </Alert>
               )}
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isLoading && <Spinner className="mr-2" />}
                 Sign In
               </Button>
             </form>
@@ -229,7 +229,7 @@ export function LoginForm() {
                   disabled={socialLoading !== null || isLoading}
                 >
                   {socialLoading === provider ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Spinner className="mr-2" />
                   ) : (
                     getProviderIcon(provider)
                   )}

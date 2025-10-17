@@ -1,7 +1,7 @@
 'use client'
 import { useState, useRef, useEffect, useCallback, memo, useTransition } from 'react'
 
-import { FileText, Loader2, ChevronLeft, ChevronRight, RotateCw, RotateCcw } from 'lucide-react'
+import { FileText, ChevronLeft, ChevronRight, RotateCw, RotateCcw } from 'lucide-react'
 import { Document, pdfjs } from 'react-pdf'
 import {
   TransformWrapper,
@@ -9,6 +9,7 @@ import {
   type ReactZoomPanPinchRef,
 } from 'react-zoom-pan-pinch'
 import { Button } from '@/components/ui/button'
+import { Spinner } from '@/components/ui/spinner'
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
 
@@ -165,7 +166,7 @@ const DocumentViewerComponent = ({
 
         {(isRendering || !pageImage) && !isPending && (
           <div className="bg-background/50 absolute inset-0 z-10 flex items-center justify-center">
-            <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
+            <Spinner className="text-muted-foreground size-8" />
           </div>
         )}
 
