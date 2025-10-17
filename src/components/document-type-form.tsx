@@ -16,6 +16,7 @@ import { SchemaBuilder, type JsonSchema } from '@/components/schema-builder'
 import { WebhookConfigComponent } from '@/components/webhook-config'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { SchemaEditorTab } from '@/components/editor-tabs'
+import Editor from '@/components/editor'
 import { Loader2, PlusIcon, ChevronsUpDownIcon } from 'lucide-react'
 import { getAvailableProviders } from '@/lib/providers'
 import {
@@ -35,6 +36,7 @@ interface DocumentTypeFormProps {
   initialData?: {
     name: string
     webhookConfig: WebhookConfig | null
+    validationInstructions: string | null
     providerName: string
     modelName: string
     schema: JsonSchema
@@ -42,6 +44,7 @@ interface DocumentTypeFormProps {
   onFormDataChange?: (formData: {
     name: string
     webhookConfig: WebhookConfig | null
+    validationInstructions: string
     providerName: string
     modelName: string
     schema: JsonSchema
@@ -75,6 +78,9 @@ export function DocumentTypeForm({
   const [webhookConfig, setWebhookConfig] = useState<WebhookConfig | null>(
     initialData?.webhookConfig || null,
   )
+  const [validationInstructions, setValidationInstructions] = useState(
+    initialData?.validationInstructions || '',
+  )
   const [providerName, setProviderName] = useState(initialData?.providerName || '')
   const [modelName, setModelName] = useState(initialData?.modelName || '')
   const [schemaText, setSchemaText] = useState(
@@ -100,13 +106,14 @@ export function DocumentTypeForm({
       onFormDataChange({
         name,
         webhookConfig,
+        validationInstructions,
         providerName,
         modelName,
         schema,
         isValid,
       })
     }
-  }, [name, webhookConfig, providerName, modelName, schema, isValid, onFormDataChange])
+  }, [name, webhookConfig, validationInstructions, providerName, modelName, schema, isValid, onFormDataChange])
 
   const handleSchemaTextChange = useCallback((text: string | undefined) => {
     setSchemaText(text || '')
@@ -219,6 +226,32 @@ export function DocumentTypeForm({
         </CardHeader>
         <CardContent>
           <WebhookConfigComponent config={webhookConfig} onChange={setWebhookConfig} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Validation Instructions</CardTitle>
+          <CardDescription>
+            Define validation criteria to verify documents match this type before processing. This
+            helps avoid wasting tokens on incorrect document types.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <Label htmlFor="validationInstructions">Instructions (optional)</Label>
+            <p className="text-muted-foreground mb-2 text-sm">
+              Describe what the document should contain. If validation fails, processing will be
+              skipped.
+            </p>
+            <div className="h-[300px]">
+              <Editor
+                language="markdown"
+                value={validationInstructions}
+                onChange={(text) => setValidationInstructions(text || '')}
+              />
+            </div>
+          </div>
         </CardContent>
       </Card>
 

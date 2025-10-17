@@ -34,17 +34,6 @@ export default function Editor({ value, onChange, language = 'json' }: EditorPro
     }
   }, [value])
 
-  if (language !== 'json') {
-    return (
-      <Textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="min-h-[120px] font-mono text-sm"
-        rows={5}
-      />
-    )
-  }
-
   return (
     <div className="border-border h-full min-h-[200px] overflow-hidden rounded-md border">
       <MonacoEditor

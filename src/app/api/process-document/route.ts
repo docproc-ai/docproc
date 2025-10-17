@@ -3,7 +3,7 @@ import { getDocumentType } from '@/lib/actions/document-type'
 import { checkDocumentPermissions } from '@/lib/auth-utils'
 import { getModelForProcessing } from '@/lib/providers'
 import { getStorageDir } from '@/lib/storage'
-import { streamText, generateText } from 'ai'
+import { streamText, generateText, generateObject, jsonSchema } from 'ai'
 import { NextRequest } from 'next/server'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -61,6 +61,96 @@ You are an expert document processor. Your task is to analyze the provided docum
 `.trim()
 }
 
+interface ValidationResult {
+  isValid: boolean
+  reason?: string
+}
+
+/**
+ * Validate if a document matches the expected document type
+ * Returns early if validation instructions are not set
+ */
+async function validateDocument(
+  docType: any,
+  fileBuffer: Buffer,
+  filename: string,
+  provider: any,
+  modelName: string,
+): Promise<ValidationResult> {
+  // Skip validation if no instructions provided
+  if (!docType.validationInstructions || !docType.validationInstructions.trim()) {
+    return { isValid: true }
+  }
+
+  // Determine file type from filename
+  const fileExtension = filename.toLowerCase().split('.').pop()
+  const mimeType = getMimeType(fileExtension || '')
+
+  // Build the message content
+  const messageContent: Array<
+    | { type: 'text'; text: string }
+    | { type: 'image'; image: Buffer }
+    | { type: 'file'; data: Buffer; mediaType: string; filename?: string }
+  > = [
+    {
+      type: 'text',
+      text: `Validate if this document matches the expected type.
+
+${docType.validationInstructions}
+
+Respond with your assessment.`,
+    },
+  ]
+
+  if (mimeType.startsWith('image/')) {
+    messageContent.push({ type: 'image', image: fileBuffer })
+  } else {
+    messageContent.push({
+      type: 'file',
+      data: fileBuffer,
+      mediaType: mimeType,
+      filename: filename,
+    })
+  }
+
+  const messages = [
+    {
+      role: 'user' as const,
+      content: messageContent,
+    },
+  ]
+
+  // Define validation response schema
+  const validationSchema = jsonSchema<ValidationResult>({
+    type: 'object',
+    properties: {
+      isValid: {
+        type: 'boolean',
+        description: 'Whether the document matches the expected type',
+      },
+      reason: {
+        type: 'string',
+        description: 'Explanation of why the document is valid or invalid',
+      },
+    },
+    required: ['isValid'],
+  })
+
+  try {
+    const { object } = await generateObject({
+      model: provider.getModel(modelName),
+      schema: validationSchema,
+      messages,
+    })
+
+    return object
+  } catch (error) {
+    console.error('Validation failed:', error)
+    // On validation error, allow processing to continue
+    return { isValid: true, reason: 'Validation check failed, proceeding with processing' }
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     // Check if user has permission to process documents (or has valid API key)
@@ -75,6 +165,7 @@ export async function POST(req: NextRequest) {
     // Check if streaming mode is requested
     const url = new URL(req.url)
     const isStreamMode = url.searchParams.get('stream') === 'true'
+    const skipValidation = url.searchParams.get('skipValidation') === 'true'
 
     const body = await req.json()
     const { documentId, documentTypeId, schema: schemaString, model: overrideModel } = body
@@ -120,6 +211,12 @@ export async function POST(req: NextRequest) {
       validatedOverrideModel,
     )
 
+    // Get the document type for validation
+    const docType = await getDocumentType(documentTypeId)
+    if (!docType) {
+      return new Response('Document type not found', { status: 404 })
+    }
+
     // Get the document
     const doc = await getDocument(documentId)
     if (!doc) {
@@ -129,6 +226,29 @@ export async function POST(req: NextRequest) {
     // Read the document file from storage
     const filePath = join(getStorageDir(), doc.storagePath)
     const fileBuffer = await readFile(filePath)
+
+    // Validate document type if validation instructions exist (unless explicitly skipped)
+    if (!skipValidation) {
+      const validation = await validateDocument(docType, fileBuffer, doc.filename, provider, modelName)
+
+      if (!validation.isValid) {
+        // Save rejection to database
+        const { updateDocument } = await import('@/lib/actions/document')
+        const rejectionFormData = new FormData()
+        rejectionFormData.append('status', 'rejected')
+        rejectionFormData.append('rejectionReason', validation.reason || 'Document does not match expected type')
+        const rejectedDoc = await updateDocument(documentId, rejectionFormData)
+
+        // Return 200 with success: false so the client can handle gracefully
+        return Response.json({
+          success: false,
+          rejected: true,
+          error: 'Document validation failed',
+          message: validation.reason || 'Document does not match expected type',
+          document: rejectedDoc,
+        })
+      }
+    }
 
     // Determine file type from filename
     const fileExtension = doc.filename.toLowerCase().split('.').pop()
@@ -199,14 +319,11 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text.`
         console.error('Raw response text:', text)
 
         // Model returned text instead of JSON - return the full message
-        return Response.json(
-          {
-            success: false,
-            error: 'Model returned text instead of JSON',
-            message: text,
-          },
-          { status: 422 } // Unprocessable Entity
-        )
+        return Response.json({
+          success: false,
+          error: 'Model returned text instead of JSON',
+          message: text,
+        })
       }
 
       return Response.json({

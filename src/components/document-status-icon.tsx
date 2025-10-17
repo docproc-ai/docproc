@@ -1,4 +1,4 @@
-import { File, FileJson, FileCheck } from 'lucide-react'
+import { File, FileJson, FileCheck, FileX } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { DocumentSelect as Document } from '@/db/schema/app'
 
@@ -9,7 +9,7 @@ interface StatusIconProps {
 
 const sizeClasses = {
   sm: 'h-3 w-3',
-  md: 'h-4 w-4', 
+  md: 'h-4 w-4',
   lg: 'h-5 w-5'
 }
 
@@ -26,6 +26,10 @@ export const ApprovedStatusIcon = ({ className, size = 'md' }: StatusIconProps) 
   <FileCheck className={cn('text-green-500', sizeClasses[size], className)} />
 )
 
+export const RejectedStatusIcon = ({ className, size = 'md' }: StatusIconProps) => (
+  <FileX className={cn('text-red-500', sizeClasses[size], className)} />
+)
+
 // Main component that selects the appropriate icon based on status
 interface DocumentStatusIconProps extends StatusIconProps {
   status: Document['status']
@@ -37,6 +41,8 @@ export const DocumentStatusIcon = ({ status, className, size = 'md' }: DocumentS
       return <ApprovedStatusIcon className={className} size={size} />
     case 'processed':
       return <ProcessedStatusIcon className={className} size={size} />
+    case 'rejected':
+      return <RejectedStatusIcon className={className} size={size} />
     case 'pending':
     default:
       return <PendingStatusIcon className={className} size={size} />

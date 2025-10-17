@@ -7,6 +7,7 @@ export const documentType = pgTable('document_type', {
   slug: text('slug').notNull().unique(),
   schema: json('schema').notNull(),
   webhookConfig: json('webhook_config'),
+  validationInstructions: text('validation_instructions'),
   providerName: text('provider_name'),
   modelName: text('model_name'),
   createdAt: timestamp('created_at').defaultNow(),
@@ -21,6 +22,7 @@ export const documentStatus = pgEnum('document_status', [
   'pending', // Document needs to be processed AND approved (user must click process + approve)
   'processed', // Document is processed and needs approval/editing (user just needs to approve/edit)
   'approved', // Document is finalized and approved
+  'rejected', // Document failed validation
 ])
 
 export const document = pgTable(
@@ -35,6 +37,7 @@ export const document = pgTable(
     storagePath: text('storage_path').notNull(),
     extractedData: json('extracted_data'),
     schemaSnapshot: json('schema_snapshot'),
+    rejectionReason: text('rejection_reason'),
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at')
       .defaultNow()

@@ -73,25 +73,53 @@ export function useStreamingJson({
           signal: abortControllerRef.current.signal,
         })
 
+        // For validation rejections, response will be ok with rejected flag
+        // But we need to check the response first
+        const contentType = response.headers.get('content-type')
+
         if (!response.ok) {
           // Handle rate limiting specifically
           if (response.status === 429) {
             const errorText = await response.text()
             throw new Error(`Rate limit exceeded: ${errorText}`)
           }
-          
+
           // Handle other HTTP errors
           let errorMessage = `HTTP error! status: ${response.status}`
           try {
             const errorText = await response.text()
             if (errorText) {
-              errorMessage = errorText
+              // Try to parse as JSON first (for validation errors)
+              try {
+                const errorJson = JSON.parse(errorText)
+                errorMessage = errorJson.message || errorJson.error || errorText
+              } catch {
+                // Not JSON, use the raw text
+                errorMessage = errorText
+              }
             }
           } catch {
             // If we can't read the error text, use the default message
           }
-          
+
           throw new Error(errorMessage)
+        }
+
+        // Check if response is JSON (validation rejection or error) instead of stream
+        if (contentType?.includes('application/json')) {
+          const jsonResponse = await response.json()
+
+          // If this is a validation rejection, treat it as a successful finish with the rejected document
+          if (jsonResponse.rejected && jsonResponse.document) {
+            setObject(jsonResponse.document)
+            onFinish?.(jsonResponse.document)
+            return // Exit gracefully, not an error
+          }
+
+          // Other JSON errors (these ARE errors - like model returning text instead of JSON)
+          if (!jsonResponse.success) {
+            throw new Error(jsonResponse.message || jsonResponse.error || 'Processing failed')
+          }
         }
 
         const reader = response.body?.getReader()

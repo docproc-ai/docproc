@@ -11,13 +11,14 @@ import {
   PendingStatusIcon,
   ProcessedStatusIcon,
   ApprovedStatusIcon,
+  RejectedStatusIcon,
 } from '@/components/document-status-icon'
 import { cn } from '@/lib/utils'
 import { formatDistanceToNow } from 'date-fns'
 import type { DocumentSelect as Document } from '@/db/schema/app'
 import { toast } from 'sonner'
 import { Checkbox } from '@/components/ui/checkbox'
-import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
+import { Input } from '@/components/ui/input'
 import {
   Pagination,
   PaginationContent,
@@ -66,6 +67,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -115,7 +117,7 @@ export function DocumentQueue({
   const [statusFilter, setStatusFilter] = useState<Set<string>>(() => {
     const status = searchParams.get('status')
     if (!status || status === 'all') {
-      return new Set(['pending', 'processed', 'approved'])
+      return new Set(['pending', 'processed', 'approved', 'rejected'])
     }
     // Handle comma-separated values
     return new Set(status.split(','))
@@ -290,7 +292,7 @@ export function DocumentQueue({
     setSelectedDocIds(new Set())
   }
 
-  const handleBulkStatusUpdate = async (status: 'pending' | 'processed' | 'approved') => {
+  const handleBulkStatusUpdate = async (status: 'pending' | 'processed' | 'approved' | 'rejected') => {
     if (selectedDocIds.size === 0) return
 
     const count = selectedDocIds.size
@@ -328,37 +330,6 @@ export function DocumentQueue({
         accept="image/*,application/pdf"
         multiple
       />
-      <div className="border-border space-y-2 border-b p-4">
-        <ButtonGroup className="w-full">
-          <Button
-            variant={statusFilter.has('pending') ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => handleStatusToggle('pending')}
-            className="flex-1 gap-0.5 text-xs"
-          >
-            <PendingStatusIcon size="sm" />
-            <span className="truncate">Pending</span>
-          </Button>
-          <Button
-            variant={statusFilter.has('processed') ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => handleStatusToggle('processed')}
-            className="flex-1 gap-0.5 text-xs"
-          >
-            <ProcessedStatusIcon size="sm" />
-            <span className="truncate">Processed</span>
-          </Button>
-          <Button
-            variant={statusFilter.has('approved') ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => handleStatusToggle('approved')}
-            className="flex-1 gap-0.5 text-xs"
-          >
-            <ApprovedStatusIcon size="sm" />
-            <span className="truncate">Approved</span>
-          </Button>
-        </ButtonGroup>
-      </div>
       <div className="flex-grow overflow-y-auto">
         {/* Table header with search and selection - always visible */}
         <div className="border-border sticky top-0 z-10 flex items-center gap-2 border-b bg-background p-2">
@@ -372,87 +343,94 @@ export function DocumentQueue({
               }
             }}
           />
-          <form onSubmit={handleSearchSubmit} className="flex-1">
-            <InputGroup>
-              <InputGroupAddon>
-                <Search />
-              </InputGroupAddon>
-              <InputGroupInput
-                type="text"
-                placeholder="Search documents..."
-                value={searchQuery}
-                onChange={handleSearchChange}
-              />
-            </InputGroup>
-          </form>
-          <div className="flex items-center gap-2">
-                {selectedDocIds.size > 0 && (
-                  <span className="text-muted-foreground text-xs">
-                    {selectedDocIds.size}
-                  </span>
-                )}
-                <ButtonGroup>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading}
-                    title="Upload documents"
-                  >
-                    {isUploading ? <Spinner /> : <UploadCloud className="h-4 w-4" />}
+          {selectedDocIds.size > 0 && (
+            <span className="text-muted-foreground text-xs">
+              {selectedDocIds.size}
+            </span>
+          )}
+          <ButtonGroup className="flex-1">
+            <Input
+              type="text"
+              placeholder="Search documents..."
+              value={searchQuery}
+              onChange={handleSearchChange}
+            />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" title="Filter by status">
+                    <Filter className="h-4 w-4" />
                   </Button>
-                  {isBatchProcessing ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={onStopAll}
-                      title="Stop processing"
-                    >
-                      <Square className="h-4 w-4" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={(e) => e.preventDefault()} onClick={() => handleStatusToggle('pending')}>
+                    <PendingStatusIcon size="sm" />
+                    Pending
+                    {statusFilter.has('pending') && <span className="ml-auto">✓</span>}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={(e) => e.preventDefault()} onClick={() => handleStatusToggle('processed')}>
+                    <ProcessedStatusIcon size="sm" />
+                    Processed
+                    {statusFilter.has('processed') && <span className="ml-auto">✓</span>}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={(e) => e.preventDefault()} onClick={() => handleStatusToggle('approved')}>
+                    <ApprovedStatusIcon size="sm" />
+                    Approved
+                    {statusFilter.has('approved') && <span className="ml-auto">✓</span>}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={(e) => e.preventDefault()} onClick={() => handleStatusToggle('rejected')}>
+                    <RejectedStatusIcon size="sm" />
+                    Rejected
+                    {statusFilter.has('rejected') && <span className="ml-auto">✓</span>}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {isBatchProcessing ? (
+                <Button variant="outline" size="icon" title="Stop batch processing" onClick={onStopAll}>
+                  <Square className="h-4 w-4" />
+                </Button>
+              ) : (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="icon" title="Actions">
+                      <MoreHorizontal className="h-4 w-4" />
                     </Button>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        if (selectedDocIds.size > 0) {
-                          handleProcessSelected()
-                        } else {
-                          onProcessAll(filteredDocuments.map(d => d.id))
-                        }
-                      }}
-                      disabled={isPending || filteredDocuments.length === 0}
-                      title={selectedDocIds.size > 0 ? "Process selected documents" : "Process all documents"}
-                    >
-                      <Bot className="h-4 w-4" />
-                    </Button>
-                  )}
-                  {selectedDocIds.size > 0 && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" title="More actions">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {selectedDocIds.size === 0 ? (
+                      <DropdownMenuItem onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                        {isUploading ? <Spinner className="h-4 w-4" /> : <UploadCloud className="h-4 w-4" />}
+                        Upload Documents
+                      </DropdownMenuItem>
+                    ) : (
+                      <>
+                        <DropdownMenuLabel>{selectedDocIds.size} selected</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={handleProcessSelected}>
+                          <Bot className="h-4 w-4" />
+                          Process
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => handleBulkStatusUpdate('pending')}>
-                          <CircleDashed className="mr-2 h-4 w-4" />
+                          <PendingStatusIcon size="sm" />
                           Mark as Pending
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleBulkStatusUpdate('processed')}>
-                          <CheckCircle2 className="mr-2 h-4 w-4" />
+                          <ProcessedStatusIcon size="sm" />
                           Mark as Processed
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleBulkStatusUpdate('approved')}>
-                          <BadgeCheck className="mr-2 h-4 w-4" />
+                          <ApprovedStatusIcon size="sm" />
                           Mark as Approved
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleBulkStatusUpdate('rejected')}>
+                          <RejectedStatusIcon size="sm" />
+                          Mark as Rejected
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                              <Trash2 className="text-destructive mr-2 h-4 w-4" />
-                              Delete {selectedDocIds.size} document{selectedDocIds.size > 1 ? 's' : ''}
+                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} variant="destructive">
+                              <Trash2 className="h-4 w-4" />
+                              Delete
                             </DropdownMenuItem>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
@@ -474,12 +452,13 @@ export function DocumentQueue({
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                </ButtonGroup>
-              </div>
-            </div>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </ButtonGroup>
+        </div>
         {filteredDocuments.length === 0 ? (
           <Empty className="border-0">
             <EmptyHeader>

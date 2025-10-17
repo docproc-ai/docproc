@@ -68,9 +68,15 @@ interface PreprocessedDocumentData {
   provider: any
   modelName: string
   doc: any
+  docType: any
   fileBuffer: Buffer
   messages: ModelMessage[]
   schemaForAI: any
+}
+
+interface ValidationResult {
+  isValid: boolean
+  reason?: string
 }
 
 async function preprocessDocument(formData: FormData): Promise<PreprocessedDocumentData> {
@@ -104,6 +110,12 @@ async function preprocessDocument(formData: FormData): Promise<PreprocessedDocum
 
   // Get the model and provider to use
   const { provider, modelName } = await getModelAndProviderForProcessing(documentTypeId, overrideModel)
+
+  // Get the document type for validation instructions
+  const docType = await getDocumentType(documentTypeId)
+  if (!docType) {
+    throw new Error('Document type not found')
+  }
 
   // Get the document
   const doc = await getDocument(documentId)
@@ -167,16 +179,123 @@ async function preprocessDocument(formData: FormData): Promise<PreprocessedDocum
     provider,
     modelName,
     doc,
+    docType,
     fileBuffer,
     messages,
     schemaForAI,
   }
 }
 
+/**
+ * Validate if a document matches the expected document type
+ * Returns early if validation instructions are not set
+ */
+async function validateDocument(
+  docType: any,
+  fileBuffer: Buffer,
+  filename: string,
+  provider: any,
+  modelName: string,
+): Promise<ValidationResult> {
+  // Skip validation if no instructions provided
+  if (!docType.validationInstructions || !docType.validationInstructions.trim()) {
+    return { isValid: true }
+  }
+
+  // Determine file type from filename
+  const fileExtension = filename.toLowerCase().split('.').pop()
+  const mimeType = getMimeType(fileExtension || '')
+
+  // Build the message content
+  const messageContent: Array<
+    | { type: 'text'; text: string }
+    | { type: 'image'; image: Buffer }
+    | { type: 'file'; data: Buffer; mediaType: string; filename?: string }
+  > = [
+    {
+      type: 'text',
+      text: `Validate if this document matches the expected type.
+
+${docType.validationInstructions}
+
+Respond with your assessment.`,
+    },
+  ]
+
+  if (mimeType.startsWith('image/')) {
+    messageContent.push({ type: 'image', image: fileBuffer })
+  } else {
+    messageContent.push({
+      type: 'file',
+      data: fileBuffer,
+      mediaType: mimeType,
+      filename: filename,
+    })
+  }
+
+  const messages: ModelMessage[] = [
+    {
+      role: 'user',
+      content: messageContent,
+    },
+  ]
+
+  // Define validation response schema
+  const validationSchema = jsonSchema<ValidationResult>({
+    type: 'object',
+    properties: {
+      isValid: {
+        type: 'boolean',
+        description: 'Whether the document matches the expected type',
+      },
+      reason: {
+        type: 'string',
+        description: 'Explanation of why the document is valid or invalid',
+      },
+    },
+    required: ['isValid'],
+  })
+
+  try {
+    const { object } = await generateObject({
+      model: provider.getModel(modelName),
+      schema: validationSchema,
+      messages,
+    })
+
+    return object
+  } catch (error) {
+    console.error('Validation failed:', error)
+    // On validation error, allow processing to continue
+    return { isValid: true, reason: 'Validation check failed, proceeding with processing' }
+  }
+}
+
 export async function processDocument(formData: FormData) {
   try {
-    const { documentId, schema, provider, modelName, messages, schemaForAI } =
+    const { documentId, schema, provider, modelName, doc, docType, messages, schemaForAI } =
       await preprocessDocument(formData)
+
+    // Validate document type if validation instructions exist
+    const validation = await validateDocument(
+      docType,
+      await readFile(join(getStorageDir(), doc.storagePath)),
+      doc.filename,
+      provider,
+      modelName,
+    )
+
+    if (!validation.isValid) {
+      // Save rejection to database
+      const rejectionFormData = new FormData()
+      rejectionFormData.append('status', 'rejected')
+      rejectionFormData.append('rejectionReason', validation.reason || 'Document does not match expected type')
+      await updateDocument(documentId, rejectionFormData)
+
+      throw new Error(
+        `Document validation failed: ${validation.reason || 'Document does not match expected type'}`,
+      )
+    }
 
     const { object } = await generateObject({
       model: provider.getModel(modelName),
@@ -193,17 +312,41 @@ export async function processDocument(formData: FormData) {
 
     const updatedDoc = await updateDocument(documentId, updateFormData)
 
-    return { data: object, document: updatedDoc }
+    return { data: object, document: updatedDoc, validation }
   } catch (error) {
-    console.error('Failed to process document:', error)
+    // Only log actual processing errors, not validation rejections
+    if (error instanceof Error && !error.message.includes('Document validation failed')) {
+      console.error('Failed to process document:', error)
+    }
     throw error
   }
 }
 
 export async function processDocumentStream(formData: FormData) {
   try {
-    const { documentId, schema, provider, modelName, messages, schemaForAI } =
+    const { documentId, schema, provider, modelName, doc, docType, messages, schemaForAI } =
       await preprocessDocument(formData)
+
+    // Validate document type if validation instructions exist
+    const validation = await validateDocument(
+      docType,
+      await readFile(join(getStorageDir(), doc.storagePath)),
+      doc.filename,
+      provider,
+      modelName,
+    )
+
+    if (!validation.isValid) {
+      // Save rejection to database
+      const rejectionFormData = new FormData()
+      rejectionFormData.append('status', 'rejected')
+      rejectionFormData.append('rejectionReason', validation.reason || 'Document does not match expected type')
+      await updateDocument(documentId, rejectionFormData)
+
+      throw new Error(
+        `Document validation failed: ${validation.reason || 'Document does not match expected type'}`,
+      )
+    }
 
     const { partialObjectStream } = await streamObject({
       model: provider.getModel(modelName),
@@ -214,7 +357,10 @@ export async function processDocumentStream(formData: FormData) {
 
     return partialObjectStream
   } catch (error) {
-    console.error('Failed to process document stream:', error)
+    // Only log actual processing errors, not validation rejections
+    if (error instanceof Error && !error.message.includes('Document validation failed')) {
+      console.error('Failed to process document stream:', error)
+    }
     throw error
   }
 }

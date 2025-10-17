@@ -88,9 +88,10 @@ export async function createDocumentType(formData: FormData) {
     const name = formData.get('name') as string
     const schemaString = formData.get('schema') as string
     const webhookConfigString = formData.get('webhookConfig') as string
+    const validationInstructions = formData.get('validationInstructions') as string
     const providerName = formData.get('providerName') as string
     const modelName = formData.get('modelName') as string
-    
+
     // Legacy support for old webhook fields
     const webhookUrl = formData.get('webhookUrl') as string
     const webhookMethod = formData.get('webhookMethod') as string
@@ -142,6 +143,7 @@ export async function createDocumentType(formData: FormData) {
         slug,
         schema,
         webhookConfig,
+        validationInstructions: validationInstructions || null,
         providerName: providerName || null,
         modelName: modelName || null,
       })
@@ -166,9 +168,10 @@ export async function updateDocumentType(id: string, formData: FormData) {
     const name = formData.get('name') as string
     const schemaString = formData.get('schema') as string
     const webhookConfigString = formData.get('webhookConfig') as string
+    const validationInstructions = formData.get('validationInstructions') as string
     const providerName = formData.get('providerName') as string
     const modelName = formData.get('modelName') as string
-    
+
     // Legacy support for old webhook fields
     const webhookUrl = formData.get('webhookUrl') as string
     const webhookMethod = formData.get('webhookMethod') as string
@@ -190,11 +193,11 @@ export async function updateDocumentType(id: string, formData: FormData) {
     if (webhookConfigString) {
       try {
         const parsedConfig = JSON.parse(webhookConfigString)
-        
+
         // Get existing config to merge with updated values
         const existing = await db.select().from(documentType).where(eq(documentType.id, id))
         const existingConfig = existing[0]?.webhookConfig as DocumentWebhookConfig | null
-        
+
         // Merge configs to preserve unedited encrypted values
         webhookConfig = mergeWebhookConfigs(existingConfig || { events: {} }, parsedConfig)
       } catch {
@@ -222,6 +225,7 @@ export async function updateDocumentType(id: string, formData: FormData) {
         name,
         schema,
         webhookConfig,
+        validationInstructions: validationInstructions || null,
         providerName: providerName || null,
         modelName: modelName || null,
         updatedAt: new Date(),

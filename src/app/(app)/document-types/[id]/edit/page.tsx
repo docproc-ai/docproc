@@ -28,6 +28,7 @@ export default function EditDocumentTypePage() {
   const [initialData, setInitialData] = useState<{
     name: string
     webhookConfig: WebhookConfig | null
+    validationInstructions: string | null
     providerName: string
     modelName: string
     schema: JsonSchema
@@ -35,6 +36,7 @@ export default function EditDocumentTypePage() {
   const [formData, setFormData] = useState<{
     name: string
     webhookConfig: WebhookConfig | null
+    validationInstructions: string
     providerName: string
     modelName: string
     schema: JsonSchema
@@ -72,6 +74,7 @@ export default function EditDocumentTypePage() {
         setInitialData({
           name: data.name,
           webhookConfig: data.webhookConfig as WebhookConfig | null,
+          validationInstructions: data.validationInstructions || null,
           providerName: data.providerName || '',
           modelName: data.modelName || '',
           schema: data.schema as JsonSchema,
@@ -99,6 +102,9 @@ export default function EditDocumentTypePage() {
       submitData.append('schema', JSON.stringify(formData.schema))
       if (formData.webhookConfig) {
         submitData.append('webhookConfig', JSON.stringify(formData.webhookConfig))
+      }
+      if (formData.validationInstructions) {
+        submitData.append('validationInstructions', formData.validationInstructions)
       }
       submitData.append('providerName', formData.providerName)
       submitData.append('modelName', formData.modelName)

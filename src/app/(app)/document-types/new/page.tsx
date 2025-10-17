@@ -23,6 +23,7 @@ export default function NewDocumentTypePage() {
   const [formData, setFormData] = useState<{
     name: string
     webhookConfig: WebhookConfig | null
+    validationInstructions: string
     providerName: string
     modelName: string
     schema: JsonSchema
@@ -59,6 +60,9 @@ export default function NewDocumentTypePage() {
       submitData.append('schema', JSON.stringify(formData.schema))
       if (formData.webhookConfig) {
         submitData.append('webhookConfig', JSON.stringify(formData.webhookConfig))
+      }
+      if (formData.validationInstructions) {
+        submitData.append('validationInstructions', formData.validationInstructions)
       }
       submitData.append('providerName', formData.providerName)
       submitData.append('modelName', formData.modelName)
