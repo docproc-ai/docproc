@@ -15,20 +15,8 @@ export async function getUsers() {
   }
 
   try {
-    const users = await db
-      .select({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        emailVerified: user.emailVerified,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-      })
-      .from(user)
-      .orderBy(user.createdAt)
-
-    return users
+    const { getUsersCore } = await import('@/lib/db/user-operations')
+    return await getUsersCore()
   } catch (error) {
     console.error('Error fetching users:', error)
     throw new Error('Failed to fetch users')
@@ -43,13 +31,8 @@ export async function updateUserRole(userId: string, newRole: string) {
   }
 
   try {
-    await db
-      .update(user)
-      .set({
-        role: newRole,
-        updatedAt: new Date(),
-      })
-      .where(eq(user.id, userId))
+    const { updateUserRoleCore } = await import('@/lib/db/user-operations')
+    await updateUserRoleCore(userId, newRole)
 
     revalidatePath('/users')
     return { success: true }
@@ -67,7 +50,8 @@ export async function deleteUser(userId: string) {
   }
 
   try {
-    await db.delete(user).where(eq(user.id, userId))
+    const { deleteUserCore } = await import('@/lib/db/user-operations')
+    await deleteUserCore(userId)
 
     revalidatePath('/users')
     return { success: true }
@@ -106,7 +90,8 @@ export async function createUser(formData: FormData) {
     if (result) {
       // Update user role if specified
       if (role && role !== 'user') {
-        await db.update(user).set({ role }).where(eq(user.email, email))
+        const { updateUserRoleByEmailCore } = await import('@/lib/db/user-operations')
+        await updateUserRoleByEmailCore(email, role)
       }
 
       revalidatePath('/users')
