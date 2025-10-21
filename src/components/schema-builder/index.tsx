@@ -1,6 +1,7 @@
 'use client'
 
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -44,7 +45,7 @@ export function SchemaBuilder({ schema, onChange, path = '' }: SchemaBuilderProp
                 updates.properties = {}
               }
               if (type === 'array' && !schema.items) {
-                updates.items = { type: 'string' }
+                updates.items = { type: 'object', properties: {} }
               }
               updateSchema(updates)
             }}
@@ -137,23 +138,292 @@ export function SchemaBuilder({ schema, onChange, path = '' }: SchemaBuilderProp
             />
 
             {propertySchema.type === 'object' && (
-              <div className="border-border rounded-lg border p-4">
-                <Label className="mb-4 block text-sm font-semibold">Nested Properties</Label>
-                <SchemaBuilder
-                  schema={{
-                    ...propertySchema,
-                    properties: propertySchema.properties || {},
-                  }}
-                  onChange={(newSchema) => {
-                    const newProperties = {
-                      ...schema.properties,
-                      [key]: newSchema,
-                    }
-                    updateSchema({ properties: newProperties })
-                  }}
-                  path={`${path}.${key}`}
-                />
-              </div>
+              <ObjectFieldBuilder
+                schema={{
+                  type: 'object',
+                  properties: propertySchema.properties || {},
+                  required: propertySchema.required || [],
+                }}
+                onChange={(updates) => {
+                  const newProperties = {
+                    ...schema.properties,
+                    [key]: {
+                      ...propertySchema,
+                      properties: updates.properties || {},
+                      required: updates.required || [],
+                    },
+                  }
+                  updateSchema({ properties: newProperties })
+                }}
+              >
+                {(nestedKey, nestedSchema, nestedId) => (
+                  <>
+                    <StringFieldBuilder
+                      schema={nestedSchema}
+                      onChange={(updates) => {
+                        const updatedProperty = { ...nestedSchema, ...updates }
+                        const newNestedProperties = {
+                          ...(propertySchema.properties || {}),
+                          [nestedKey]: updatedProperty,
+                        }
+                        const newProperties = {
+                          ...schema.properties,
+                          [key]: {
+                            ...propertySchema,
+                            properties: newNestedProperties,
+                          },
+                        }
+                        updateSchema({ properties: newProperties })
+                      }}
+                      fieldId={nestedId}
+                    />
+                    <NumberFieldBuilder
+                      schema={nestedSchema}
+                      onChange={(updates) => {
+                        const updatedProperty = { ...nestedSchema, ...updates }
+                        const newNestedProperties = {
+                          ...(propertySchema.properties || {}),
+                          [nestedKey]: updatedProperty,
+                        }
+                        const newProperties = {
+                          ...schema.properties,
+                          [key]: {
+                            ...propertySchema,
+                            properties: newNestedProperties,
+                          },
+                        }
+                        updateSchema({ properties: newProperties })
+                      }}
+                      fieldId={nestedId}
+                    />
+                    {nestedSchema.type === 'object' && (
+                      <ObjectFieldBuilder
+                        schema={{
+                          type: 'object',
+                          properties: nestedSchema.properties || {},
+                          required: nestedSchema.required || [],
+                        }}
+                        onChange={(nestedUpdates) => {
+                          const newNestedProperties = {
+                            ...(propertySchema.properties || {}),
+                            [nestedKey]: {
+                              ...nestedSchema,
+                              properties: nestedUpdates.properties || {},
+                              required: nestedUpdates.required || [],
+                            },
+                          }
+                          const newProperties = {
+                            ...schema.properties,
+                            [key]: {
+                              ...propertySchema,
+                              properties: newNestedProperties,
+                            },
+                          }
+                          updateSchema({ properties: newProperties })
+                        }}
+                      >
+                        {(deepKey, deepSchema, deepId) => (
+                          <>
+                            <StringFieldBuilder
+                              schema={deepSchema}
+                              onChange={(updates) => {
+                                const updatedDeepProperty = { ...deepSchema, ...updates }
+                                const newDeepProperties = {
+                                  ...(nestedSchema.properties || {}),
+                                  [deepKey]: updatedDeepProperty,
+                                }
+                                const newNestedProperties = {
+                                  ...(propertySchema.properties || {}),
+                                  [nestedKey]: {
+                                    ...nestedSchema,
+                                    properties: newDeepProperties,
+                                  },
+                                }
+                                const newProperties = {
+                                  ...schema.properties,
+                                  [key]: {
+                                    ...propertySchema,
+                                    properties: newNestedProperties,
+                                  },
+                                }
+                                updateSchema({ properties: newProperties })
+                              }}
+                              fieldId={deepId}
+                            />
+                            <NumberFieldBuilder
+                              schema={deepSchema}
+                              onChange={(updates) => {
+                                const updatedDeepProperty = { ...deepSchema, ...updates }
+                                const newDeepProperties = {
+                                  ...(nestedSchema.properties || {}),
+                                  [deepKey]: updatedDeepProperty,
+                                }
+                                const newNestedProperties = {
+                                  ...(propertySchema.properties || {}),
+                                  [nestedKey]: {
+                                    ...nestedSchema,
+                                    properties: newDeepProperties,
+                                  },
+                                }
+                                const newProperties = {
+                                  ...schema.properties,
+                                  [key]: {
+                                    ...propertySchema,
+                                    properties: newNestedProperties,
+                                  },
+                                }
+                                updateSchema({ properties: newProperties })
+                              }}
+                              fieldId={deepId}
+                            />
+                          </>
+                        )}
+                      </ObjectFieldBuilder>
+                    )}
+                    {nestedSchema.type === 'array' && (
+                      <div className="border-border mt-4 rounded-lg border p-4">
+                        <div className="space-y-4">
+                          <FieldLabel className="text-sm font-semibold">Array Items Schema</FieldLabel>
+                          <Field>
+                            <FieldLabel>Items Type</FieldLabel>
+                            <Select
+                              value={nestedSchema.items?.type || 'object'}
+                              onValueChange={(type) => {
+                                const newNestedProperties = {
+                                  ...(propertySchema.properties || {}),
+                                  [nestedKey]: {
+                                    ...nestedSchema,
+                                    items: {
+                                      ...nestedSchema.items,
+                                      type,
+                                      ...(type === 'object' ? { properties: {} } : {}),
+                                      ...(type === 'array' ? { items: { type: 'object', properties: {} } } : {}),
+                                    },
+                                  },
+                                }
+                                const newProperties = {
+                                  ...schema.properties,
+                                  [key]: {
+                                    ...propertySchema,
+                                    properties: newNestedProperties,
+                                  },
+                                }
+                                updateSchema({ properties: newProperties })
+                              }}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="string">String</SelectItem>
+                                <SelectItem value="number">Number</SelectItem>
+                                <SelectItem value="integer">Integer</SelectItem>
+                                <SelectItem value="boolean">Boolean</SelectItem>
+                                <SelectItem value="object">Object</SelectItem>
+                                <SelectItem value="array">Array</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </Field>
+                          {nestedSchema.items?.type === 'object' && (
+                            <ObjectFieldBuilder
+                              schema={{
+                                type: 'object',
+                                properties: nestedSchema.items?.properties || {},
+                                required: nestedSchema.items?.required || [],
+                              }}
+                              onChange={(arrayItemUpdates) => {
+                                const newNestedProperties = {
+                                  ...(propertySchema.properties || {}),
+                                  [nestedKey]: {
+                                    ...nestedSchema,
+                                    items: {
+                                      ...nestedSchema.items,
+                                      type: 'object',
+                                      properties: arrayItemUpdates.properties || {},
+                                      required: arrayItemUpdates.required || [],
+                                    },
+                                  },
+                                }
+                                const newProperties = {
+                                  ...schema.properties,
+                                  [key]: {
+                                    ...propertySchema,
+                                    properties: newNestedProperties,
+                                  },
+                                }
+                                updateSchema({ properties: newProperties })
+                              }}
+                            >
+                              {(arrayItemKey, arrayItemSchema, arrayItemId) => (
+                                <>
+                                  <StringFieldBuilder
+                                    schema={arrayItemSchema}
+                                    onChange={(updates) => {
+                                      const updatedArrayItemProperty = { ...arrayItemSchema, ...updates }
+                                      const newArrayItemProperties = {
+                                        ...(nestedSchema.items?.properties || {}),
+                                        [arrayItemKey]: updatedArrayItemProperty,
+                                      }
+                                      const newNestedProperties = {
+                                        ...(propertySchema.properties || {}),
+                                        [nestedKey]: {
+                                          ...nestedSchema,
+                                          items: {
+                                            ...nestedSchema.items,
+                                            properties: newArrayItemProperties,
+                                          },
+                                        },
+                                      }
+                                      const newProperties = {
+                                        ...schema.properties,
+                                        [key]: {
+                                          ...propertySchema,
+                                          properties: newNestedProperties,
+                                        },
+                                      }
+                                      updateSchema({ properties: newProperties })
+                                    }}
+                                    fieldId={arrayItemId}
+                                  />
+                                  <NumberFieldBuilder
+                                    schema={arrayItemSchema}
+                                    onChange={(updates) => {
+                                      const updatedArrayItemProperty = { ...arrayItemSchema, ...updates }
+                                      const newArrayItemProperties = {
+                                        ...(nestedSchema.items?.properties || {}),
+                                        [arrayItemKey]: updatedArrayItemProperty,
+                                      }
+                                      const newNestedProperties = {
+                                        ...(propertySchema.properties || {}),
+                                        [nestedKey]: {
+                                          ...nestedSchema,
+                                          items: {
+                                            ...nestedSchema.items,
+                                            properties: newArrayItemProperties,
+                                          },
+                                        },
+                                      }
+                                      const newProperties = {
+                                        ...schema.properties,
+                                        [key]: {
+                                          ...propertySchema,
+                                          properties: newNestedProperties,
+                                        },
+                                      }
+                                      updateSchema({ properties: newProperties })
+                                    }}
+                                    fieldId={arrayItemId}
+                                  />
+                                </>
+                              )}
+                            </ObjectFieldBuilder>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </ObjectFieldBuilder>
             )}
 
             {propertySchema.type === 'array' && (
@@ -375,6 +645,252 @@ export function SchemaBuilder({ schema, onChange, path = '' }: SchemaBuilderProp
                           }}
                           fieldId={propId}
                         />
+                        {propSchema.type === 'object' && (
+                          <ObjectFieldBuilder
+                            schema={{
+                              type: 'object',
+                              properties: propSchema.properties || {},
+                              required: propSchema.required || [],
+                            }}
+                            onChange={(nestedUpdates) => {
+                              const newItemProperties = {
+                                ...(propertySchema.items?.properties || {}),
+                                [propKey]: {
+                                  ...propSchema,
+                                  properties: nestedUpdates.properties || {},
+                                  required: nestedUpdates.required || [],
+                                },
+                              }
+                              const newProperties = {
+                                ...schema.properties,
+                                [key]: {
+                                  ...propertySchema,
+                                  items: {
+                                    ...propertySchema.items,
+                                    properties: newItemProperties,
+                                  },
+                                },
+                              }
+                              updateSchema({ properties: newProperties })
+                            }}
+                          >
+                            {(nestedKey, nestedSchema, nestedId) => (
+                              <>
+                                <StringFieldBuilder
+                                  schema={nestedSchema}
+                                  onChange={(updates) => {
+                                    const updatedNestedProperty = { ...nestedSchema, ...updates }
+                                    const newNestedProperties = {
+                                      ...(propSchema.properties || {}),
+                                      [nestedKey]: updatedNestedProperty,
+                                    }
+                                    const newItemProperties = {
+                                      ...(propertySchema.items?.properties || {}),
+                                      [propKey]: {
+                                        ...propSchema,
+                                        properties: newNestedProperties,
+                                      },
+                                    }
+                                    const newProperties = {
+                                      ...schema.properties,
+                                      [key]: {
+                                        ...propertySchema,
+                                        items: {
+                                          ...propertySchema.items,
+                                          properties: newItemProperties,
+                                        },
+                                      },
+                                    }
+                                    updateSchema({ properties: newProperties })
+                                  }}
+                                  fieldId={nestedId}
+                                />
+                                <NumberFieldBuilder
+                                  schema={nestedSchema}
+                                  onChange={(updates) => {
+                                    const updatedNestedProperty = { ...nestedSchema, ...updates }
+                                    const newNestedProperties = {
+                                      ...(propSchema.properties || {}),
+                                      [nestedKey]: updatedNestedProperty,
+                                    }
+                                    const newItemProperties = {
+                                      ...(propertySchema.items?.properties || {}),
+                                      [propKey]: {
+                                        ...propSchema,
+                                        properties: newNestedProperties,
+                                      },
+                                    }
+                                    const newProperties = {
+                                      ...schema.properties,
+                                      [key]: {
+                                        ...propertySchema,
+                                        items: {
+                                          ...propertySchema.items,
+                                          properties: newItemProperties,
+                                        },
+                                      },
+                                    }
+                                    updateSchema({ properties: newProperties })
+                                  }}
+                                  fieldId={nestedId}
+                                />
+                              </>
+                            )}
+                          </ObjectFieldBuilder>
+                        )}
+                        {propSchema.type === 'array' && (
+                          <div className="border-border mt-4 rounded-lg border p-4">
+                            <div className="space-y-4">
+                              <FieldLabel className="text-sm font-semibold">Array Items Schema</FieldLabel>
+                              <Field>
+                                <FieldLabel>Items Type</FieldLabel>
+                                <Select
+                                  value={propSchema.items?.type || 'object'}
+                                  onValueChange={(type) => {
+                                    const newItemProperties = {
+                                      ...(propertySchema.items?.properties || {}),
+                                      [propKey]: {
+                                        ...propSchema,
+                                        items: {
+                                          ...propSchema.items,
+                                          type,
+                                          ...(type === 'object' ? { properties: {} } : {}),
+                                          ...(type === 'array' ? { items: { type: 'object', properties: {} } } : {}),
+                                        },
+                                      },
+                                    }
+                                    const newProperties = {
+                                      ...schema.properties,
+                                      [key]: {
+                                        ...propertySchema,
+                                        items: {
+                                          ...propertySchema.items,
+                                          properties: newItemProperties,
+                                        },
+                                      },
+                                    }
+                                    updateSchema({ properties: newProperties })
+                                  }}
+                                >
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="string">String</SelectItem>
+                                    <SelectItem value="number">Number</SelectItem>
+                                    <SelectItem value="integer">Integer</SelectItem>
+                                    <SelectItem value="boolean">Boolean</SelectItem>
+                                    <SelectItem value="object">Object</SelectItem>
+                                    <SelectItem value="array">Array</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </Field>
+                              {propSchema.items?.type === 'object' && (
+                                <ObjectFieldBuilder
+                                  schema={{
+                                    type: 'object',
+                                    properties: propSchema.items?.properties || {},
+                                    required: propSchema.items?.required || [],
+                                  }}
+                                  onChange={(arrayItemUpdates) => {
+                                    const newItemProperties = {
+                                      ...(propertySchema.items?.properties || {}),
+                                      [propKey]: {
+                                        ...propSchema,
+                                        items: {
+                                          ...propSchema.items,
+                                          type: 'object',
+                                          properties: arrayItemUpdates.properties || {},
+                                          required: arrayItemUpdates.required || [],
+                                        },
+                                      },
+                                    }
+                                    const newProperties = {
+                                      ...schema.properties,
+                                      [key]: {
+                                        ...propertySchema,
+                                        items: {
+                                          ...propertySchema.items,
+                                          properties: newItemProperties,
+                                        },
+                                      },
+                                    }
+                                    updateSchema({ properties: newProperties })
+                                  }}
+                                >
+                                  {(arrayItemKey, arrayItemSchema, arrayItemId) => (
+                                    <>
+                                      <StringFieldBuilder
+                                        schema={arrayItemSchema}
+                                        onChange={(updates) => {
+                                          const updatedArrayItemProperty = { ...arrayItemSchema, ...updates }
+                                          const newArrayItemProperties = {
+                                            ...(propSchema.items?.properties || {}),
+                                            [arrayItemKey]: updatedArrayItemProperty,
+                                          }
+                                          const newItemProperties = {
+                                            ...(propertySchema.items?.properties || {}),
+                                            [propKey]: {
+                                              ...propSchema,
+                                              items: {
+                                                ...propSchema.items,
+                                                properties: newArrayItemProperties,
+                                              },
+                                            },
+                                          }
+                                          const newProperties = {
+                                            ...schema.properties,
+                                            [key]: {
+                                              ...propertySchema,
+                                              items: {
+                                                ...propertySchema.items,
+                                                properties: newItemProperties,
+                                              },
+                                            },
+                                          }
+                                          updateSchema({ properties: newProperties })
+                                        }}
+                                        fieldId={arrayItemId}
+                                      />
+                                      <NumberFieldBuilder
+                                        schema={arrayItemSchema}
+                                        onChange={(updates) => {
+                                          const updatedArrayItemProperty = { ...arrayItemSchema, ...updates }
+                                          const newArrayItemProperties = {
+                                            ...(propSchema.items?.properties || {}),
+                                            [arrayItemKey]: updatedArrayItemProperty,
+                                          }
+                                          const newItemProperties = {
+                                            ...(propertySchema.items?.properties || {}),
+                                            [propKey]: {
+                                              ...propSchema,
+                                              items: {
+                                                ...propSchema.items,
+                                                properties: newArrayItemProperties,
+                                              },
+                                            },
+                                          }
+                                          const newProperties = {
+                                            ...schema.properties,
+                                            [key]: {
+                                              ...propertySchema,
+                                              items: {
+                                                ...propertySchema.items,
+                                                properties: newItemProperties,
+                                              },
+                                            },
+                                          }
+                                          updateSchema({ properties: newProperties })
+                                        }}
+                                        fieldId={arrayItemId}
+                                      />
+                                    </>
+                                  )}
+                                </ObjectFieldBuilder>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </>
                     )}
                   </ObjectFieldBuilder>
