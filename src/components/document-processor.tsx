@@ -638,25 +638,20 @@ export function DocumentProcessor({
   // Stop only the currently viewed document if it's being processed
   const handleStopCurrentDocument = async (docId?: string) => {
     const targetDocId = docId || selectedDocument?.id
-    console.log('[DEBUG] handleStopCurrentDocument called, targetDocId:', targetDocId)
     if (!targetDocId) return
 
     try {
       // Cancel the job via API
       const jobId = `process-doc-${targetDocId}`
-      console.log('[DEBUG] Calling cancel API with jobId:', jobId)
       const response = await fetch('/api/jobs/cancel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ jobId }),
       })
 
-      console.log('[DEBUG] cancel response status:', response.status)
       if (!response.ok) {
         throw new Error('Failed to cancel job')
       }
-
-      console.log('[DEBUG] Job cancelled successfully')
       // Remove this document from processing state
       setProcessingDocuments((prev) => {
         const newSet = new Set(prev)
@@ -701,23 +696,19 @@ export function DocumentProcessor({
 
   // Stop all processing (both single and batch)
   const handleStopAllProcessing = async () => {
-    console.log('[DEBUG] handleStopAllProcessing called, currentBatchId:', currentBatchId)
     try {
       // Cancel the batch via API if we have a batchId
       if (currentBatchId) {
-        console.log('[DEBUG] Calling cancel-batch API with batchId:', currentBatchId)
         const response = await fetch('/api/jobs/cancel-batch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ batchId: currentBatchId }),
         })
 
-        console.log('[DEBUG] cancel-batch response status:', response.status)
         if (!response.ok) {
           throw new Error('Failed to cancel batch')
         }
 
-        console.log('[DEBUG] Batch cancelled successfully')
         setCurrentBatchId(null)
       }
 

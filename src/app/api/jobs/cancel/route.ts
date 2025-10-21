@@ -66,7 +66,6 @@ export async function POST(req: NextRequest) {
     } catch (error) {
       // Job might be active and locked by worker - that's ok, just return success
       // The worker will complete but UI already closed the connection
-      console.log(`Job ${jobId} is likely active, cannot remove but returning success`)
     }
 
     return Response.json({

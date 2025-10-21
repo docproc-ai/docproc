@@ -77,7 +77,6 @@ export async function POST(req: NextRequest) {
       } catch (error) {
         // Job might be active and locked - that's ok, count it as cancelled anyway
         // The worker will complete but UI already closed the SSE connection
-        console.log(`Job ${job.id} is likely active, cannot remove but counting as cancelled`)
         cancelledCount++
       }
     }
