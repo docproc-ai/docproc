@@ -4,11 +4,7 @@ import { db } from '@/db'
 import { document, documentType } from '@/db/schema'
 import { checkDocumentPermissions } from '@/lib/auth-utils'
 import { getStorageDir } from '@/lib/storage'
-import {
-  decryptWebhookConfig,
-  type DocumentWebhookConfig,
-  type DocumentWebhookEventName,
-} from '@/lib/webhook-encryption'
+import { triggerWebhook, type DocumentWebhookEventName } from '@/lib/webhooks'
 import { randomUUID } from 'crypto'
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm'
 import { desc, eq, and, or, count, like } from 'drizzle-orm'
@@ -20,52 +16,6 @@ import sharp from 'sharp'
 
 export type Document = InferSelectModel<typeof document>
 export type NewDocument = InferInsertModel<typeof document>
-
-async function triggerWebhook(
-  documentType: any,
-  document: Document,
-  event: DocumentWebhookEventName,
-) {
-  if (!documentType.webhookConfig) return
-
-  const webhookConfig = decryptWebhookConfig(documentType.webhookConfig as DocumentWebhookConfig)
-  const eventConfig = webhookConfig.events?.[event]
-
-  if (!eventConfig || !eventConfig.enabled || !eventConfig.url) return
-
-  const payload = {
-    event,
-    documentType: {
-      id: documentType.id,
-      name: documentType.name,
-    },
-    document,
-    timestamp: new Date().toISOString(),
-  }
-
-  // Build headers
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'User-Agent': 'Docproc/1.0',
-  }
-
-  // Add custom headers
-  if (eventConfig.headers) {
-    for (const header of eventConfig.headers) {
-      headers[header.name] = header.value
-    }
-  }
-
-  const response = await fetch(eventConfig.url, {
-    method: eventConfig.method || 'POST',
-    headers,
-    body: JSON.stringify(payload),
-  })
-
-  if (!response.ok) {
-    throw new Error(`Webhook failed with status ${response.status}: ${response.statusText}`)
-  }
-}
 
 export interface GetDocumentsOptions {
   page?: number
@@ -239,8 +189,8 @@ export async function updateDocument(id: string, formData: FormData) {
     const schemaSnapshotString = formData.get('schemaSnapshot') as string
     const rejectionReason = formData.get('rejectionReason') as string | null
 
-    let extractedData = {}
-    let schemaSnapshot = null
+    let extractedData = undefined
+    let schemaSnapshot = undefined
 
     if (extractedDataString) {
       try {
@@ -258,64 +208,20 @@ export async function updateDocument(id: string, formData: FormData) {
       }
     }
 
-    // Get current document to check previous status
-    const [currentDoc] = await db.select().from(document).where(eq(document.id, id))
-    if (!currentDoc) {
-      throw new Error('Document not found')
-    }
-
-    const updateData: any = {
+    // Use core function for database update
+    const { updateDocumentCore } = await import('@/lib/db/document-operations')
+    const result = await updateDocumentCore(id, {
       extractedData,
       schemaSnapshot,
-      updatedAt: new Date(),
-    }
+      status,
+      rejectionReason,
+    })
 
-    if (status) {
-      updateData.status = status
-    }
-
-    if (rejectionReason !== undefined) {
-      updateData.rejectionReason = rejectionReason
-    }
-
-    const [result] = await db
-      .update(document)
-      .set(updateData)
-      .where(eq(document.id, id))
-      .returning()
-
-    if (!result) {
-      throw new Error('Document not found')
-    }
-
-    // Get document type for webhook and revalidation
+    // Revalidate path for Next.js cache
     const [docType] = await db
       .select()
       .from(documentType)
       .where(eq(documentType.id, result.documentTypeId))
-
-    // Trigger appropriate webhook based on status change
-    if (status && status !== currentDoc.status && docType) {
-      let webhookEvent: DocumentWebhookEventName | null = null
-
-      // Check for unapproval first (leaving approved status)
-      if (currentDoc.status === 'approved' && (status === 'pending' || status === 'processed')) {
-        webhookEvent = 'document.unapproved'
-      } else if (status === 'processed') {
-        webhookEvent = 'document.processed'
-      } else if (status === 'approved') {
-        webhookEvent = 'document.approved'
-      }
-
-      if (webhookEvent) {
-        try {
-          await triggerWebhook(docType, result, webhookEvent)
-        } catch (webhookError) {
-          console.error('Webhook failed:', webhookError)
-          // Don't fail the update if webhook fails
-        }
-      }
-    }
 
     if (docType) {
       revalidatePath(`/process/${docType.id}`)

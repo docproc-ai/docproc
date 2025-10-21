@@ -8,14 +8,18 @@ services:
       - 3000:3000
     environment:
       - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-postgres}
+      - VALKEY_URL=redis://valkey:6379
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-your-secret}
       - AUTH_ADMIN_EMAIL=${AUTH_ADMIN_EMAIL:-admin@example.com}
       - AUTH_ADMIN_PASSWORD=${AUTH_ADMIN_PASSWORD:-password}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - API_KEY=${API_KEY}
       - DOCUMENT_STORAGE_DIR=/documents
     depends_on:
       postgres:
+        condition: service_healthy
+      valkey:
         condition: service_healthy
     volumes:
       - documents:/documents
@@ -36,6 +40,19 @@ services:
       timeout: 5s
       retries: 5
 
+  valkey:
+    image: valkey/valkey:latest
+    ports:
+      - 6379:6379
+    volumes:
+      - valkey_data:/data
+    healthcheck:
+      test: ['CMD', 'valkey-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   postgres_data:
+  valkey_data:
   documents:

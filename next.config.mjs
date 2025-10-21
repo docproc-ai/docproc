@@ -13,6 +13,7 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: '512mb',
     },
+    // instrumentationHook: true, // NOT NECESSARY ANYMORE!
   },
   output: 'standalone',
 }

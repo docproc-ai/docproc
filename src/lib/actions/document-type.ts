@@ -23,23 +23,8 @@ export async function getDocumentTypes(): Promise<(DocumentType & { document_cou
   }
 
   try {
-    const documentTypes = await db.select().from(documentType).orderBy(desc(documentType.createdAt))
-
-    const typesWithCounts = await Promise.all(
-      documentTypes.map(async (type) => {
-        const [countResult] = await db
-          .select({ count: count() })
-          .from(document)
-          .where(eq(document.documentTypeId, type.id))
-
-        return {
-          ...type,
-          document_count: countResult.count,
-        }
-      }),
-    )
-
-    return typesWithCounts
+    const { getDocumentTypesCore } = await import('@/lib/db/document-type-operations')
+    return await getDocumentTypesCore()
   } catch (error) {
     console.error('Failed to get document types:', error)
     return []
@@ -48,29 +33,8 @@ export async function getDocumentTypes(): Promise<(DocumentType & { document_cou
 
 export async function getDocumentType(id: string): Promise<DocumentType | null> {
   try {
-    const [result] = await db.select().from(documentType).where(eq(documentType.id, id))
-    if (!result) return null
-
-    // Create safe webhook config with placeholders for sensitive values
-    if (result.webhookConfig) {
-      try {
-        const decryptedConfig = decryptWebhookConfig(result.webhookConfig as DocumentWebhookConfig)
-        const safeConfig = createSafeWebhookConfig(decryptedConfig)
-        return {
-          ...result,
-          webhookConfig: safeConfig
-        }
-      } catch (error) {
-        console.error('Failed to process webhook config:', error)
-        // Return result without webhook config if processing fails
-        return {
-          ...result,
-          webhookConfig: null
-        }
-      }
-    }
-
-    return result
+    const { getDocumentTypeCore } = await import('@/lib/db/document-type-operations')
+    return await getDocumentTypeCore(id)
   } catch (error) {
     console.error('Failed to get document type:', error)
     return null
@@ -134,20 +98,15 @@ export async function createDocumentType(formData: FormData) {
       webhookConfig = encryptWebhookConfig(legacyConfig)
     }
 
-    const slug = generateSlug(name)
-
-    const [result] = await db
-      .insert(documentType)
-      .values({
-        name,
-        slug,
-        schema,
-        webhookConfig,
-        validationInstructions: validationInstructions || null,
-        providerName: providerName || null,
-        modelName: modelName || null,
-      })
-      .returning()
+    const { createDocumentTypeCore } = await import('@/lib/db/document-type-operations')
+    const result = await createDocumentTypeCore({
+      name,
+      schema,
+      webhookConfig,
+      validationInstructions: validationInstructions || null,
+      providerName: providerName || null,
+      modelName: modelName || null,
+    })
 
     revalidatePath('/document-types')
     return { success: true, data: result }
@@ -219,19 +178,15 @@ export async function updateDocumentType(id: string, formData: FormData) {
       webhookConfig = encryptWebhookConfig(legacyConfig)
     }
 
-    const [result] = await db
-      .update(documentType)
-      .set({
-        name,
-        schema,
-        webhookConfig,
-        validationInstructions: validationInstructions || null,
-        providerName: providerName || null,
-        modelName: modelName || null,
-        updatedAt: new Date(),
-      })
-      .where(eq(documentType.id, id))
-      .returning()
+    const { updateDocumentTypeCore } = await import('@/lib/db/document-type-operations')
+    const result = await updateDocumentTypeCore(id, {
+      name,
+      schema,
+      webhookConfig,
+      validationInstructions: validationInstructions || null,
+      providerName: providerName || null,
+      modelName: modelName || null,
+    })
 
     if (!result) {
       return { success: false, error: 'Document type not found' }
@@ -254,11 +209,8 @@ export async function deleteDocumentType(id: string) {
   }
 
   try {
-    // First delete all documents of this type
-    await db.delete(document).where(eq(document.documentTypeId, id))
-
-    // Then delete the document type
-    await db.delete(documentType).where(eq(documentType.id, id))
+    const { deleteDocumentTypeCore } = await import('@/lib/db/document-type-operations')
+    await deleteDocumentTypeCore(id)
 
     revalidatePath('/document-types')
   } catch (error) {

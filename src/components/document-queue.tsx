@@ -81,6 +81,7 @@ interface DocumentQueueProps {
   processingQueue?: string[]
   batchQueue?: string[]
   isBatchProcessing?: boolean
+  documentJobStatuses?: Record<string, any>
   pagination?: {
     page: number
     pageSize: number
@@ -91,7 +92,8 @@ interface DocumentQueueProps {
   onUploadSuccess: () => void
   onDelete: (docId: string) => void
   onProcessAll: (docIds: string[]) => void
-  onStopAll?: () => void
+  onStopAll?: () => void | Promise<void>
+  onStopDocument?: (docId: string) => void | Promise<void>
 }
 
 export function DocumentQueue({
@@ -103,12 +105,14 @@ export function DocumentQueue({
   processingQueue = [],
   batchQueue = [],
   isBatchProcessing = false,
+  documentJobStatuses = {},
   pagination = { page: 1, pageSize: 50, total: 0, totalPages: 0 },
   onSelect,
   onUploadSuccess,
   onDelete,
   onProcessAll,
   onStopAll,
+  onStopDocument,
 }: DocumentQueueProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -495,9 +499,9 @@ export function DocumentQueue({
                   onClick={() => onSelect(doc)}
                   className="flex flex-1 cursor-pointer items-center gap-3 overflow-hidden p-4"
                 >
-                  {processingDocuments.has(doc.id) ? (
+                  {processingDocuments.has(doc.id) || documentJobStatuses[doc.id]?.status === 'active' ? (
                     <Spinner className="text-blue-500" />
-                  ) : batchQueue.includes(doc.id) || processingQueue?.includes(doc.id) ? (
+                  ) : batchQueue.includes(doc.id) || processingQueue?.includes(doc.id) || (documentJobStatuses[doc.id] && ['waiting', 'delayed', 'paused'].includes(documentJobStatuses[doc.id].status)) ? (
                     <Clock className="h-4 w-4 text-orange-500" />
                   ) : (
                     <DocumentStatusIcon status={doc.status} />
@@ -506,12 +510,20 @@ export function DocumentQueue({
                     <p className="flex items-center gap-2 text-sm font-medium">
                       <span className="truncate">{doc.filename}</span>
                     </p>
-                    <p className="text-muted-foreground text-xs">
+                    <p className="text-muted-foreground truncate text-xs">
                       {currentlyProcessing === doc.id ? (
                         <span className="text-blue-600 font-medium">Processing now...</span>
                       ) : processingQueue.includes(doc.id) ? (
                         <span className="text-orange-600 font-medium">
                           Queued ({processingQueue.indexOf(doc.id) + 1})
+                        </span>
+                      ) : documentJobStatuses[doc.id]?.status === 'active' ? (
+                        <span className="text-blue-600 font-medium">
+                          Processing (by {documentJobStatuses[doc.id].userName})
+                        </span>
+                      ) : batchQueue.includes(doc.id) || (documentJobStatuses[doc.id] && ['waiting', 'delayed', 'paused'].includes(documentJobStatuses[doc.id].status)) ? (
+                        <span className="text-orange-600 font-medium">
+                          Queued{documentJobStatuses[doc.id]?.userName ? ` (by ${documentJobStatuses[doc.id].userName})` : ''}
                         </span>
                       ) : doc.createdAt ? (
                         <ClientDate date={doc.createdAt} />
@@ -522,35 +534,52 @@ export function DocumentQueue({
                   </div>
                 </div>
                 {!selectedDocIds.has(doc.id) && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
+                  <>
+                    {processingDocuments.has(doc.id) || documentJobStatuses[doc.id]?.status === 'active' ? (
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="flex-shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+                        className="flex-shrink-0"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onStopDocument?.(doc.id)
+                        }}
+                        title="Stop processing"
                       >
-                        <Trash2 className="text-destructive h-4 w-4" />
+                        <Square className="h-4 w-4 text-orange-500" />
                       </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This will permanently delete the document "{doc.filename}" and its data.
-                          This action cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => onDelete(doc.id)}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                    ) : (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="flex-shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+                          >
+                            <Trash2 className="text-destructive h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will permanently delete the document "{doc.filename}" and its data.
+                              This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => onDelete(doc.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                  </>
                 )}
               </li>
             ))}

@@ -2,10 +2,11 @@
 
 import React, { useState, useTransition, useEffect } from 'react'
 import Link from 'next/link'
-import { updateDocument, deleteDocument, rotateDocument } from '@/lib/actions/document'
+import { useRouter } from 'next/navigation'
+import { updateDocument, deleteDocument, rotateDocument, getDocuments as getDocumentsAction } from '@/lib/actions/document'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import { DocumentQueue } from '@/components/document-queue'
-import { useStreamingJson } from '@/hooks/use-streaming-json'
+// Removed: useStreamingJson - migrated to BullMQ with SSE
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DataEditorTab } from './editor-tabs'
@@ -89,6 +90,7 @@ export function DocumentProcessor({
   documentType,
   initialDocumentsResult = { documents: [], total: 0, page: 1, pageSize: 50, totalPages: 0 },
 }: DocumentProcessorProps) {
+  const router = useRouter()
   const { data: session } = authClient.useSession()
   const [documents, setDocuments] = useState<Document[]>(initialDocumentsResult.documents)
   const [pagination, setPagination] = useState({
@@ -98,6 +100,7 @@ export function DocumentProcessor({
     totalPages: initialDocumentsResult.totalPages,
   })
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null)
+  const selectedDocumentRef = React.useRef<string | null>(null) // Track selected doc for SSE callbacks
   const [formData, setFormData] = useState<any>(null)
   const [viewerFile, setViewerFile] = useState<{ name: string; url: string; type: string } | null>(
     null,
@@ -108,8 +111,11 @@ export function DocumentProcessor({
   const [processingDocuments, setProcessingDocuments] = useState<Set<string>>(new Set())
   const processingDocumentsRef = React.useRef<Set<string>>(new Set())
   const [isBatchProcessing, setIsBatchProcessing] = useState(false)
-  const batchProcessingController = React.useRef<AbortController | null>(null)
+  const eventSourceRef = React.useRef<EventSource | null>(null)
   const [batchQueue, setBatchQueue] = useState<string[]>([])
+  const [documentJobStatuses, setDocumentJobStatuses] = useState<Record<string, any>>({})
+  const [currentBatchId, setCurrentBatchId] = useState<string | null>(null)
+  const [currentJobId, setCurrentJobId] = useState<string | null>(null)
 
   // Show all models from all providers in one dropdown for admin overrides
   const allModels = getAllModels()
@@ -139,126 +145,41 @@ export function DocumentProcessor({
     })
   }, [initialDocumentsResult])
 
-  // Main streaming hook for processing (back to simple text streaming)
-  const { object, submit, isLoading, stop, error } = useStreamingJson({
-    api: '/api/process-document?stream=true',
-    onUpdate: (partialObject) => {
-      const processingId = processingDocumentId.current
-      if (processingId && partialObject) {
-        // Always cache the streaming data for this document
-        processingDataCache.current.set(processingId, partialObject)
-
-        // Only update form data if we're viewing the currently processing document
-        if (selectedDocument?.id === processingId) {
-          setFormData(partialObject)
-        }
-      }
-    },
-    onFinish: (finalObject) => {
-      const processingId = processingDocumentId.current
-      if (finalObject && processingId) {
-        // Check if this is a rejected document (has status === 'rejected')
-        if (finalObject.status === 'rejected') {
-          // Update UI with rejected document
-          setDocuments((prev) => prev.map((d) => (d.id === processingId ? finalObject : d)))
-          if (selectedDocument?.id === processingId) {
-            setSelectedDocument(finalObject)
-          }
-
-          // Clean up processing state
-          setCurrentlyProcessing(null)
-          processingDocumentId.current = null
-          isProcessingComplete.current = true
-
-          setProcessingDocuments((prev) => {
-            const newSet = new Set(prev)
-            newSet.delete(processingId)
-            return newSet
-          })
-          processingDataCache.current.delete(processingId)
-
-          // Process next document in queue
-          processNextInQueue()
-        } else {
-          // Normal processing completion
-          handleProcessingCompletion(processingId, finalObject)
-        }
-      }
-    },
-    onError: (error) => {
-      const processingId = processingDocumentId.current
-
-      // Show error toast for actual errors (model returning text instead of JSON, etc.)
-      toast.error(`Processing Error: ${error.message}`)
-
-      if (processingId) {
-        setProcessingDocuments((prev) => {
-          const newSet = new Set(prev)
-          newSet.delete(processingId)
-          return newSet
-        })
-        processingDataCache.current.delete(processingId)
-      }
-
-      setCurrentlyProcessing(null)
-      processingDocumentId.current = null
-      isProcessingComplete.current = true
-      processNextInQueue()
-    },
-  })
-
-  // Function to process the next document in the queue
-  const processNextInQueue = () => {
-    if (!isProcessingComplete.current) {
+  // Poll for job statuses of all visible documents (cross-session visibility)
+  // With BullMQ + Redis, this is fast!
+  useEffect(() => {
+    if (documents.length === 0) {
       return
     }
 
-    setProcessingQueue((queue) => {
-      if (queue.length === 0) {
-        return queue
+    const pollJobStatuses = async () => {
+      try {
+        const documentIds = documents.map(d => d.id).join(',')
+        const response = await fetch(`/api/jobs/by-documents?documentIds=${documentIds}`)
+
+        if (response.ok) {
+          const statuses = await response.json()
+          setDocumentJobStatuses(statuses)
+        }
+      } catch (error) {
+        console.error('Failed to poll job statuses:', error)
       }
-
-      const [nextDocId, ...remainingQueue] = queue
-
-      // Start processing immediately
-      setTimeout(() => startProcessingDocument(nextDocId), 100)
-
-      return remainingQueue
-    })
-  }
-
-  // Function to start processing a specific document
-  const startProcessingDocument = (docId: string) => {
-    const doc = documents.find((d) => d.id === docId)
-    if (!doc) {
-      // Mark as complete so we can continue with next document
-      isProcessingComplete.current = true
-      processNextInQueue()
-      return
     }
 
-    // Mark processing as not complete
-    isProcessingComplete.current = false
+    // Poll immediately
+    pollJobStatuses()
 
-    setCurrentlyProcessing(docId)
+    // Then poll every 3 seconds
+    const interval = setInterval(pollJobStatuses, 3000)
 
-    // Prepare the data for the streaming API
-    const requestData = {
-      documentId: docId,
-      documentTypeId: documentType.id,
-      schema: JSON.stringify(documentType.schema), // Always use latest schema for processing
-      // Add override model if admin has selected one that's different from document type default
-      ...(isAdmin && overrideModel && overrideModel !== (documentType.modelName || DEFAULT_MODEL)
-        ? { model: overrideModel }
-        : {}),
-    }
+    return () => clearInterval(interval)
+  }, [documents])
 
-    // Store the docId we're about to process so the streaming callbacks can access it
-    processingDocumentId.current = docId
-    submit(requestData)
-  }
+  // Removed: Old streaming-based queue processing
+  // All processing now goes through BullMQ workers with SSE progress updates
+  // See handleAiProcessing() and handleForceProcess() for the new implementation
 
-  // Process multiple documents using non-streaming API (much more reliable for batch)
+  // Process multiple documents using job queue (background processing)
   const processBatchDocuments = async (docIds: string[]) => {
     const newDocIds = docIds.filter((id) => !processingDocuments.has(id) && !batchQueue.includes(id))
 
@@ -266,280 +187,162 @@ export function DocumentProcessor({
       return
     }
 
-    // Create new AbortController for this batch
-    const controller = new AbortController()
-    batchProcessingController.current = controller
-
     setIsBatchProcessing(true)
-    
+
     // Set up the batch queue (show clock icons)
     setBatchQueue(newDocIds)
 
+    // Don't add to processingDocuments - rely on documentJobStatuses from polling
+    // to show correct spinner/clock icons
+
     try {
-      // Process each document sequentially using non-streaming API
-      for (const docId of newDocIds) {
-        // Check if processing was cancelled
-        if (controller.signal.aborted) {
-          break
-        }
+      // Submit batch job
+      const requestData = {
+        documentIds: newDocIds,
+        documentTypeId: documentType.id,
+        schema: JSON.stringify(documentType.schema),
+        // Add override model if admin has selected one
+        ...(isAdmin &&
+        overrideModel &&
+        overrideModel !== (documentType.modelName || DEFAULT_MODEL)
+          ? { model: overrideModel }
+          : {}),
+      }
 
+      const response = await fetch('/api/jobs/batch-process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestData),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to submit batch job: ${response.statusText}`)
+      }
+
+      const { batchId, totalCount } = await response.json()
+      setCurrentBatchId(batchId)
+
+      // Track completed documents
+      let completedDocuments = new Set<string>()
+
+      // Connect to SSE endpoint for real-time updates
+      const eventSource = new EventSource(`/api/jobs/events?batchId=${batchId}`)
+      eventSourceRef.current = eventSource
+
+      eventSource.onmessage = (event) => {
         try {
-          // Move from queue to processing (clock → spinner)
-          setBatchQueue(prev => prev.filter(id => id !== docId))
-          setProcessingDocuments((prev) => {
-            const newSet = new Set(prev)
-            newSet.add(docId)
-            return newSet
-          })
+          const data = JSON.parse(event.data)
 
-          const doc = documents.find((d) => d.id === docId)
-          if (!doc) {
-            setProcessingDocuments((prev) => {
-              const newSet = new Set(prev)
-              newSet.delete(docId)
-              return newSet
+          if (data.type === 'connected') {
+            return
+          }
+
+          if (data.type === 'completed' || data.type === 'failed') {
+            const { documentId } = data
+
+            // Mark document as completed
+            completedDocuments.add(documentId)
+
+            // Remove from batch queue
+            setBatchQueue((prev) => prev.filter(id => id !== documentId))
+
+            // Refetch documents to show updated status
+            getDocumentsAction(documentType.id, {
+              page: pagination.page,
+              pageSize: pagination.pageSize,
             })
-            continue
-          }
-
-          // Check if document was originally pending
-          const wasOriginallyPending = doc.status === 'pending'
-
-          const requestData = {
-            documentId: docId,
-            documentTypeId: documentType.id,
-            schema: JSON.stringify(documentType.schema), // Always use latest schema for processing
-            // Add override model if admin has selected one
-            ...(isAdmin &&
-            overrideModel &&
-            overrideModel !== (documentType.modelName || DEFAULT_MODEL)
-              ? { model: overrideModel }
-              : {}),
-          }
-
-          // Use non-streaming API (no ?stream=true parameter) with abort signal
-          const response = await fetch('/api/process-document', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestData),
-            signal: controller.signal,
-          })
-
-          const result = await response.json()
-
-          // Check if this is a validation rejection (rejected flag in response)
-          if (result.rejected && result.document) {
-            // Update UI with rejected document from response
-            setDocuments((prev) => prev.map((d) => (d.id === docId ? result.document : d)))
-            if (selectedDocument?.id === docId) {
-              setSelectedDocument(result.document)
-            }
-
-            // Remove from processing set before continuing
-            setProcessingDocuments((prev) => {
-              const newSet = new Set(prev)
-              newSet.delete(docId)
-              return newSet
-            })
-
-            // Don't throw error toast for validation rejections - they're expected
-            continue
-          }
-
-          if (!response.ok || !result.success) {
-            // Extract meaningful error message for other errors
-            const errorMessage = result.message || result.error || `API request failed: ${response.status} ${response.statusText}`
-            throw new Error(errorMessage)
-          }
-
-          const extractedData = result.data
-
-          // Update document state immediately
-          setDocuments((prev) =>
-            prev.map((d) => {
-              if (d.id === docId) {
-                const updatedDoc = {
-                  ...d,
-                  extractedData,
-                  status: 'processed' as const,
+              .then(result => {
+                setDocuments(result.documents)
+                // Update selected document if it was in the batch
+                if (selectedDocument && selectedDocument.id === documentId) {
+                  const updatedDoc = result.documents.find((d: any) => d.id === documentId)
+                  if (updatedDoc) {
+                    setSelectedDocument(updatedDoc)
+                    setFormData(updatedDoc.extractedData || {})
+                  }
                 }
+              })
+              .catch(err => console.error('Failed to refresh documents:', err))
 
-                // Update form if we're viewing this document
-                if (selectedDocument?.id === docId) {
-                  setFormData(extractedData)
-                  setSelectedDocument(updatedDoc)
-                }
+            // Check if all jobs are done
+            if (completedDocuments.size === totalCount) {
+              eventSource.close()
+              eventSourceRef.current = null
 
-                return updatedDoc
-              }
-              return d
-            }),
-          )
+              setIsBatchProcessing(false)
+              setBatchQueue([])
+              setProcessingDocuments(new Set())
 
-          // Always save after processing (both first time and reprocessing)
-          const formDataToSubmit = new FormData()
-          formDataToSubmit.append('extractedData', JSON.stringify(extractedData))
-          formDataToSubmit.append('status', 'processed')
-          formDataToSubmit.append(
-            'schemaSnapshot',
-            JSON.stringify(documentType.schema), // Save current schema as snapshot
-          )
+              // Final refresh
+              getDocumentsAction(documentType.id, {
+                page: pagination.page,
+                pageSize: pagination.pageSize,
+              })
+                .then(result => {
+                  setDocuments(result.documents)
+                  setPagination({
+                    page: result.page,
+                    pageSize: result.pageSize,
+                    total: result.total,
+                    totalPages: result.totalPages,
+                  })
+                })
+                .catch(err => console.error('Failed to refresh documents:', err))
 
-          const savedDoc = await updateDocument(docId, formDataToSubmit)
-
-          // Update documents state with saved version
-          setDocuments((prev) => prev.map((d) => (d.id === docId ? savedDoc : d)))
-          if (selectedDocument?.id === docId) {
-            setSelectedDocument(savedDoc)
-          }
-        } catch (error: any) {
-          // Handle AbortError separately from other errors
-          if (error.name !== 'AbortError') {
-            // Only log actual errors, not validation rejections
-            if (!error.message.includes('Document validation failed')) {
-              console.error('❌ Failed to process document:', docId, error)
+              toast.success(`Batch processing completed: ${totalCount} documents processed`)
             }
-            toast.error(`Failed to process document: ${error.message}`)
           }
+        } catch (error) {
+          console.error('Error handling SSE event:', error)
         }
+      }
 
-        // Remove from processing set
-        setProcessingDocuments((prev) => {
-          const newSet = new Set(prev)
-          newSet.delete(docId)
-          return newSet
+      eventSource.onerror = (error) => {
+        console.error('SSE connection error:', error)
+        eventSource.close()
+        eventSourceRef.current = null
+
+        setIsBatchProcessing(false)
+        setBatchQueue([])
+
+        // Fallback: refresh documents to check current state
+        getDocumentsAction(documentType.id, {
+          page: pagination.page,
+          pageSize: pagination.pageSize,
         })
+          .then(result => setDocuments(result.documents))
+          .catch(err => console.error('Failed to refresh after error:', err))
+
+        toast.error('Real-time updates disconnected. Refresh to see current status.')
       }
+
     } catch (error: any) {
-      if (error.name !== 'AbortError') {
-        console.error('❌ Batch processing failed:', error)
-      }
-    } finally {
-      // Always clean up, whether completed or cancelled
+      console.error('❌ Batch processing failed:', error)
+      toast.error(`Failed to start batch processing: ${error.message}`)
       setIsBatchProcessing(false)
       setBatchQueue([])
-      batchProcessingController.current = null
+      setProcessingDocuments(new Set())
     }
   }
 
-  // Add documents to processing queue (streaming mode - for single documents)
-  const addToProcessingQueue = (docIds: string[]) => {
-    const newDocIds = docIds.filter(
-      (id) => !processingQueue.includes(id) && id !== currentlyProcessing,
-    )
-
-    if (newDocIds.length === 0) {
-      return
-    }
-
-    // If nothing is currently processing, start the first one immediately
-    if (
-      !isLoading &&
-      !currentlyProcessing &&
-      processingQueue.length === 0 &&
-      isProcessingComplete.current
-    ) {
-      const [firstDoc, ...restDocs] = newDocIds
-
-      setProcessingDocuments((prev) => {
-        const newSet = new Set(prev)
-        newDocIds.forEach((id) => newSet.add(id))
-        return newSet
-      })
-
-      if (restDocs.length > 0) {
-        setProcessingQueue(restDocs)
-      }
-
-      startProcessingDocument(firstDoc)
-    } else {
-      // Add all to queue
-      setProcessingQueue((prev) => [...prev, ...newDocIds])
-      setProcessingDocuments((prev) => {
-        const newSet = new Set(prev)
-        newDocIds.forEach((id) => newSet.add(id))
-        return newSet
-      })
-    }
-  }
+  // Removed: addToProcessingQueue - old streaming queue system replaced by BullMQ
 
   // Handle processing completion
-  const handleProcessingCompletion = async (processingId: string, finalObject: any) => {
-    // Find the document that was being processed and update it
-    let wasOriginallyPending = false
-    let updatedDoc: any = null
-
-    setDocuments((prev) =>
-      prev.map((doc) => {
-        if (doc.id === processingId) {
-          wasOriginallyPending = doc.status === 'pending'
-          updatedDoc = {
-            ...doc,
-            extractedData: finalObject,
-            status: 'processed' as const,
-          }
-
-          // Only update form data and selected document if we're still viewing this document
-          if (selectedDocument?.id === processingId) {
-            setFormData(finalObject)
-            setSelectedDocument(updatedDoc)
-          }
-
-          return updatedDoc
-        }
-        return doc
-      }),
-    )
-
-    // Always save after processing (both first time and reprocessing)
-    startTransition(async () => {
-      try {
-        const formDataToSubmit = new FormData()
-        formDataToSubmit.append('extractedData', JSON.stringify(finalObject))
-        formDataToSubmit.append('status', 'processed')
-        formDataToSubmit.append(
-          'schemaSnapshot',
-          JSON.stringify(documentType.schema), // Save current schema as snapshot
-        )
-
-        const result = await updateDocument(processingId, formDataToSubmit)
-
-        // Update the document in our state with the saved version
-        if (result) {
-          setDocuments((prev) => prev.map((d) => (d.id === processingId ? result : d)))
-          if (selectedDocument?.id === processingId) {
-            setSelectedDocument(result)
-          }
-        }
-      } catch (error: any) {
-        console.error('❌ Failed to auto-save processed document:', error)
-        toast.error(`Failed to save processed document: ${error.message}`)
-      }
-    })
-
-    // Clean up processing state
-    setCurrentlyProcessing(null)
-    processingDocumentId.current = null
-    isProcessingComplete.current = true
-
-    setProcessingDocuments((prev) => {
-      const newSet = new Set(prev)
-      newSet.delete(processingId)
-      return newSet
-    })
-
-    // Process next document in queue
-    processNextInQueue()
-  }
+  // Removed: handleProcessingCompletion - no longer needed with BullMQ
+  // Document updates now happen in the BullMQ worker, UI updates via SSE events
 
   const handleDocumentSelect = (doc: Document | null) => {
     if (doc && selectedDocument && doc.id === selectedDocument.id) {
       return // No change, do nothing
     }
 
+    // DON'T close SSE - let it continue streaming in background
+    // The progress events will update the cache, and we'll use cached data when switching back
+
     const processingId = processingDocumentId.current
 
     setSelectedDocument(doc)
+    selectedDocumentRef.current = doc?.id || null // Update ref for SSE callbacks
 
     if (!doc) {
       setFormData({})
@@ -547,22 +350,16 @@ export function DocumentProcessor({
     }
 
     // Priority order for form data:
-    // 1. If this document is currently being processed, use latest streaming data
-    // 2. If we have cached streaming data from when it was processed, use that
-    // 3. Otherwise use database data
+    // 1. Use cached streaming data if available (from active or completed streaming)
+    // 2. Otherwise use database data
 
     const cachedStreamingData = processingDataCache.current.get(doc.id)
 
-    if (doc.id === processingId && cachedStreamingData) {
+    if (cachedStreamingData) {
+      // Use cached streaming data (either from active processing or completed)
       setFormData(cachedStreamingData)
-    } else if (cachedStreamingData && !processingDocuments.has(doc.id)) {
-      // Document was processed and we have final streaming data, but it's not currently processing
-      setFormData(cachedStreamingData)
-    } else if (processingDocuments.has(doc.id)) {
-      // Document is queued for processing but not started yet
-      setFormData(doc.extractedData || {})
     } else {
-      // Normal document, use database data
+      // No streaming data cached, use database data
       setFormData(doc.extractedData || {})
     }
 
@@ -597,8 +394,114 @@ export function DocumentProcessor({
       return newSet
     })
 
-    // Process immediately, bypassing any queue
-    startProcessingDocument(selectedDocument.id)
+    try {
+      // Submit job to BullMQ
+      const requestData = {
+        documentId: selectedDocument.id,
+        documentTypeId: documentType.id,
+        schema: JSON.stringify(documentType.schema),
+        ...(isAdmin && overrideModel && overrideModel !== (documentType.modelName || DEFAULT_MODEL)
+          ? { model: overrideModel }
+          : {}),
+      }
+
+      const response = await fetch('/api/jobs/process-single', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestData),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to submit job: ${response.statusText}`)
+      }
+
+      const { jobId } = await response.json()
+      setCurrentJobId(jobId)
+
+      // Connect to SSE to stream progress
+      const eventSource = new EventSource(`/api/jobs/events?jobId=${jobId}`)
+      eventSourceRef.current = eventSource
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+
+          if (data.type === 'connected') {
+            return
+          }
+
+          if (data.type === 'progress' && data.progressData?.partialData) {
+            // Always cache streaming data for this document (even if not currently selected)
+            processingDataCache.current.set(data.documentId, data.progressData.partialData)
+
+            // Only update form if this is the currently selected document (use ref to avoid stale closure)
+            if (selectedDocumentRef.current === data.documentId) {
+              setFormData(data.progressData.partialData)
+            }
+          }
+
+          if (data.type === 'completed' || data.type === 'failed') {
+            const { documentId } = data
+
+            // Remove from processing state
+            setProcessingDocuments((prev) => {
+              const newSet = new Set(prev)
+              newSet.delete(documentId)
+              return newSet
+            })
+
+            eventSource.close()
+            eventSourceRef.current = null
+
+            // Refetch document to show updated status
+            getDocumentsAction(documentType.id, {
+              page: pagination.page,
+              pageSize: pagination.pageSize,
+            })
+              .then(result => {
+                setDocuments(result.documents)
+                const updatedDoc = result.documents.find((d: any) => d.id === documentId)
+                if (updatedDoc && selectedDocument?.id === documentId) {
+                  setSelectedDocument(updatedDoc)
+                  setFormData(updatedDoc.extractedData || {})
+                }
+              })
+              .catch(err => console.error('Failed to refresh documents:', err))
+
+            if (data.type === 'completed') {
+              toast.success('Document processed successfully')
+            } else {
+              toast.error(`Processing failed: ${data.error}`)
+            }
+          }
+        } catch (error) {
+          console.error('Error handling SSE event:', error)
+        }
+      }
+
+      eventSource.onerror = (error) => {
+        console.error('SSE connection error:', error)
+        eventSource.close()
+        eventSourceRef.current = null
+
+        setProcessingDocuments((prev) => {
+          const newSet = new Set(prev)
+          newSet.delete(selectedDocument.id)
+          return newSet
+        })
+
+        toast.error('Connection lost. Refresh to see current status.')
+      }
+    } catch (error: any) {
+      console.error('Failed to process document:', error)
+      toast.error(`Failed to start processing: ${error.message}`)
+
+      setProcessingDocuments((prev) => {
+        const newSet = new Set(prev)
+        newSet.delete(selectedDocument.id)
+        return newSet
+      })
+    }
   }
 
   const handleForceProcess = async () => {
@@ -615,59 +518,103 @@ export function DocumentProcessor({
     })
 
     try {
+      // Submit job to BullMQ with skipValidation
       const requestData = {
         documentId: selectedDocument.id,
         documentTypeId: documentType.id,
         schema: JSON.stringify(documentType.schema),
+        skipValidation: true,
         ...(isAdmin && overrideModel && overrideModel !== (documentType.modelName || DEFAULT_MODEL)
           ? { model: overrideModel }
           : {}),
       }
 
-      // Use non-streaming API with skipValidation flag
-      const response = await fetch('/api/process-document?skipValidation=true', {
+      const response = await fetch('/api/jobs/process-single', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestData),
       })
 
-      const result = await response.json()
-
-      if (!response.ok || !result.success) {
-        const errorMessage = result.message || result.error || `API request failed: ${response.status} ${response.statusText}`
-        throw new Error(errorMessage)
+      if (!response.ok) {
+        throw new Error(`Failed to submit job: ${response.statusText}`)
       }
 
-      const extractedData = result.data
+      const { jobId } = await response.json()
+      setCurrentJobId(jobId)
 
-      // Update document state immediately
-      const updatedDoc = {
-        ...selectedDocument,
-        extractedData,
-        status: 'processed' as const,
-        rejectionReason: null, // Clear rejection reason
+      // Connect to SSE to stream progress
+      const eventSource = new EventSource(`/api/jobs/events?jobId=${jobId}`)
+      eventSourceRef.current = eventSource
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+
+          if (data.type === 'progress' && data.progressData?.partialData) {
+            // Always cache streaming data for this document (even if not currently selected)
+            processingDataCache.current.set(data.documentId, data.progressData.partialData)
+
+            // Only update form if this is the currently selected document (use ref to avoid stale closure)
+            if (selectedDocumentRef.current === data.documentId) {
+              setFormData(data.progressData.partialData)
+            }
+          }
+
+          if (data.type === 'completed' || data.type === 'failed') {
+            const { documentId } = data
+
+            setProcessingDocuments((prev) => {
+              const newSet = new Set(prev)
+              newSet.delete(documentId)
+              return newSet
+            })
+
+            eventSource.close()
+            eventSourceRef.current = null
+
+            // Refetch document to show updated status
+            getDocumentsAction(documentType.id, {
+              page: pagination.page,
+              pageSize: pagination.pageSize,
+            })
+              .then(result => {
+                setDocuments(result.documents)
+                const updatedDoc = result.documents.find((d: any) => d.id === documentId)
+                if (updatedDoc && selectedDocument?.id === documentId) {
+                  setSelectedDocument(updatedDoc)
+                  setFormData(updatedDoc.extractedData || {})
+                }
+              })
+              .catch(err => console.error('Failed to refresh documents:', err))
+
+            if (data.type === 'completed') {
+              toast.success('Document force-processed successfully (validation bypassed)')
+            } else {
+              toast.error(`Force processing failed: ${data.error}`)
+            }
+          }
+        } catch (error) {
+          console.error('Error handling SSE event:', error)
+        }
       }
 
-      setSelectedDocument(updatedDoc)
-      setFormData(extractedData)
-      setDocuments((prev) => prev.map((d) => (d.id === selectedDocument.id ? updatedDoc : d)))
+      eventSource.onerror = (error) => {
+        console.error('SSE connection error:', error)
+        eventSource.close()
+        eventSourceRef.current = null
 
-      // Save to database
-      const formDataToSubmit = new FormData()
-      formDataToSubmit.append('extractedData', JSON.stringify(extractedData))
-      formDataToSubmit.append('status', 'processed')
-      formDataToSubmit.append('schemaSnapshot', JSON.stringify(documentType.schema))
+        setProcessingDocuments((prev) => {
+          const newSet = new Set(prev)
+          newSet.delete(selectedDocument.id)
+          return newSet
+        })
 
-      const savedDoc = await updateDocument(selectedDocument.id, formDataToSubmit)
-
-      setSelectedDocument(savedDoc)
-      setDocuments((prev) => prev.map((d) => (d.id === selectedDocument.id ? savedDoc : d)))
-
-      toast.success('Document force-processed successfully (validation bypassed)')
+        toast.error('Connection lost. Refresh to see current status.')
+      }
     } catch (error: any) {
+      console.error('Failed to force process document:', error)
       toast.error(`Force Process Error: ${error.message}`)
-    } finally {
-      // Remove from processing set
+
       setProcessingDocuments((prev) => {
         const newSet = new Set(prev)
         newSet.delete(selectedDocument.id)
@@ -689,62 +636,97 @@ export function DocumentProcessor({
   }
 
   // Stop only the currently viewed document if it's being processed
-  const handleStopCurrentDocument = () => {
-    if (!selectedDocument) return
-    
-    // Stop streaming processing if this is the document being streamed
-    if (currentlyProcessing === selectedDocument.id && isLoading) {
-      stop()
-      setCurrentlyProcessing(null)
-      processingDocumentId.current = null
-      isProcessingComplete.current = true
-      // Continue with next document in queue
-      processNextInQueue()
+  const handleStopCurrentDocument = async (docId?: string) => {
+    const targetDocId = docId || selectedDocument?.id
+    if (!targetDocId) return
+
+    try {
+      // Cancel the job via API
+      const jobId = `process-doc-${targetDocId}`
+      const response = await fetch('/api/jobs/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to cancel job')
+      }
+      // Remove this document from processing state
+      setProcessingDocuments((prev) => {
+        const newSet = new Set(prev)
+        newSet.delete(targetDocId)
+        return newSet
+      })
+
+      // Remove from batch queue if present
+      setBatchQueue((prev) => prev.filter(id => id !== targetDocId))
+
+      // If this was the last document in batch, stop batch processing
+      if (batchQueue.length <= 1) {
+        setIsBatchProcessing(false)
+        setCurrentBatchId(null)
+      }
+
+      // Clear currentJobId if this was the single job
+      if (currentJobId === jobId) {
+        setCurrentJobId(null)
+        // Close SSE connection
+        if (eventSourceRef.current) {
+          eventSourceRef.current.close()
+          eventSourceRef.current = null
+        }
+      }
+
+      toast.success('Processing stopped')
+    } catch (error) {
+      console.error('Failed to stop document:', error)
+      toast.error('Failed to stop processing')
     }
-    
-    // Remove this document from processing state (works for both streaming and batch)
-    setProcessingDocuments((prev) => {
-      const newSet = new Set(prev)
-      newSet.delete(selectedDocument.id)
-      return newSet
-    })
-    
-    toast.success('Document processing stopped.')
   }
 
-  // Stop single document processing (streaming) and clear queue
+  // Stop single document processing - no longer needed with BullMQ
+  // Jobs are managed by workers, can't be cancelled from client
+  // Keep function for backwards compatibility but it's effectively a no-op
   const handleStopCurrentProcessing = () => {
-    if (isLoading) {
-      stop()
-    }
-
-    // Clear the processing queue and reset state
-    setProcessingQueue([])
-    setCurrentlyProcessing(null)
+    // With BullMQ, we just clear local UI state
+    // The actual job continues in the worker
     setProcessingDocuments(new Set())
-    processingDocumentId.current = null
-    isProcessingComplete.current = true
   }
 
   // Stop all processing (both single and batch)
-  const handleStopAllProcessing = () => {
-    // Stop streaming processing
-    if (isLoading) {
-      stop()
-    }
+  const handleStopAllProcessing = async () => {
+    try {
+      // Cancel the batch via API if we have a batchId
+      if (currentBatchId) {
+        const response = await fetch('/api/jobs/cancel-batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ batchId: currentBatchId }),
+        })
 
-    // Abort batch processing if running
-    if (batchProcessingController.current) {
-      batchProcessingController.current.abort()
-    }
+        if (!response.ok) {
+          throw new Error('Failed to cancel batch')
+        }
 
-    setProcessingQueue([])
-    setBatchQueue([])
-    setCurrentlyProcessing(null)
-    setProcessingDocuments(new Set())
-    setIsBatchProcessing(false)
-    processingDocumentId.current = null
-    isProcessingComplete.current = true
+        setCurrentBatchId(null)
+      }
+
+      // Close SSE connection if running
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close()
+        eventSourceRef.current = null
+      }
+
+      setBatchQueue([])
+      setProcessingDocuments(new Set())
+      setIsBatchProcessing(false)
+
+      toast.success('Batch processing stopped')
+    } catch (error) {
+      console.error('Failed to stop processing:', error)
+      toast.error('Failed to stop processing')
+    }
   }
 
   const handleStatusUpdate = async (status: 'approved' | 'processed' | 'pending' | 'rejected') => {
@@ -845,7 +827,7 @@ export function DocumentProcessor({
 
   const handleUploadSuccess = () => {
     // Refresh the page to get updated documents from server
-    window.location.reload()
+    router.refresh()
   }
 
   return (
@@ -903,8 +885,8 @@ export function DocumentProcessor({
               </ComboboxContent>
             </Combobox>
           )}
-          {selectedDocument && processingDocuments.has(selectedDocument.id) ? (
-            <Button onClick={handleStopCurrentDocument} variant="outline">
+          {selectedDocument && (processingDocuments.has(selectedDocument.id) || documentJobStatuses[selectedDocument.id]?.status === 'active') ? (
+            <Button onClick={() => handleStopCurrentDocument()} variant="outline">
               <Square className="h-4 w-4" />
               Stop
             </Button>
@@ -1021,12 +1003,14 @@ export function DocumentProcessor({
             processingQueue={processingQueue}
             batchQueue={batchQueue}
             isBatchProcessing={isBatchProcessing}
+            documentJobStatuses={documentJobStatuses}
             pagination={pagination}
             onSelect={handleDocumentSelect}
             onUploadSuccess={handleUploadSuccess}
             onDelete={handleDelete}
             onProcessAll={processBatchDocuments}
             onStopAll={handleStopAllProcessing}
+            onStopDocument={handleStopCurrentDocument}
           />
         </ResizablePanel>
         <ResizableHandle />
@@ -1040,40 +1024,7 @@ export function DocumentProcessor({
                 </TabsList>
                 <div className="flex-grow overflow-y-auto pt-4">
                   <TabsContent value="form" className="space-y-4">
-                    {isLoading && selectedDocument?.id === currentlyProcessing && (
-                      <div className="sticky top-0 z-10 mb-4 rounded-md border border-blue-200 bg-blue-50 p-3 shadow-sm dark:border-blue-800 dark:bg-blue-950">
-                        <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
-                          <Spinner />
-                          Extracting data from document...
-                        </div>
-                      </div>
-                    )}
-                    {error && selectedDocument?.id === currentlyProcessing && (
-                      <div
-                        className={`mb-4 rounded-md border p-3 ${
-                          error.message.includes('Rate limit exceeded')
-                            ? 'border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950'
-                            : 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950'
-                        }`}
-                      >
-                        <div
-                          className={`text-sm ${
-                            error.message.includes('Rate limit exceeded')
-                              ? 'text-yellow-700 dark:text-yellow-300'
-                              : 'text-red-700 dark:text-red-300'
-                          }`}
-                        >
-                          {error.message.includes('Rate limit exceeded') ? (
-                            <>
-                              <strong>Rate Limit Reached:</strong>{' '}
-                              {error.message.replace('Rate limit exceeded: ', '')}
-                            </>
-                          ) : (
-                            <>Error: {error.message}</>
-                          )}
-                        </div>
-                      </div>
-                    )}
+                    {/* Removed: Old streaming status indicators - now handled by SSE + processingDocuments state */}
                     {selectedDocument?.status === 'rejected' && selectedDocument?.rejectionReason && (
                       <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-950">
                         <div className="text-sm text-red-700 dark:text-red-300">
@@ -1102,44 +1053,11 @@ export function DocumentProcessor({
                       schema={selectedDocument.schemaSnapshot || documentType.schema}
                       data={formData || {}}
                       onChange={handleDataChange}
-                      isStreaming={isLoading}
+                      isStreaming={false}
                     />
                   </TabsContent>
                   <TabsContent value="data" className="m-0 h-full">
-                    {isLoading && selectedDocument?.id === currentlyProcessing && (
-                      <div className="sticky top-0 z-10 mb-4 rounded-md border border-blue-200 bg-blue-50 p-3 shadow-sm dark:border-blue-800 dark:bg-blue-950">
-                        <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
-                          <Spinner />
-                          Extracting data from document...
-                        </div>
-                      </div>
-                    )}
-                    {error && selectedDocument?.id === currentlyProcessing && (
-                      <div
-                        className={`mb-4 rounded-md border p-3 ${
-                          error.message.includes('Rate limit exceeded')
-                            ? 'border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950'
-                            : 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950'
-                        }`}
-                      >
-                        <div
-                          className={`text-sm ${
-                            error.message.includes('Rate limit exceeded')
-                              ? 'text-yellow-700 dark:text-yellow-300'
-                              : 'text-red-700 dark:text-red-300'
-                          }`}
-                        >
-                          {error.message.includes('Rate limit exceeded') ? (
-                            <>
-                              <strong>Rate Limit Reached:</strong>{' '}
-                              {error.message.replace('Rate limit exceeded: ', '')}
-                            </>
-                          ) : (
-                            <>Error: {error.message}</>
-                          )}
-                        </div>
-                      </div>
-                    )}
+                    {/* Removed: Old streaming status indicators - now handled by SSE + processingDocuments state */}
                     {selectedDocument?.status === 'rejected' && selectedDocument?.rejectionReason && (
                       <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-950">
                         <div className="text-sm text-red-700 dark:text-red-300">

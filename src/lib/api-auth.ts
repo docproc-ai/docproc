@@ -10,6 +10,7 @@ import { auth } from '@/lib/auth'
 export async function checkApiAuth(requiredPermissions: Record<string, string[]>): Promise<{
   success: boolean
   isApiKey: boolean
+  session?: any
 }> {
   const headersList = await headers()
   const apiKey = headersList.get('x-api-key')
@@ -22,6 +23,12 @@ export async function checkApiAuth(requiredPermissions: Record<string, string[]>
 
   // No API key, check user session permissions
   try {
+    const session = await auth.api.getSession({ headers: headersList })
+
+    if (!session) {
+      return { success: false, isApiKey: false }
+    }
+
     const permissionCheck = await auth.api.userHasPermission({
       headers: headersList,
       body: {
@@ -29,7 +36,7 @@ export async function checkApiAuth(requiredPermissions: Record<string, string[]>
       }
     })
 
-    return { success: permissionCheck.success, isApiKey: false }
+    return { success: permissionCheck.success, isApiKey: false, session }
   } catch (error) {
     console.error('Permission check failed:', error)
     return { success: false, isApiKey: false }
