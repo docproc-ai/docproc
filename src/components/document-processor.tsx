@@ -2,7 +2,7 @@
 
 import React, { useState, useTransition, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { updateDocument, deleteDocument, rotateDocument, getDocuments as getDocumentsAction } from '@/lib/actions/document'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import { DocumentQueue } from '@/components/document-queue'
@@ -91,6 +91,7 @@ export function DocumentProcessor({
   initialDocumentsResult = { documents: [], total: 0, page: 1, pageSize: 50, totalPages: 0 },
 }: DocumentProcessorProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { data: session } = authClient.useSession()
   const [documents, setDocuments] = useState<Document[]>(initialDocumentsResult.documents)
   const [pagination, setPagination] = useState({
@@ -134,6 +135,18 @@ export function DocumentProcessor({
   // Flag to prevent processing next document until current one is completely done (including auto-save)
   const isProcessingComplete = React.useRef<boolean>(true)
 
+  // Helper to get current filter options from URL search params
+  const getFilterOptions = () => {
+    const status = searchParams.get('status')
+    const search = searchParams.get('search')
+    return {
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+      ...(status && status !== 'all' ? { status: status as 'pending' | 'processed' | 'approved' | 'rejected' } : {}),
+      ...(search ? { search } : {}),
+    }
+  }
+
   // Sync initial documents result when it changes (e.g., after pagination)
   useEffect(() => {
     setDocuments(initialDocumentsResult.documents)
@@ -144,6 +157,17 @@ export function DocumentProcessor({
       totalPages: initialDocumentsResult.totalPages,
     })
   }, [initialDocumentsResult])
+
+  // Restore selected document from URL on mount
+  useEffect(() => {
+    const docId = searchParams.get('doc')
+    if (docId && documents.length > 0 && !selectedDocument) {
+      const docToSelect = documents.find(d => d.id === docId)
+      if (docToSelect) {
+        handleDocumentSelect(docToSelect)
+      }
+    }
+  }, [documents, searchParams]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Poll for job statuses of all visible documents (cross-session visibility)
   // With BullMQ + Redis, this is fast!
@@ -247,10 +271,7 @@ export function DocumentProcessor({
             setBatchQueue((prev) => prev.filter(id => id !== documentId))
 
             // Refetch documents to show updated status
-            getDocumentsAction(documentType.id, {
-              page: pagination.page,
-              pageSize: pagination.pageSize,
-            })
+            getDocumentsAction(documentType.id, getFilterOptions())
               .then(result => {
                 setDocuments(result.documents)
                 // Update selected document if it was in the batch
@@ -274,10 +295,7 @@ export function DocumentProcessor({
               setProcessingDocuments(new Set())
 
               // Final refresh
-              getDocumentsAction(documentType.id, {
-                page: pagination.page,
-                pageSize: pagination.pageSize,
-              })
+              getDocumentsAction(documentType.id, getFilterOptions())
                 .then(result => {
                   setDocuments(result.documents)
                   setPagination({
@@ -306,10 +324,7 @@ export function DocumentProcessor({
         setBatchQueue([])
 
         // Fallback: refresh documents to check current state
-        getDocumentsAction(documentType.id, {
-          page: pagination.page,
-          pageSize: pagination.pageSize,
-        })
+        getDocumentsAction(documentType.id, getFilterOptions())
           .then(result => setDocuments(result.documents))
           .catch(err => console.error('Failed to refresh after error:', err))
 
@@ -343,6 +358,16 @@ export function DocumentProcessor({
 
     setSelectedDocument(doc)
     selectedDocumentRef.current = doc?.id || null // Update ref for SSE callbacks
+
+    // Update URL with selected document ID
+    const params = new URLSearchParams(searchParams.toString())
+    if (doc?.id) {
+      params.set('doc', doc.id)
+    } else {
+      params.delete('doc')
+    }
+    const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname
+    router.push(newUrl, { scroll: false })
 
     if (!doc) {
       setFormData({})
@@ -454,10 +479,7 @@ export function DocumentProcessor({
             eventSourceRef.current = null
 
             // Refetch document to show updated status
-            getDocumentsAction(documentType.id, {
-              page: pagination.page,
-              pageSize: pagination.pageSize,
-            })
+            getDocumentsAction(documentType.id, getFilterOptions())
               .then(result => {
                 setDocuments(result.documents)
                 const updatedDoc = result.documents.find((d: any) => d.id === documentId)
@@ -573,10 +595,7 @@ export function DocumentProcessor({
             eventSourceRef.current = null
 
             // Refetch document to show updated status
-            getDocumentsAction(documentType.id, {
-              page: pagination.page,
-              pageSize: pagination.pageSize,
-            })
+            getDocumentsAction(documentType.id, getFilterOptions())
               .then(result => {
                 setDocuments(result.documents)
                 const updatedDoc = result.documents.find((d: any) => d.id === documentId)

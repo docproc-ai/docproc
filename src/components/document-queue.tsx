@@ -4,7 +4,7 @@ import type React from 'react'
 import { useState, useRef, useTransition, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
-import { UploadCloud, Trash2, Bot, Square, Clock, MoreHorizontal, CircleDashed, CheckCircle2, BadgeCheck, Search, Filter } from 'lucide-react'
+import { UploadCloud, Trash2, Bot, Square, Clock, MoreHorizontal, CircleDashed, CheckCircle2, BadgeCheck, Search, Filter, X, RotateCcw } from 'lucide-react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import {
   DocumentStatusIcon,
@@ -19,6 +19,7 @@ import type { DocumentSelect as Document } from '@/db/schema/app'
 import { toast } from 'sonner'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
+import { InputGroup, InputGroupInput, InputGroupButton } from '@/components/ui/input-group'
 import {
   Pagination,
   PaginationContent,
@@ -119,19 +120,110 @@ export function DocumentQueue({
   const searchParams = useSearchParams()
   const [isUploading, setIsUploading] = useState(false)
   const [statusFilter, setStatusFilter] = useState<Set<string>>(() => {
-    const status = searchParams.get('status')
-    if (!status || status === 'all') {
-      return new Set(['pending', 'processed', 'approved', 'rejected'])
+    // Priority: URL params > localStorage > default
+    const urlStatus = searchParams.get('status')
+
+    if (urlStatus && urlStatus !== 'all') {
+      return new Set(urlStatus.split(','))
     }
-    // Handle comma-separated values
-    return new Set(status.split(','))
+
+    // Try localStorage
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(`docproc-filters-${documentTypeId}`)
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored)
+          if (parsed.status && Array.isArray(parsed.status)) {
+            return new Set(parsed.status)
+          }
+        } catch (e) {
+          // Invalid JSON, ignore
+        }
+      }
+    }
+
+    // Default: show all statuses
+    return new Set(['pending', 'processed', 'approved', 'rejected'])
   })
-  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '')
+  const [searchQuery, setSearchQuery] = useState(() => {
+    // Priority: URL params > localStorage > default
+    const urlSearch = searchParams.get('search')
+    if (urlSearch) return urlSearch
+
+    // Try localStorage
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(`docproc-filters-${documentTypeId}`)
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored)
+          return parsed.search || ''
+        } catch (e) {
+          // Invalid JSON, ignore
+        }
+      }
+    }
+
+    return ''
+  })
   const [isDragging, setIsDragging] = useState(false)
   const [selectedDocIds, setSelectedDocIds] = useState<Set<string>>(new Set())
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const documentRefs = useRef<Map<string, HTMLLIElement>>(new Map())
 
   const [isPending, startTransition] = useTransition()
+
+  // Save filters to localStorage whenever they change
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const filters = {
+        status: Array.from(statusFilter),
+        search: searchQuery,
+      }
+      localStorage.setItem(`docproc-filters-${documentTypeId}`, JSON.stringify(filters))
+    }
+  }, [statusFilter, searchQuery, documentTypeId])
+
+  // Scroll to selected document when it changes
+  useEffect(() => {
+    if (selectedDocument?.id && documentRefs.current.has(selectedDocument.id)) {
+      const element = documentRefs.current.get(selectedDocument.id)
+      if (element) {
+        // Use a small delay to ensure the element is fully rendered
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        }, 100)
+      }
+    }
+  }, [selectedDocument?.id])
+
+  // Sync URL params with initial state on mount (if URL is missing params but we have them in state)
+  useEffect(() => {
+    const urlStatus = searchParams.get('status')
+    const urlSearch = searchParams.get('search')
+    const needsUpdate: Record<string, string | null> = {}
+
+    // Sync status filter if URL doesn't have it but state does
+    if (!urlStatus) {
+      const statusArray = Array.from(statusFilter)
+      if (statusArray.length > 0 && statusArray.length < 4) {
+        needsUpdate.status = statusArray.join(',')
+      }
+    }
+
+    // Sync search query if URL doesn't have it but state does
+    if (!urlSearch && searchQuery) {
+      needsUpdate.search = searchQuery
+    }
+
+    // Update URL if needed
+    if (Object.keys(needsUpdate).length > 0) {
+      const params = new URLSearchParams(searchParams.toString())
+      Object.entries(needsUpdate).forEach(([key, value]) => {
+        if (value) params.set(key, value)
+      })
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Update URL params
   const updateUrlParams = (updates: Record<string, string | null>) => {
@@ -353,12 +445,26 @@ export function DocumentQueue({
             </span>
           )}
           <ButtonGroup className="flex-1">
-            <Input
-              type="text"
-              placeholder="Search documents..."
-              value={searchQuery}
-              onChange={handleSearchChange}
-            />
+            <InputGroup>
+              <InputGroupInput
+                type="text"
+                placeholder="Search documents..."
+                value={searchQuery}
+                onChange={handleSearchChange}
+              />
+              {searchQuery && (
+                <InputGroupButton
+                  size="icon-xs"
+                  onClick={() => {
+                    setSearchQuery('')
+                    updateUrlParams({ search: null, page: '1' })
+                  }}
+                  title="Clear search"
+                >
+                  <X className="h-3 w-3" />
+                </InputGroupButton>
+              )}
+            </InputGroup>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="icon" title="Filter by status">
@@ -385,6 +491,19 @@ export function DocumentQueue({
                     <RejectedStatusIcon size="sm" />
                     Rejected
                     {statusFilter.has('rejected') && <span className="ml-auto">✓</span>}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onSelect={(e) => e.preventDefault()}
+                    onClick={() => {
+                      // Reset to all statuses
+                      const allStatuses = new Set(['pending', 'processed', 'approved', 'rejected'])
+                      setStatusFilter(allStatuses)
+                      updateUrlParams({ status: null, page: '1' })
+                    }}
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    Clear Filters
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -482,6 +601,13 @@ export function DocumentQueue({
             {filteredDocuments.map((doc) => (
               <li
                 key={doc.id}
+                ref={(el) => {
+                  if (el) {
+                    documentRefs.current.set(doc.id, el)
+                  } else {
+                    documentRefs.current.delete(doc.id)
+                  }
+                }}
                 className={cn(
                   'hover:bg-muted group flex items-center justify-between pr-2',
                   selectedDocument?.id === doc.id && 'bg-muted',
