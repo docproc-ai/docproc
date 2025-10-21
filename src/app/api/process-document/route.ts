@@ -1,157 +1,28 @@
-import { getDocument } from '@/lib/actions/document'
-import { getDocumentType } from '@/lib/actions/document-type'
 import { checkDocumentPermissions } from '@/lib/auth-utils'
-import { getModelForProcessing } from '@/lib/providers'
-import { getStorageDir } from '@/lib/storage'
-import { streamText, generateText, generateObject, jsonSchema } from 'ai'
 import { NextRequest } from 'next/server'
-import { readFile } from 'node:fs/promises'
-import { join } from 'node:path'
 import { checkApiAuth } from '@/lib/api-auth'
 import { checkAIRateLimit } from '@/lib/ai-rate-limit'
-import { jsonrepair } from 'jsonrepair'
+import { getDocumentStreamingProcessor, processDocumentText } from '@/lib/document-processing/processor'
 
 /**
- * Get the model and provider to use for processing a document type
- * Priority: overrideModel > documentType.modelName > system default
+ * @deprecated This endpoint is deprecated and will be removed in a future version.
+ *
+ * Please use the new BullMQ-based processing endpoints instead:
+ * - Single document: POST /api/jobs/process-single
+ * - Batch processing: POST /api/jobs/batch-process
+ * - Job status polling: GET /api/jobs/status?jobIds=...
+ *
+ * The new endpoints provide:
+ * - Asynchronous processing with job queue
+ * - Better scalability for high-volume processing
+ * - Real-time progress updates via Server-Sent Events
+ * - Unified processing logic across all entry points
  */
-async function getModelAndProviderForProcessing(documentTypeId: string, overrideModel?: string) {
-  const docType = await getDocumentType(documentTypeId)
-  return getModelForProcessing(docType?.providerName, docType?.modelName, overrideModel)
-}
-
-function getMimeType(extension: string): string {
-  const mimeTypes: { [key: string]: string } = {
-    pdf: 'application/pdf',
-    png: 'image/png',
-    jpg: 'image/jpeg',
-    jpeg: 'image/jpeg',
-    gif: 'image/gif',
-    bmp: 'image/bmp',
-    webp: 'image/webp',
-    tiff: 'image/tiff',
-    tif: 'image/tiff',
-  }
-
-  return mimeTypes[extension] || 'application/octet-stream'
-}
-
-function getSystemPrompt(): string {
-  const currentDate = new Date()
-  const isoDate = currentDate.toISOString().split('T')[0]
-  const readableDate = currentDate.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
-
-  return `
-You are an expert document processor. Your task is to analyze the provided document (which could be a PDF or an image) and extract information into a structured JSON object based on the user-provided schema.
-
-**CURRENT DATE**: ${isoDate} (${readableDate})
-
-**CRITICAL INSTRUCTIONS:**
-1.  **Analyze the ENTIRE document provided.**
-2.  **Date Formatting**: For any date field, you MUST format it as \`YYYY-MM-DD\`.
-3.  **Do NOT Guess**: If you cannot find information for a field, OMIT it from your response. Do not hallucinate data. Even if a field is required in the schema, if the information is not present in the document, it should not be included.
-4.  **Follow Schema**: Adhere strictly to the JSON schema for the output format. Pay close attention to field names, types, and nested structures. The exception is that you can omit fields that are not present in the document or that you are unsure of.
-5.  **Date Context**: Use the current date above as reference when interpreting relative dates or incomplete dates in documents (e.g., "last month", "Q1", etc.).
-6.  **JSON OUTPUT ONLY**: Your response must be ONLY valid JSON. Do not include any explanatory text, markdown formatting, or code blocks. Start with { and end with }.
-`.trim()
-}
-
-interface ValidationResult {
-  isValid: boolean
-  reason?: string
-}
-
-/**
- * Validate if a document matches the expected document type
- * Returns early if validation instructions are not set
- */
-async function validateDocument(
-  docType: any,
-  fileBuffer: Buffer,
-  filename: string,
-  provider: any,
-  modelName: string,
-): Promise<ValidationResult> {
-  // Skip validation if no instructions provided
-  if (!docType.validationInstructions || !docType.validationInstructions.trim()) {
-    return { isValid: true }
-  }
-
-  // Determine file type from filename
-  const fileExtension = filename.toLowerCase().split('.').pop()
-  const mimeType = getMimeType(fileExtension || '')
-
-  // Build the message content
-  const messageContent: Array<
-    | { type: 'text'; text: string }
-    | { type: 'image'; image: Buffer }
-    | { type: 'file'; data: Buffer; mediaType: string; filename?: string }
-  > = [
-    {
-      type: 'text',
-      text: `Validate if this document matches the expected type.
-
-${docType.validationInstructions}
-
-Respond with your assessment.`,
-    },
-  ]
-
-  if (mimeType.startsWith('image/')) {
-    messageContent.push({ type: 'image', image: fileBuffer })
-  } else {
-    messageContent.push({
-      type: 'file',
-      data: fileBuffer,
-      mediaType: mimeType,
-      filename: filename,
-    })
-  }
-
-  const messages = [
-    {
-      role: 'user' as const,
-      content: messageContent,
-    },
-  ]
-
-  // Define validation response schema
-  const validationSchema = jsonSchema<ValidationResult>({
-    type: 'object',
-    properties: {
-      isValid: {
-        type: 'boolean',
-        description: 'Whether the document matches the expected type',
-      },
-      reason: {
-        type: 'string',
-        description: 'Explanation of why the document is valid or invalid',
-      },
-    },
-    required: ['isValid'],
-  })
-
-  try {
-    const { object } = await generateObject({
-      model: provider.getModel(modelName),
-      schema: validationSchema,
-      messages,
-    })
-
-    return object
-  } catch (error) {
-    console.error('Validation failed:', error)
-    // On validation error, allow processing to continue
-    return { isValid: true, reason: 'Validation check failed, proceeding with processing' }
-  }
-}
-
 export async function POST(req: NextRequest) {
+  // Log deprecation warning
+  console.warn(
+    '[DEPRECATED] /api/process-document is deprecated. Use /api/jobs/process-single or /api/jobs/batch-process instead.'
+  )
   try {
     // Check if user has permission to process documents (or has valid API key)
     const authCheck = await checkApiAuth({
@@ -205,132 +76,113 @@ export async function POST(req: NextRequest) {
       return new Response('Invalid schema JSON', { status: 400 })
     }
 
-    // Get the model and provider to use
-    const { provider, modelName } = await getModelAndProviderForProcessing(
-      documentTypeId,
-      validatedOverrideModel,
-    )
-
-    // Get the document type for validation
-    const docType = await getDocumentType(documentTypeId)
-    if (!docType) {
-      return new Response('Document type not found', { status: 404 })
-    }
-
-    // Get the document
-    const doc = await getDocument(documentId)
-    if (!doc) {
-      return new Response('Document not found', { status: 404 })
-    }
-
-    // Read the document file from storage
-    const filePath = join(getStorageDir(), doc.storagePath)
-    const fileBuffer = await readFile(filePath)
-
-    // Validate document type if validation instructions exist (unless explicitly skipped)
-    if (!skipValidation) {
-      const validation = await validateDocument(docType, fileBuffer, doc.filename, provider, modelName)
-
-      if (!validation.isValid) {
-        // Save rejection to database
-        const { updateDocument } = await import('@/lib/actions/document')
-        const rejectionFormData = new FormData()
-        rejectionFormData.append('status', 'rejected')
-        rejectionFormData.append('rejectionReason', validation.reason || 'Document does not match expected type')
-        const rejectedDoc = await updateDocument(documentId, rejectionFormData)
-
-        // Return 200 with success: false so the client can handle gracefully
-        return Response.json({
-          success: false,
-          rejected: true,
-          error: 'Document validation failed',
-          message: validation.reason || 'Document does not match expected type',
-          document: rejectedDoc,
-        })
-      }
-    }
-
-    // Determine file type from filename
-    const fileExtension = doc.filename.toLowerCase().split('.').pop()
-    const mimeType = getMimeType(fileExtension || '')
-
-    // Build the message content array for AI SDK v5
-    const messageContent: Array<
-      | { type: 'text'; text: string }
-      | { type: 'image'; image: Buffer }
-      | { type: 'file'; data: Buffer; mediaType: string; filename?: string }
-    > = []
-
-    // Include schema in the message for text generation
-    messageContent.push({
-      type: 'text',
-      text: `Please analyze the attached document and extract the data according to the provided schema.
-
-Schema to follow:
-${JSON.stringify(schema, null, 2)}
-
-Remember: Output ONLY valid JSON that matches this schema. No explanatory text.`,
-    })
-
-    if (mimeType.startsWith('image/')) {
-      messageContent.push({ type: 'image', image: fileBuffer })
-    } else {
-      messageContent.push({
-        type: 'file',
-        data: fileBuffer,
-        mediaType: mimeType,
-        filename: doc.filename,
-      })
-    }
-
-    // Create the messages array
-    const messages = [
-      {
-        role: 'user' as const,
-        content: messageContent,
-      },
-    ]
-
     if (isStreamMode) {
       // Streaming mode for single document processing
-      const result = streamText({
-        model: provider.getModel(modelName),
-        system: getSystemPrompt(),
-        messages,
-      })
+      const result = await getDocumentStreamingProcessor(
+        documentId,
+        documentTypeId,
+        schema,
+        {
+          skipValidation,
+          overrideModel: validatedOverrideModel,
+        }
+      )
 
-      return result.toTextStreamResponse()
-    } else {
-      // Non-streaming mode for batch processing
-
-      const { text } = await generateText({
-        model: provider.getModel(modelName),
-        system: getSystemPrompt(),
-        messages,
-      })
-
-      // Parse the JSON response using jsonrepair (same as streaming hook)
-      let extractedData
-      try {
-        const repairedJson = jsonrepair(text.trim())
-        extractedData = JSON.parse(repairedJson)
-      } catch (parseError) {
-        console.error('❌ Failed to parse JSON response for document:', documentId, parseError)
-        console.error('Raw response text:', text)
-
-        // Model returned text instead of JSON - return the full message
-        return Response.json({
-          success: false,
-          error: 'Model returned text instead of JSON',
-          message: text,
-        })
+      // Check if document was rejected during validation
+      if ('rejected' in result && result.rejected) {
+        return Response.json(
+          {
+            success: false,
+            rejected: true,
+            error: 'Document validation failed',
+            message: result.reason,
+            document: result.document,
+          },
+          {
+            headers: {
+              'X-API-Warn': 'Deprecated endpoint. Use /api/jobs/process-single instead.',
+              Deprecation: 'true',
+            },
+          }
+        )
       }
 
-      return Response.json({
-        success: true,
-        data: extractedData,
-        documentId,
-      })
+      const streamResponse = result.toTextStreamResponse()
+      streamResponse.headers.set(
+        'X-API-Warn',
+        'Deprecated endpoint. Use /api/jobs/process-single instead.'
+      )
+      streamResponse.headers.set('Deprecation', 'true')
+      return streamResponse
+    } else {
+      // Non-streaming mode for batch processing
+      try {
+        const { data } = await processDocumentText(
+          documentId,
+          documentTypeId,
+          schema,
+          {
+            skipValidation,
+            overrideModel: validatedOverrideModel,
+          }
+        )
+
+        return Response.json(
+          {
+            success: true,
+            data,
+            documentId,
+          },
+          {
+            headers: {
+              'X-API-Warn': 'Deprecated endpoint. Use /api/jobs/batch-process instead.',
+              Deprecation: 'true',
+            },
+          }
+        )
+      } catch (error) {
+        // Check if this is a validation rejection
+        if (error instanceof Error && error.message.includes('Document validation failed')) {
+          // Get the rejected document from database
+          const { getDocument } = await import('@/lib/actions/document')
+          const rejectedDoc = await getDocument(documentId)
+
+          return Response.json(
+            {
+              success: false,
+              rejected: true,
+              error: 'Document validation failed',
+              message: error.message.replace('Document validation failed: ', ''),
+              document: rejectedDoc,
+            },
+            {
+              headers: {
+                'X-API-Warn': 'Deprecated endpoint. Use /api/jobs/batch-process instead.',
+                Deprecation: 'true',
+              },
+            }
+          )
+        }
+
+        // Check if model returned non-JSON
+        if (error instanceof Error && error.message.includes('Model returned text instead of JSON')) {
+          return Response.json(
+            {
+              success: false,
+              error: error.message,
+              message: error.message,
+            },
+            {
+              headers: {
+                'X-API-Warn': 'Deprecated endpoint. Use /api/jobs/batch-process instead.',
+                Deprecation: 'true',
+              },
+            }
+          )
+        }
+
+        throw error
+      }
     }
   } catch (error) {
     console.error('Failed to process document:', error)
