@@ -141,7 +141,7 @@ export function FieldBuilder({
               ) : (
                 <ChevronRight className="h-4 w-4" />
               )}
-              <div className="flex-1" onClick={(e) => e.stopPropagation()}>
+              <div className="relative flex-1" onClick={(e) => e.stopPropagation()}>
                 <Field data-invalid={hasError}>
                   <Input
                     value={editingKey}
@@ -150,11 +150,15 @@ export function FieldBuilder({
                     onKeyDown={handleKeyDown}
                     onClick={(e) => e.stopPropagation()}
                     onFocus={(e) => e.stopPropagation()}
-                    className={`h-8 font-medium ${hasError ? 'border-destructive' : ''}`}
+                    className="h-8 font-medium"
                     placeholder="Property name"
                     aria-invalid={hasError}
                   />
-                  {errorMessage && <FieldError>{errorMessage}</FieldError>}
+                  {errorMessage && (
+                    <div className="absolute left-0 top-full z-10">
+                      <FieldError>{errorMessage}</FieldError>
+                    </div>
+                  )}
                 </Field>
               </div>
             </div>
