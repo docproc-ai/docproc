@@ -226,6 +226,7 @@ export function ObjectFieldBuilder({ schema, onChange, children }: ObjectFieldBu
         Object.entries(schema.properties).map(([key, propertySchema]) => {
           const isExpanded = expandedProperties[key] || false
           const propertyId = getStableId(key)
+          const existingKeys = Object.keys(schema.properties || {})
 
           return (
             <FieldBuilder
@@ -250,6 +251,7 @@ export function ObjectFieldBuilder({ schema, onChange, children }: ObjectFieldBu
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
               onDragEnd={handleDragEnd}
+              existingKeys={existingKeys}
             >
               {children(key, propertySchema, propertyId)}
             </FieldBuilder>
