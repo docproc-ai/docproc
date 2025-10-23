@@ -96,7 +96,7 @@ export function DocumentTypeForm({
     try {
       return JSON.parse(schemaText)
     } catch (e) {
-      return { type: 'object', title: 'Invalid Schema', properties: {} }
+      return { type: 'object', properties: {} }
     }
   }, [schemaText])
 

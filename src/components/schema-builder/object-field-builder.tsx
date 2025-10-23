@@ -55,7 +55,15 @@ export function ObjectFieldBuilder({ schema, onChange, children }: ObjectFieldBu
   const removeProperty = (key: string) => {
     const newProperties = { ...schema.properties }
     delete newProperties[key]
-    onChange({ properties: newProperties })
+
+    // Remove the key from required array if it exists
+    const currentRequired = schema.required || []
+    const newRequired = currentRequired.filter((r) => r !== key)
+
+    onChange({
+      properties: newProperties,
+      required: newRequired.length > 0 ? newRequired : undefined
+    })
 
     if (propertyIdMap.current.has(key)) {
       propertyIdMap.current.delete(key)
@@ -218,6 +226,7 @@ export function ObjectFieldBuilder({ schema, onChange, children }: ObjectFieldBu
         Object.entries(schema.properties).map(([key, propertySchema]) => {
           const isExpanded = expandedProperties[key] || false
           const propertyId = getStableId(key)
+          const existingKeys = Object.keys(schema.properties || {})
 
           return (
             <FieldBuilder
@@ -242,6 +251,7 @@ export function ObjectFieldBuilder({ schema, onChange, children }: ObjectFieldBu
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
               onDragEnd={handleDragEnd}
+              existingKeys={existingKeys}
             >
               {children(key, propertySchema, propertyId)}
             </FieldBuilder>

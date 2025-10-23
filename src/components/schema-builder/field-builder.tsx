@@ -14,6 +14,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox'
 import { Trash2, ChevronDown, ChevronRight, GripVertical } from 'lucide-react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Field, FieldError } from '@/components/ui/field'
 import type { JsonSchema } from './types'
 
 interface FieldBuilderProps {
@@ -37,6 +38,7 @@ interface FieldBuilderProps {
   onDragLeave: () => void
   onDrop: (e: React.DragEvent, key: string) => void
   onDragEnd: () => void
+  existingKeys: string[]
   children: React.ReactNode
 }
 
@@ -61,8 +63,62 @@ export function FieldBuilder({
   onDragLeave,
   onDrop,
   onDragEnd,
+  existingKeys,
   children,
 }: FieldBuilderProps) {
+  const [editingKey, setEditingKey] = useState(propertyKey)
+  const [hasError, setHasError] = useState(false)
+
+  // Update local state when property key changes externally
+  useEffect(() => {
+    setEditingKey(propertyKey)
+    setHasError(false)
+  }, [propertyKey])
+
+  const validateKey = (key: string) => {
+    const trimmedKey = key.trim()
+
+    // Check if empty
+    if (!trimmedKey) {
+      return 'Property name cannot be empty'
+    }
+
+    // Check if duplicate (excluding the current key)
+    if (trimmedKey !== propertyKey && existingKeys.includes(trimmedKey)) {
+      return 'Property name already exists'
+    }
+
+    return null
+  }
+
+  const handleKeyBlur = () => {
+    const trimmedKey = editingKey.trim()
+    const error = validateKey(trimmedKey)
+
+    if (error) {
+      setHasError(true)
+      return
+    }
+
+    setHasError(false)
+
+    if (trimmedKey !== propertyKey) {
+      onRename(propertyKey, trimmedKey)
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.currentTarget.blur()
+    } else if (e.key === 'Escape') {
+      setEditingKey(propertyKey)
+      setHasError(false)
+      e.currentTarget.blur()
+    }
+  }
+
+  const errorMessage = hasError ? validateKey(editingKey) : null
+
   return (
     <Collapsible open={isExpanded} onOpenChange={onToggle}>
       <div
@@ -85,14 +141,26 @@ export function FieldBuilder({
               ) : (
                 <ChevronRight className="h-4 w-4" />
               )}
-              <Input
-                value={propertyKey}
-                onChange={(e) => onRename(propertyKey, e.target.value)}
-                onClick={(e) => e.stopPropagation()}
-                onFocus={(e) => e.stopPropagation()}
-                className="h-8 flex-1 font-medium"
-                placeholder="Property name"
-              />
+              <div className="relative flex-1" onClick={(e) => e.stopPropagation()}>
+                <Field data-invalid={hasError}>
+                  <Input
+                    value={editingKey}
+                    onChange={(e) => setEditingKey(e.target.value)}
+                    onBlur={handleKeyBlur}
+                    onKeyDown={handleKeyDown}
+                    onClick={(e) => e.stopPropagation()}
+                    onFocus={(e) => e.stopPropagation()}
+                    className="h-8 font-medium"
+                    placeholder="Property name"
+                    aria-invalid={hasError}
+                  />
+                  {errorMessage && (
+                    <div className="absolute left-0 top-full z-10">
+                      <FieldError>{errorMessage}</FieldError>
+                    </div>
+                  )}
+                </Field>
+              </div>
             </div>
             <div className="flex items-center gap-3">
               <Select
