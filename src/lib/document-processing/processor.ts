@@ -1,6 +1,6 @@
 import { generateObject, generateText, streamObject, streamText, jsonSchema } from 'ai'
-import { getDocument, updateDocument } from '@/lib/actions/document'
-import { getDocumentType } from '@/lib/actions/document-type'
+import { getDocumentCore, updateDocumentCore } from '@/lib/db/document-operations'
+import { getDocumentTypeCore } from '@/lib/db/document-type-operations'
 import { jsonrepair } from 'jsonrepair'
 import {
   getSystemPrompt,
@@ -117,13 +117,13 @@ export async function processDocumentStructured(
   )
 
   // Get the document type for validation instructions
-  const docType = await getDocumentType(documentTypeId)
+  const docType = await getDocumentTypeCore(documentTypeId)
   if (!docType) {
     throw new Error('Document type not found')
   }
 
   // Get the document
-  const doc = await getDocument(documentId)
+  const doc = await getDocumentCore(documentId)
   if (!doc) {
     throw new Error('Document not found')
   }
@@ -138,13 +138,10 @@ export async function processDocumentStructured(
 
     if (!validation.isValid) {
       // Save rejection to database
-      const rejectionFormData = new FormData()
-      rejectionFormData.append('status', 'rejected')
-      rejectionFormData.append(
-        'rejectionReason',
-        validation.reason || 'Document does not match expected type',
-      )
-      await updateDocument(documentId, rejectionFormData)
+      await updateDocumentCore(documentId, {
+        status: 'rejected',
+        rejectionReason: validation.reason || 'Document does not match expected type',
+      })
 
       throw new Error(
         `Document validation failed: ${validation.reason || 'Document does not match expected type'}`,
@@ -194,13 +191,13 @@ export async function processDocumentText(
   )
 
   // Get the document type for validation
-  const docType = await getDocumentType(documentTypeId)
+  const docType = await getDocumentTypeCore(documentTypeId)
   if (!docType) {
     throw new Error('Document type not found')
   }
 
   // Get the document
-  const doc = await getDocument(documentId)
+  const doc = await getDocumentCore(documentId)
   if (!doc) {
     throw new Error('Document not found')
   }
@@ -215,13 +212,10 @@ export async function processDocumentText(
 
     if (!validation.isValid) {
       // Save rejection to database
-      const rejectionFormData = new FormData()
-      rejectionFormData.append('status', 'rejected')
-      rejectionFormData.append(
-        'rejectionReason',
-        validation.reason || 'Document does not match expected type',
-      )
-      await updateDocument(documentId, rejectionFormData)
+      await updateDocumentCore(documentId, {
+        status: 'rejected',
+        rejectionReason: validation.reason || 'Document does not match expected type',
+      })
 
       throw new Error(
         `Document validation failed: ${validation.reason || 'Document does not match expected type'}`,
@@ -282,13 +276,13 @@ export async function processDocumentWithProgress(
   )
 
   // Get the document type for validation instructions
-  const docType = await getDocumentType(documentTypeId)
+  const docType = await getDocumentTypeCore(documentTypeId)
   if (!docType) {
     throw new Error('Document type not found')
   }
 
   // Get the document
-  const doc = await getDocument(documentId)
+  const doc = await getDocumentCore(documentId)
   if (!doc) {
     throw new Error('Document not found')
   }
@@ -303,13 +297,10 @@ export async function processDocumentWithProgress(
 
     if (!validation.isValid) {
       // Save rejection to database
-      const rejectionFormData = new FormData()
-      rejectionFormData.append('status', 'rejected')
-      rejectionFormData.append(
-        'rejectionReason',
-        validation.reason || 'Document does not match expected type',
-      )
-      await updateDocument(documentId, rejectionFormData)
+      await updateDocumentCore(documentId, {
+        status: 'rejected',
+        rejectionReason: validation.reason || 'Document does not match expected type',
+      })
 
       throw new Error(
         `Document validation failed: ${validation.reason || 'Document does not match expected type'}`,
@@ -348,7 +339,6 @@ export async function processDocumentWithProgress(
   }
 
   // Update document with extracted data
-  const { updateDocumentCore } = await import('@/lib/db/document-operations')
   const updatedDoc = await updateDocumentCore(documentId, {
     extractedData: finalData,
     status: 'processed',
@@ -375,7 +365,6 @@ export async function processAndSaveDocument(
 
     // Update document with extracted data
     // Use core database function (works in any context - API routes, Server Actions, background jobs)
-    const { updateDocumentCore } = await import('@/lib/db/document-operations')
     const updatedDoc = await updateDocumentCore(documentId, {
       extractedData: data,
       status: 'processed',
@@ -469,13 +458,13 @@ export async function getDocumentStreamingProcessor(
   )
 
   // Get the document type for validation
-  const docType = await getDocumentType(documentTypeId)
+  const docType = await getDocumentTypeCore(documentTypeId)
   if (!docType) {
     throw new Error('Document type not found')
   }
 
   // Get the document
-  const doc = await getDocument(documentId)
+  const doc = await getDocumentCore(documentId)
   if (!doc) {
     throw new Error('Document not found')
   }
@@ -489,13 +478,10 @@ export async function getDocumentStreamingProcessor(
 
     if (!validation.isValid) {
       // Save rejection to database
-      const rejectionFormData = new FormData()
-      rejectionFormData.append('status', 'rejected')
-      rejectionFormData.append(
-        'rejectionReason',
-        validation.reason || 'Document does not match expected type',
-      )
-      const rejectedDoc = await updateDocument(documentId, rejectionFormData)
+      const rejectedDoc = await updateDocumentCore(documentId, {
+        status: 'rejected',
+        rejectionReason: validation.reason || 'Document does not match expected type',
+      })
 
       // Return rejection info for client handling
       return {

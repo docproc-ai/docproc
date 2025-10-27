@@ -1,6 +1,6 @@
 import { jsonSchema, ModelMessage } from 'ai'
-import type { getDocument } from '@/lib/actions/document'
-import type { getDocumentType } from '@/lib/actions/document-type'
+import type { Document } from '@/lib/db/document-operations'
+import type { DocumentType } from '@/lib/db/document-type-operations'
 import { getModelForProcessing } from '@/lib/providers'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -20,8 +20,8 @@ export interface PreprocessedDocumentData {
   schema: any
   provider: any
   modelName: string
-  doc: Awaited<ReturnType<typeof getDocument>>
-  docType: Awaited<ReturnType<typeof getDocumentType>>
+  doc: Document | null
+  docType: DocumentType | null
   fileBuffer: Buffer
   messages: ModelMessage[]
   schemaForAI: any
@@ -87,8 +87,8 @@ export async function getModelAndProviderForProcessing(
   documentTypeId: string,
   overrideModel?: string,
 ) {
-  const { getDocumentType } = await import('@/lib/actions/document-type')
-  const docType = await getDocumentType(documentTypeId)
+  const { getDocumentTypeCore } = await import('@/lib/db/document-type-operations')
+  const docType = await getDocumentTypeCore(documentTypeId)
   return getModelForProcessing(docType?.providerName, docType?.modelName, overrideModel)
 }
 

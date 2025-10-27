@@ -10,7 +10,8 @@ import {
   loadDocumentFile,
   prepareSchemaForAI,
 } from '@/lib/document-processing/shared'
-import { getDocument, getDocumentType } from '@/lib/actions/document-type'
+import { getDocument } from '@/lib/actions/document'
+import { getDocumentType } from '@/lib/actions/document-type'
 
 export async function processDocument(formData: FormData) {
   const documentId = formData.get('documentId') as string
