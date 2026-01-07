@@ -86,6 +86,37 @@ interface DocumentProcessorProps {
   initialDocumentsResult?: GetDocumentsResult
 }
 
+// Merge UI hints from current schema into snapshot schema
+// This ensures UI preferences (ui:widget, ui:pivoted) from the current
+// document type are applied even to documents processed before those settings existed
+function mergeSchemaUiHints(snapshot: any, current: any): any {
+  if (!snapshot || !current) return snapshot || current
+
+  const merged = { ...snapshot }
+
+  // Merge top-level UI hints
+  if (current['ui:widget'] !== undefined) merged['ui:widget'] = current['ui:widget']
+  if (current['ui:pivoted'] !== undefined) merged['ui:pivoted'] = current['ui:pivoted']
+  if (current['ui:displayTemplate'] !== undefined) merged['ui:displayTemplate'] = current['ui:displayTemplate']
+
+  // Merge properties recursively
+  if (snapshot.properties && current.properties) {
+    merged.properties = { ...snapshot.properties }
+    for (const key of Object.keys(current.properties)) {
+      if (snapshot.properties[key]) {
+        merged.properties[key] = mergeSchemaUiHints(snapshot.properties[key], current.properties[key])
+      }
+    }
+  }
+
+  // Merge items (for arrays)
+  if (snapshot.items && current.items) {
+    merged.items = mergeSchemaUiHints(snapshot.items, current.items)
+  }
+
+  return merged
+}
+
 export function DocumentProcessor({
   documentType,
   initialDocumentsResult = { documents: [], total: 0, page: 1, pageSize: 50, totalPages: 0 },
@@ -1069,7 +1100,7 @@ export function DocumentProcessor({
                     )}
                     <FormRenderer
                       key={selectedDocument.id}
-                      schema={selectedDocument.schemaSnapshot || documentType.schema}
+                      schema={mergeSchemaUiHints(selectedDocument.schemaSnapshot, documentType.schema) || documentType.schema}
                       data={formData || {}}
                       onChange={handleDataChange}
                       isStreaming={false}
