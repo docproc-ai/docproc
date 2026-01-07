@@ -410,8 +410,11 @@ function ArrayTableField({
                   : itemsSchema
                 const cellValue = isObjectArray ? item[fieldKey] : item
                 const columnKey = isObjectArray ? fieldKey : null
+                // Set minWidth for date columns to prevent cutoff
+                const isDate = cellSchema.format === 'date'
+                const minWidth = isDate ? '100px' : undefined
                 return (
-                  <TableCell key={fieldKey} className="h-10 p-0">
+                  <TableCell key={fieldKey} className="h-10 p-0" style={{ minWidth }}>
                     <SpreadsheetCellInput
                       schema={cellSchema}
                       value={cellValue}
