@@ -155,33 +155,31 @@ function SpreadsheetCellInput({
 
   switch (fieldType) {
     case 'number':
-    case 'integer':
+    case 'integer': {
+      // Display formatted value, parse on change
+      const displayNum = typeof value === 'number' ? value.toLocaleString() : (value ?? '')
       return (
         <Input
-          type="number"
-          value={value ?? ''}
-          onChange={(e) =>
-            onChange(
-              e.target.value === ''
-                ? undefined
-                : fieldType === 'integer'
-                  ? Number.parseInt(e.target.value)
-                  : Number.parseFloat(e.target.value),
-            )
-          }
-          onWheel={(e) => e.currentTarget.blur()}
-          onKeyDown={(e) => {
-            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-              e.preventDefault()
+          type="text"
+          inputMode="decimal"
+          value={displayNum}
+          onChange={(e) => {
+            const raw = e.target.value.replace(/[^\d.-]/g, '')
+            if (raw === '' || raw === '-') {
+              onChange(raw === '-' ? raw : undefined)
+              return
+            }
+            const parsed = fieldType === 'integer' ? Number.parseInt(raw) : Number.parseFloat(raw)
+            if (!Number.isNaN(parsed)) {
+              onChange(parsed)
             }
           }}
-          className={cn(
-            inputClasses,
-            '[-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
-          )}
+          onWheel={(e) => e.currentTarget.blur()}
+          className={cn(inputClasses, 'text-right')}
           disabled={disabled}
         />
       )
+    }
     case 'boolean':
       return (
         <div className="flex h-full items-center justify-center">
@@ -195,7 +193,7 @@ function SpreadsheetCellInput({
             type={disabled ? 'text' : 'date'}
             value={value ?? ''}
             onChange={(e) => onChange(e.target.value)}
-            className={cn(inputClasses, 'relative')}
+            className={cn(inputClasses, 'text-right [&::-webkit-calendar-picker-indicator]:hidden')}
             disabled={disabled}
           />
         )
@@ -337,12 +335,12 @@ function ArrayTableField({
   // Render pivoted table (fields as rows, records as columns)
   const renderPivotedTable = () => (
     <div className="border-border overflow-x-auto rounded-md border">
-      <Table>
+      <Table className="w-auto">
         <TableHeader>
           <TableRow className="bg-muted/50 hover:bg-muted/50">
             <TableHead className="px-2 py-2 whitespace-nowrap font-semibold">Field</TableHead>
             {arrayValue.map((_, recordIndex) => (
-              <TableHead key={recordIndex} className="px-1 py-2 whitespace-nowrap text-center w-[1%]">
+              <TableHead key={recordIndex} className="px-1 py-2 whitespace-nowrap text-center">
                 <div className="flex items-center justify-center gap-0.5">
                   <span className="text-xs">{recordIndex + 1}</span>
                   <Button
@@ -386,14 +384,34 @@ function ArrayTableField({
                 {arrayValue.map((item, recordIndex) => {
                   const cellValue = isObjectArray ? item[fieldKey] : item
                   const columnKey = isObjectArray ? fieldKey : null
+                  // Format display value - dates and numbers in locale format
+                  const displayValue = (() => {
+                    if (cellValue == null) return ''
+                    if (cellSchema.format === 'date' && cellValue) {
+                      try {
+                        return new Date(cellValue).toLocaleDateString()
+                      } catch {
+                        return cellValue
+                      }
+                    }
+                    if ((cellSchema.type === 'number' || cellSchema.type === 'integer') && typeof cellValue === 'number') {
+                      return cellValue.toLocaleString()
+                    }
+                    return cellValue
+                  })()
+                  const isNumeric = cellSchema.type === 'number' || cellSchema.type === 'integer' || cellSchema.format === 'date'
                   return (
-                    <TableCell key={recordIndex} className="h-10 p-0 w-[1%]">
-                      <SpreadsheetCellInput
-                        schema={cellSchema}
-                        value={cellValue}
-                        onChange={(newValue) => handleCellChange(recordIndex, columnKey, newValue)}
-                        disabled={isStreaming}
-                      />
+                    <TableCell key={recordIndex} className="h-10 p-0 relative">
+                      {/* Hidden text for column sizing */}
+                      <span className={cn('invisible whitespace-nowrap px-3', isNumeric && 'text-right block')}>{displayValue}</span>
+                      <div className="absolute inset-0">
+                        <SpreadsheetCellInput
+                          schema={cellSchema}
+                          value={cellValue}
+                          onChange={(newValue) => handleCellChange(recordIndex, columnKey, newValue)}
+                          disabled={isStreaming}
+                        />
+                      </div>
                     </TableCell>
                   )
                 })}
