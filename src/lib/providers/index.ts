@@ -1,6 +1,6 @@
 import { anthropicProvider } from './anthropic'
 import { openrouterProvider } from './openrouter'
-import { AIProvider, ProviderName, ModelInfo } from './types'
+import { AIProvider, ProviderName, ModelInfo, ProviderInfo } from './types'
 
 export const providers: Record<ProviderName, AIProvider> = {
   anthropic: anthropicProvider,
@@ -50,9 +50,10 @@ export function getModelForProcessing(
   }
   
   // Use document type's provider and model
+  // Allow custom models that aren't in the hardcoded list
   if (documentTypeProviderName && documentTypeModelName) {
     const provider = providers[documentTypeProviderName as ProviderName]
-    if (provider && provider.models.includes(documentTypeModelName as any)) {
+    if (provider) {
       return { provider, modelName: documentTypeModelName }
     }
   }
@@ -69,12 +70,22 @@ export function getModelForProcessing(
   throw new Error('No provider or model configured. Please set a provider and model for this document type.')
 }
 
-export function getAvailableProviders(): Array<{ name: ProviderName; displayName: string; models: readonly string[] }> {
+export function getAvailableProviders(): Array<{ name: ProviderName; displayName: string; models: readonly string[]; supportsDynamicModels: boolean }> {
   return Object.entries(providers).map(([name, provider]) => ({
     name: name as ProviderName,
     displayName: provider.name,
     models: provider.models,
+    supportsDynamicModels: !!provider.fetchModels,
   }))
+}
+
+// Fetch models dynamically for a provider (if supported)
+export async function fetchProviderModels(providerName: ProviderName): Promise<string[]> {
+  const provider = providers[providerName]
+  if (provider.fetchModels) {
+    return provider.fetchModels()
+  }
+  return [...provider.models]
 }
 
 export * from './types'

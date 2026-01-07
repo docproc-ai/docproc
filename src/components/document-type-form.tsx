@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo, useCallback } from 'react'
+import React, { useState, useMemo, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -19,6 +19,7 @@ import { SchemaEditorTab } from '@/components/editor-tabs'
 import Editor from '@/components/editor'
 import { Loader2, PlusIcon, ChevronsUpDownIcon } from 'lucide-react'
 import { getAvailableProviders } from '@/lib/providers'
+import { getModelsForProvider } from '@/lib/actions/providers'
 import {
   Combobox,
   ComboboxTrigger,
@@ -86,9 +87,42 @@ export function DocumentTypeForm({
   const [schemaText, setSchemaText] = useState(
     JSON.stringify(initialData?.schema || defaultSchema, null, 2),
   )
+  const [dynamicModels, setDynamicModels] = useState<string[]>([])
+  const [isLoadingModels, setIsLoadingModels] = useState(false)
 
-  const availableProviders = getAvailableProviders()
+  const availableProviders = useMemo(() => getAvailableProviders(), [])
   const selectedProvider = availableProviders.find((p) => p.name === providerName)
+
+  // Fetch models dynamically when provider changes
+  useEffect(() => {
+    if (!providerName) {
+      setDynamicModels([])
+      return
+    }
+
+    const provider = availableProviders.find((p) => p.name === providerName)
+    if (!provider?.supportsDynamicModels) {
+      // Use static models for providers that don't support dynamic fetching
+      setDynamicModels([...provider?.models || []])
+      return
+    }
+
+    setIsLoadingModels(true)
+    getModelsForProvider(providerName)
+      .then((models) => {
+        setDynamicModels(models.length > 0 ? models : [...provider?.models || []])
+      })
+      .catch(() => {
+        // Fall back to static models on error
+        setDynamicModels([...provider?.models || []])
+      })
+      .finally(() => {
+        setIsLoadingModels(false)
+      })
+  }, [providerName, availableProviders])
+
+  // Use dynamic models if available, otherwise fall back to static
+  const availableModels = dynamicModels.length > 0 ? dynamicModels : [...(selectedProvider?.models || [])]
 
   const isValid = !!(name && providerName && modelName)
 
@@ -171,10 +205,10 @@ export function DocumentTypeForm({
               {providerName && selectedProvider && (
                 <div>
                   <Label htmlFor="modelName" className="text-muted-foreground text-sm">
-                    Model
+                    Model {isLoadingModels && <Loader2 className="inline h-3 w-3 animate-spin ml-1" />}
                   </Label>
                   <Combobox
-                    data={selectedProvider.models.map((model) => ({
+                    data={availableModels.map((model) => ({
                       label: model,
                       value: model,
                     }))}
@@ -182,9 +216,9 @@ export function DocumentTypeForm({
                     value={modelName}
                     onValueChange={setModelName}
                   >
-                    <ComboboxTrigger className="min-w-full">
+                    <ComboboxTrigger className="min-w-full" disabled={isLoadingModels}>
                       <span className="flex w-full items-center justify-between gap-2">
-                        {modelName || 'Select or type model...'}
+                        {isLoadingModels ? 'Loading models...' : (modelName || 'Select or type model...')}
                         <ChevronsUpDownIcon className="text-muted-foreground shrink-0" size={16} />
                       </span>
                     </ComboboxTrigger>
@@ -193,7 +227,7 @@ export function DocumentTypeForm({
                       <ComboboxList>
                         <ComboboxEmpty />
                         <ComboboxGroup>
-                          {selectedProvider.models.map((model) => (
+                          {availableModels.map((model) => (
                             <ComboboxItem key={model} value={model}>
                               <span className="truncate">{model}</span>
                             </ComboboxItem>
