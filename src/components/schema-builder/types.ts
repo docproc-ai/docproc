@@ -13,6 +13,7 @@ export interface JsonSchema {
   maxLength?: number
   format?: 'date' | 'date-time' | 'email' | 'uri'
   'ui:widget'?: 'default' | 'table' | 'textarea'
+  'ui:pivoted'?: boolean
   'ui:displayTemplate'?: string
   ai?: {
     instructions?: string

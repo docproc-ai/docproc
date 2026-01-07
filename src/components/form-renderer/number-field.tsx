@@ -8,6 +8,8 @@ export function NumberField({ name, schema, value, onChange, required, isStreami
   if (schema.type !== 'number' && schema.type !== 'integer') return null
 
   const fieldType = schema.type
+  // Display formatted value with locale (commas for thousands)
+  const displayValue = typeof value === 'number' ? value.toLocaleString() : (value ?? '')
 
   return (
     <Field>
@@ -18,25 +20,24 @@ export function NumberField({ name, schema, value, onChange, required, isStreami
       {schema.description && <FieldDescription>{schema.description}</FieldDescription>}
       <Input
         id={name}
-        type="number"
-        value={value ?? ''}
+        type="text"
+        inputMode="decimal"
+        value={displayValue}
         onChange={(e) => {
-          const val = e.target.value
-          if (val === '') {
-            onChange(undefined)
-          } else {
-            onChange(fieldType === 'integer' ? Number.parseInt(val) : Number.parseFloat(val))
+          const raw = e.target.value.replace(/[^\d.-]/g, '')
+          if (raw === '' || raw === '-') {
+            onChange(raw === '-' ? raw : undefined)
+            return
+          }
+          const parsed = fieldType === 'integer' ? Number.parseInt(raw) : Number.parseFloat(raw)
+          if (!Number.isNaN(parsed)) {
+            onChange(parsed)
           }
         }}
         onWheel={(e) => e.currentTarget.blur()}
-        onKeyDown={(e) => {
-          if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-            e.preventDefault()
-          }
-        }}
         min={schema.minimum}
         max={schema.maximum}
-        className="[-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        className=""
         disabled={isStreaming}
       />
     </Field>
