@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Trash2, Plus, ChevronDown, ChevronRight } from 'lucide-react'
+import { Trash2, Plus, ChevronDown, ChevronRight, ArrowLeftRight } from 'lucide-react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
   Table,
@@ -237,9 +237,10 @@ function ArrayTableField({
   required?: boolean
   isStreaming?: boolean
 }) {
+  const [isPivoted, setIsPivoted] = useState(schema['ui:pivoted'] ?? false)
   const arrayValue = value || []
 
-  const handleAddRow = () => {
+  const handleAddRecord = () => {
     const itemsSchema = schema.items || {}
     let newItem: any
     if (itemsSchema.type === 'object') {
@@ -256,84 +257,182 @@ function ArrayTableField({
     onChange([...arrayValue, newItem])
   }
 
-  const handleRemoveRow = (index: number) => {
+  const handleRemoveRecord = (index: number) => {
     const newArray = arrayValue.filter((_, i) => i !== index)
     onChange(newArray)
   }
 
-  const handleCellChange = (rowIndex: number, columnKey: string | null, newValue: any) => {
+  const handleCellChange = (recordIndex: number, fieldKey: string | null, newValue: any) => {
     const newArray = [...arrayValue]
-    if (columnKey) {
-      newArray[rowIndex] = { ...newArray[rowIndex], [columnKey]: newValue }
+    if (fieldKey) {
+      newArray[recordIndex] = { ...newArray[recordIndex], [fieldKey]: newValue }
     } else {
-      newArray[rowIndex] = newValue
+      newArray[recordIndex] = newValue
     }
     onChange(newArray)
   }
 
   const itemsSchema = schema.items || { type: 'string' }
   const isObjectArray = itemsSchema.type === 'object' && itemsSchema.properties
-  const headers = isObjectArray
+  const fieldKeys = isObjectArray
     ? Object.keys(itemsSchema.properties || {})
     : [itemsSchema.title || 'Value']
 
-  return (
-    <Field>
-      <FieldLabel>
-        {schema.title || name}
-        {required && <span className="ml-1 text-red-500">*</span>}
-      </FieldLabel>
-      {schema.description && (
-        <FieldDescription>{schema.description}</FieldDescription>
-      )}
-      <div className="border-border overflow-x-auto rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/50 hover:bg-muted/50">
-              {headers.map((header) => (
-                <TableHead key={header} className="px-2 py-2 whitespace-nowrap">
-                  {isObjectArray ? itemsSchema.properties?.[header]?.title || header : header}
-                </TableHead>
-              ))}
-              <TableHead className="w-[50px] px-2 py-2 text-right">
-                <span className="sr-only">Actions</span>
+  // Get field title from schema
+  const getFieldTitle = (fieldKey: string) => {
+    if (isObjectArray) {
+      return itemsSchema.properties?.[fieldKey]?.title || fieldKey
+    }
+    return fieldKey
+  }
+
+  // Render normal (non-pivoted) table
+  const renderNormalTable = () => (
+    <div className="border-border overflow-x-auto rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-muted/50 hover:bg-muted/50">
+            {fieldKeys.map((fieldKey) => (
+              <TableHead key={fieldKey} className="px-2 py-2 whitespace-nowrap">
+                {getFieldTitle(fieldKey)}
               </TableHead>
+            ))}
+            <TableHead className="w-[50px] px-2 py-2 text-right">
+              <span className="sr-only">Actions</span>
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {arrayValue.map((item, recordIndex) => (
+            <TableRow key={recordIndex}>
+              {fieldKeys.map((fieldKey) => {
+                const cellSchema = isObjectArray
+                  ? itemsSchema.properties?.[fieldKey] || {}
+                  : itemsSchema
+                const cellValue = isObjectArray ? item[fieldKey] : item
+                const columnKey = isObjectArray ? fieldKey : null
+                return (
+                  <TableCell key={fieldKey} className="h-10 p-0">
+                    <SpreadsheetCellInput
+                      schema={cellSchema}
+                      value={cellValue}
+                      onChange={(newValue) => handleCellChange(recordIndex, columnKey, newValue)}
+                      disabled={isStreaming}
+                    />
+                  </TableCell>
+                )
+              })}
+              <TableCell className="px-2 py-0 text-right">
+                <Button variant="ghost" size="icon" onClick={() => handleRemoveRecord(recordIndex)} disabled={isStreaming}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {arrayValue.map((item, rowIndex) => (
-              <TableRow key={rowIndex}>
-                {headers.map((headerKey) => {
-                  const cellSchema = isObjectArray
-                    ? itemsSchema.properties?.[headerKey] || {}
-                    : itemsSchema
-                  const cellValue = isObjectArray ? item[headerKey] : item
-                  const columnKey = isObjectArray ? headerKey : null
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  )
+
+  // Render pivoted table (fields as rows, records as columns)
+  const renderPivotedTable = () => (
+    <div className="border-border overflow-x-auto rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-muted/50 hover:bg-muted/50">
+            <TableHead className="px-2 py-2 whitespace-nowrap font-semibold">Field</TableHead>
+            {arrayValue.map((_, recordIndex) => (
+              <TableHead key={recordIndex} className="px-1 py-2 whitespace-nowrap text-center w-[1%]">
+                <div className="flex items-center justify-center gap-0.5">
+                  <span className="text-xs">{recordIndex + 1}</span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5"
+                    onClick={() => handleRemoveRecord(recordIndex)}
+                    disabled={isStreaming}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              </TableHead>
+            ))}
+            {!isStreaming && (
+              <TableHead className="w-[100px] px-2 py-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddRecord}
+                  className="w-full"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add
+                </Button>
+              </TableHead>
+            )}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {fieldKeys.map((fieldKey) => {
+            const cellSchema = isObjectArray
+              ? itemsSchema.properties?.[fieldKey] || {}
+              : itemsSchema
+            return (
+              <TableRow key={fieldKey}>
+                <TableCell className="bg-muted/30 px-2 py-2 font-medium whitespace-nowrap">
+                  {getFieldTitle(fieldKey)}
+                </TableCell>
+                {arrayValue.map((item, recordIndex) => {
+                  const cellValue = isObjectArray ? item[fieldKey] : item
+                  const columnKey = isObjectArray ? fieldKey : null
                   return (
-                    <TableCell key={headerKey} className="h-10 p-0">
+                    <TableCell key={recordIndex} className="h-10 p-0 w-[1%]">
                       <SpreadsheetCellInput
                         schema={cellSchema}
                         value={cellValue}
-                        onChange={(newValue) => handleCellChange(rowIndex, columnKey, newValue)}
+                        onChange={(newValue) => handleCellChange(recordIndex, columnKey, newValue)}
                         disabled={isStreaming}
                       />
                     </TableCell>
                   )
                 })}
-                <TableCell className="px-2 py-0 text-right">
-                  <Button variant="ghost" size="icon" onClick={() => handleRemoveRow(rowIndex)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </TableCell>
+                {!isStreaming && <TableCell />}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            )
+          })}
+        </TableBody>
+      </Table>
+    </div>
+  )
+
+  return (
+    <Field>
+      <div className="flex items-center justify-between">
+        <div>
+          <FieldLabel>
+            {schema.title || name}
+            {required && <span className="ml-1 text-red-500">*</span>}
+          </FieldLabel>
+          {schema.description && (
+            <FieldDescription>{schema.description}</FieldDescription>
+          )}
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => setIsPivoted(!isPivoted)}
+          title={isPivoted ? 'Switch to normal view' : 'Switch to pivoted view'}
+        >
+          <ArrowLeftRight className="h-4 w-4" />
+        </Button>
       </div>
-      {!isStreaming && (
-        <Button type="button" variant="outline" size="sm" onClick={handleAddRow}>
+      {isPivoted ? renderPivotedTable() : renderNormalTable()}
+      {!isPivoted && !isStreaming && (
+        <Button type="button" variant="outline" size="sm" onClick={handleAddRecord}>
           <Plus className="h-4 w-4" />
-          Add Row
+          Add Record
         </Button>
       )}
     </Field>
