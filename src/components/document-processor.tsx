@@ -82,6 +82,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { ButtonGroup } from '@/components/ui/button-group'
+import { Kbd } from '@/components/ui/kbd'
 import dynamic from 'next/dynamic'
 
 const DocumentViewer = dynamic(() => import('@/components/document-viewer'), {
@@ -1183,37 +1184,37 @@ export function DocumentProcessor({
                   <Keyboard className="h-4 w-4" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent align="end" className="w-64">
+              <PopoverContent align="end" className="w-72">
                 <div className="space-y-2">
                   <h4 className="font-medium">Keyboard Shortcuts</h4>
-                  <div className="text-sm space-y-1">
-                    <div className="flex justify-between">
+                  <div className="text-sm space-y-1.5">
+                    <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Save</span>
-                      <kbd className="bg-muted rounded px-1.5 py-0.5 text-xs">Ctrl+S</kbd>
+                      <span className="flex gap-1"><Kbd>Ctrl</Kbd><Kbd>S</Kbd></span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Approve & next</span>
-                      <kbd className="bg-muted rounded px-1.5 py-0.5 text-xs">Ctrl+Enter</kbd>
+                      <span className="flex gap-1"><Kbd>Ctrl</Kbd><Kbd>Enter</Kbd></span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Approve & stay</span>
-                      <kbd className="bg-muted rounded px-1.5 py-0.5 text-xs">Ctrl+Shift+Enter</kbd>
+                      <span className="flex gap-1"><Kbd>Ctrl</Kbd><Kbd>Shift</Kbd><Kbd>Enter</Kbd></span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Process</span>
-                      <kbd className="bg-muted rounded px-1.5 py-0.5 text-xs">Ctrl+P</kbd>
+                      <span className="flex gap-1"><Kbd>Ctrl</Kbd><Kbd>P</Kbd></span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Reject</span>
-                      <kbd className="bg-muted rounded px-1.5 py-0.5 text-xs">Ctrl+R</kbd>
+                      <span className="flex gap-1"><Kbd>Ctrl</Kbd><Kbd>R</Kbd></span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Next document</span>
-                      <kbd className="bg-muted rounded px-1.5 py-0.5 text-xs">Ctrl+↓</kbd>
+                      <span className="flex gap-1"><Kbd>Ctrl</Kbd><Kbd>↓</Kbd></span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Previous document</span>
-                      <kbd className="bg-muted rounded px-1.5 py-0.5 text-xs">Ctrl+↑</kbd>
+                      <span className="flex gap-1"><Kbd>Ctrl</Kbd><Kbd>↑</Kbd></span>
                     </div>
                   </div>
                 </div>
