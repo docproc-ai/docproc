@@ -153,6 +153,29 @@ function SpreadsheetCellInput({
   const inputClasses =
     'w-full h-full bg-transparent border-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 rounded-none px-2 py-1'
 
+  // Handle keyboard navigation between cells
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const isVerticalNav = e.key === 'Enter' || e.key === 'ArrowUp' || e.key === 'ArrowDown'
+    if (!isVerticalNav) return
+
+    e.preventDefault()
+    const cell = (e.target as HTMLElement).closest('td')
+    if (!cell) return
+    const row = cell.parentElement
+    if (!row) return
+    const cellIndex = Array.from(row.children).indexOf(cell)
+    const goUp = e.key === 'ArrowUp' || (e.key === 'Enter' && e.shiftKey)
+    const targetRow = goUp ? row.previousElementSibling : row.nextElementSibling
+    if (targetRow) {
+      const targetCell = targetRow.children[cellIndex]
+      const targetInput = targetCell?.querySelector('input') as HTMLInputElement | null
+      if (targetInput) {
+        targetInput.focus()
+        targetInput.select()
+      }
+    }
+  }
+
   switch (fieldType) {
     case 'number':
     case 'integer': {
@@ -174,6 +197,7 @@ function SpreadsheetCellInput({
               onChange(parsed)
             }
           }}
+          onKeyDown={handleKeyDown}
           onWheel={(e) => e.currentTarget.blur()}
           className={cn(inputClasses, 'text-right')}
           disabled={disabled}
@@ -193,6 +217,7 @@ function SpreadsheetCellInput({
             type={disabled ? 'text' : 'date'}
             value={value ?? ''}
             onChange={(e) => onChange(e.target.value)}
+            onKeyDown={handleKeyDown}
             className={cn(inputClasses, 'text-right [&::-webkit-calendar-picker-indicator]:hidden')}
             disabled={disabled}
           />
@@ -203,6 +228,7 @@ function SpreadsheetCellInput({
           type="text"
           value={value ?? ''}
           onChange={(e) => onChange(e.target.value)}
+          onKeyDown={handleKeyDown}
           className={inputClasses}
           disabled={disabled}
         />
@@ -213,6 +239,7 @@ function SpreadsheetCellInput({
           type="text"
           value={value ?? ''}
           onChange={(e) => onChange(e.target.value)}
+          onKeyDown={handleKeyDown}
           className={inputClasses}
           disabled={disabled}
         />
