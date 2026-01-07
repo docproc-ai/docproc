@@ -12,6 +12,7 @@ import { nextCookies } from 'better-auth/next-js'
 const ADMIN_EMAILS = process.env.AUTH_ADMIN_EMAILS?.split(',') || []
 
 export const auth = betterAuth({
+  trustedOrigins: [process.env.BETTER_AUTH_URL!],
   database: drizzleAdapter(db, {
     provider: 'pg',
     schema: schema,
