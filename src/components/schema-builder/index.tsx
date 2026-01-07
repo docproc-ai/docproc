@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Field, FieldLabel, FieldDescription } from '@/components/ui/field'
 import { StringFieldBuilder } from './string-field-builder'
 import { NumberFieldBuilder } from './number-field-builder'
@@ -488,6 +489,32 @@ export function SchemaBuilder({ schema, onChange, path = '' }: SchemaBuilderProp
                       </Select>
                     </Field>
                   </div>
+                  {propertySchema['ui:widget'] === 'table' && (
+                    <Field>
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id={`pivoted-${key}`}
+                          checked={propertySchema['ui:pivoted'] ?? false}
+                          onCheckedChange={(checked) => {
+                            const newProperties = {
+                              ...schema.properties,
+                              [key]: {
+                                ...propertySchema,
+                                'ui:pivoted': checked === true,
+                              },
+                            }
+                            updateSchema({ properties: newProperties })
+                          }}
+                        />
+                        <Label htmlFor={`pivoted-${key}`} className="cursor-pointer">
+                          Default to pivoted view
+                        </Label>
+                      </div>
+                      <FieldDescription>
+                        Pivoted view shows fields as rows and records as columns
+                      </FieldDescription>
+                    </Field>
+                  )}
                   <div className="grid grid-cols-2 gap-4">
                     <Field>
                       <FieldLabel htmlFor={`arrayTitle-${key}`}>Title</FieldLabel>

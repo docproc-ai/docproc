@@ -1011,7 +1011,7 @@ export function DocumentProcessor({
           </div>
         </div>
       </header>
-      <ResizablePanelGroup direction="horizontal" className="flex-grow">
+      <ResizablePanelGroup direction="horizontal" className="flex-grow" autoSaveId="docproc:panel-sizes">
         <ResizablePanel defaultSize={24} minSize={15}>
           <DocumentQueue
             documentTypeId={documentType.id}

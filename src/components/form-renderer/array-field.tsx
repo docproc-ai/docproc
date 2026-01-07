@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -138,6 +138,79 @@ function FormField({
   }
 }
 
+// Helper to format ISO date to locale string
+function formatDateForDisplay(isoValue: string | undefined | null): string {
+  if (!isoValue) return ''
+  try {
+    const date = new Date(isoValue + 'T00:00:00')
+    if (!isNaN(date.getTime())) {
+      return date.toLocaleDateString()
+    }
+    return isoValue
+  } catch {
+    return isoValue
+  }
+}
+
+// Helper to parse locale date string to ISO
+function parseDateToISO(input: string): string | null {
+  if (!input) return null
+  try {
+    const date = new Date(input)
+    if (!isNaN(date.getTime())) {
+      return date.toISOString().split('T')[0]
+    }
+  } catch {
+    // Fall through
+  }
+  return null
+}
+
+// Date input that shows locale format but stores ISO, commits on blur
+function DateCellInput({
+  value,
+  onChange,
+  onKeyDown,
+  className,
+  disabled,
+}: {
+  value: string | undefined
+  onChange: (value: string) => void
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void
+  className?: string
+  disabled?: boolean
+}) {
+  const [localValue, setLocalValue] = useState(() => formatDateForDisplay(value))
+
+  // Sync from prop when value changes externally
+  useEffect(() => {
+    setLocalValue(formatDateForDisplay(value))
+  }, [value])
+
+  const handleBlur = () => {
+    const parsed = parseDateToISO(localValue)
+    if (parsed) {
+      onChange(parsed)
+      setLocalValue(formatDateForDisplay(parsed))
+    } else if (localValue === '') {
+      onChange('')
+    }
+    // If parse failed, keep the local value as-is for the user to fix
+  }
+
+  return (
+    <Input
+      type="text"
+      value={localValue}
+      onChange={(e) => setLocalValue(e.target.value)}
+      onBlur={handleBlur}
+      onKeyDown={onKeyDown}
+      className={className}
+      disabled={disabled}
+    />
+  )
+}
+
 function SpreadsheetCellInput({
   schema,
   value,
@@ -212,13 +285,14 @@ function SpreadsheetCellInput({
       )
     case 'string':
       if (schema.format === 'date') {
+        // Use text input for dates in spreadsheet to get proper right-alignment
+        // Native date inputs have browser-specific padding that ignores text-align
         return (
-          <Input
-            type={disabled ? 'text' : 'date'}
-            value={value ?? ''}
-            onChange={(e) => onChange(e.target.value)}
+          <DateCellInput
+            value={value}
+            onChange={onChange}
             onKeyDown={handleKeyDown}
-            className={cn(inputClasses, 'text-right [&::-webkit-calendar-picker-indicator]:hidden')}
+            className={cn(inputClasses, 'text-right')}
             disabled={disabled}
           />
         )
@@ -336,8 +410,11 @@ function ArrayTableField({
                   : itemsSchema
                 const cellValue = isObjectArray ? item[fieldKey] : item
                 const columnKey = isObjectArray ? fieldKey : null
+                // Set minWidth for date columns to prevent cutoff
+                const isDate = cellSchema.format === 'date'
+                const minWidth = isDate ? '100px' : undefined
                 return (
-                  <TableCell key={fieldKey} className="h-10 p-0">
+                  <TableCell key={fieldKey} className="h-10 p-0" style={{ minWidth }}>
                     <SpreadsheetCellInput
                       schema={cellSchema}
                       value={cellValue}
@@ -426,19 +503,18 @@ function ArrayTableField({
                     }
                     return cellValue
                   })()
-                  const isNumeric = cellSchema.type === 'number' || cellSchema.type === 'integer' || cellSchema.format === 'date'
+                  // Calculate min width in pixels (~9px per char average)
+                  // Using pixels ensures proper sizing even when content is off-screen
+                  const charCount = displayValue ? String(displayValue).length : 4
+                  const minWidthPx = Math.max(60, charCount * 8 + 16) // min 60px, 8px/char + padding
                   return (
-                    <TableCell key={recordIndex} className="h-10 p-0 relative">
-                      {/* Hidden text for column sizing */}
-                      <span className={cn('invisible whitespace-nowrap px-3', isNumeric && 'text-right block')}>{displayValue}</span>
-                      <div className="absolute inset-0">
-                        <SpreadsheetCellInput
-                          schema={cellSchema}
-                          value={cellValue}
-                          onChange={(newValue) => handleCellChange(recordIndex, columnKey, newValue)}
-                          disabled={isStreaming}
-                        />
-                      </div>
+                    <TableCell key={recordIndex} className="h-10 p-0" style={{ minWidth: `${minWidthPx}px` }}>
+                      <SpreadsheetCellInput
+                        schema={cellSchema}
+                        value={cellValue}
+                        onChange={(newValue) => handleCellChange(recordIndex, columnKey, newValue)}
+                        disabled={isStreaming}
+                      />
                     </TableCell>
                   )
                 })}
