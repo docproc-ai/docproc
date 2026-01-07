@@ -134,6 +134,7 @@ export function DocumentProcessor({
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null)
   const selectedDocumentRef = React.useRef<string | null>(null) // Track selected doc for SSE callbacks
   const [formData, setFormData] = useState<any>(null)
+  const [originalFormData, setOriginalFormData] = useState<any>(null) // Track original data for dirty checking
   const [viewerFile, setViewerFile] = useState<{ name: string; url: string; type: string } | null>(
     null,
   )
@@ -229,6 +230,95 @@ export function DocumentProcessor({
 
     return () => clearInterval(interval)
   }, [documents])
+
+  // Check if form has unsaved changes
+  const hasUnsavedChanges = React.useMemo(() => {
+    if (!formData || !originalFormData) return false
+    return JSON.stringify(formData) !== JSON.stringify(originalFormData)
+  }, [formData, originalFormData])
+
+  // Navigate to next/previous document in the list
+  const navigateDocument = (direction: 'next' | 'prev', skipConfirm = false) => {
+    if (!selectedDocument || documents.length === 0) return
+
+    // Check for unsaved changes
+    if (hasUnsavedChanges && !skipConfirm) {
+      const shouldContinue = window.confirm(
+        'You have unsaved changes. Do you want to discard them and continue?'
+      )
+      if (!shouldContinue) return
+    }
+
+    const currentIndex = documents.findIndex(d => d.id === selectedDocument.id)
+    if (currentIndex === -1) return
+
+    const newIndex = direction === 'next'
+      ? Math.min(currentIndex + 1, documents.length - 1)
+      : Math.max(currentIndex - 1, 0)
+
+    if (newIndex !== currentIndex) {
+      handleDocumentSelect(documents[newIndex], true) // skipConfirm since we already checked
+    }
+  }
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger shortcuts when typing in inputs (except for Ctrl combinations)
+      const target = e.target as HTMLElement
+      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
+
+      // Ctrl+S - Save
+      if (e.ctrlKey && e.key === 's') {
+        e.preventDefault()
+        if (selectedDocument && !isPending) {
+          handleSaveWithoutStatusChange()
+        }
+        return
+      }
+
+      // Ctrl+Enter - Approve (and advance if not Shift)
+      if (e.ctrlKey && e.key === 'Enter') {
+        e.preventDefault()
+        if (selectedDocument && !isPending) {
+          handleStatusUpdate('approved')
+          // If not holding Shift, advance to next document after save completes
+          if (!e.shiftKey) {
+            setTimeout(() => navigateDocument('next', true), 100) // skipConfirm since we just saved
+          }
+        }
+        return
+      }
+
+      // Ctrl+R - Reject (only when not in input)
+      if (e.ctrlKey && e.key === 'r' && !isInput) {
+        e.preventDefault()
+        if (selectedDocument && !isPending) {
+          handleStatusUpdate('rejected')
+        }
+        return
+      }
+
+      // Ctrl+P - Process (only when not in input)
+      if (e.ctrlKey && e.key === 'p' && !isInput) {
+        e.preventDefault()
+        if (selectedDocument && !processingDocuments.has(selectedDocument.id)) {
+          handleAiProcessing()
+        }
+        return
+      }
+
+      // Ctrl+Down/Up - Navigate documents (only when not in input)
+      if (e.ctrlKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp') && !isInput) {
+        e.preventDefault()
+        navigateDocument(e.key === 'ArrowDown' ? 'next' : 'prev')
+        return
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }) // Intentionally no deps - we want fresh references to handlers
 
   // Removed: Old streaming-based queue processing
   // All processing now goes through BullMQ workers with SSE progress updates
@@ -377,9 +467,17 @@ export function DocumentProcessor({
   // Removed: handleProcessingCompletion - no longer needed with BullMQ
   // Document updates now happen in the BullMQ worker, UI updates via SSE events
 
-  const handleDocumentSelect = (doc: Document | null) => {
+  const handleDocumentSelect = (doc: Document | null, skipConfirm = false) => {
     if (doc && selectedDocument && doc.id === selectedDocument.id) {
       return // No change, do nothing
+    }
+
+    // Check for unsaved changes before switching documents
+    if (hasUnsavedChanges && !skipConfirm) {
+      const shouldContinue = window.confirm(
+        'You have unsaved changes. Do you want to discard them and continue?'
+      )
+      if (!shouldContinue) return
     }
 
     // DON'T close SSE - let it continue streaming in background
@@ -402,6 +500,7 @@ export function DocumentProcessor({
 
     if (!doc) {
       setFormData({})
+      setOriginalFormData({})
       return
     }
 
@@ -414,9 +513,12 @@ export function DocumentProcessor({
     if (cachedStreamingData) {
       // Use cached streaming data (either from active processing or completed)
       setFormData(cachedStreamingData)
+      setOriginalFormData(cachedStreamingData)
     } else {
       // No streaming data cached, use database data
-      setFormData(doc.extractedData || {})
+      const data = doc.extractedData || {}
+      setFormData(data)
+      setOriginalFormData(data)
     }
 
     if (doc) {
@@ -796,6 +898,7 @@ export function DocumentProcessor({
 
         setSelectedDocument(updatedDoc)
         setDocuments(documents.map((d) => (d.id === updatedDoc.id ? updatedDoc : d)))
+        setOriginalFormData(formData) // Reset dirty state after save
 
         const message = `Document "${updatedDoc.filename}" status set to ${status}.`
         if (status === 'approved') {
@@ -827,6 +930,7 @@ export function DocumentProcessor({
 
         setSelectedDocument(updatedDoc)
         setDocuments(documents.map((d) => (d.id === updatedDoc.id ? updatedDoc : d)))
+        setOriginalFormData(formData) // Reset dirty state after save
 
         toast.success(`Saved changes to "${updatedDoc.filename}"`)
       } catch (error: any) {
