@@ -8,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Field, FieldLabel, FieldDescription } from '@/components/ui/field'
 import type { JsonSchema } from './types'
 
@@ -40,6 +41,23 @@ export function ArrayFieldBuilder({ schema, onChange, children }: ArrayFieldBuil
           </SelectContent>
         </Select>
       </Field>
+      {schema['ui:widget'] === 'table' && (
+        <Field>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="pivoted"
+              checked={schema['ui:pivoted'] ?? false}
+              onCheckedChange={(checked) => onChange({ 'ui:pivoted': checked === true })}
+            />
+            <FieldLabel htmlFor="pivoted" className="!mb-0 cursor-pointer">
+              Default to pivoted view
+            </FieldLabel>
+          </div>
+          <FieldDescription>
+            Pivoted view shows fields as rows and records as columns
+          </FieldDescription>
+        </Field>
+      )}
       {isObjectArray && schema['ui:widget'] !== 'table' && (
         <Field>
           <FieldLabel htmlFor="displayTemplate">Item Display Template</FieldLabel>
