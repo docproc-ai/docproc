@@ -26,6 +26,7 @@ import {
   XCircle,
   RotateCcw,
   AlertTriangle,
+  Keyboard,
 } from 'lucide-react'
 import { Button } from './ui/button'
 import { Spinner } from './ui/spinner'
@@ -65,6 +66,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import { ButtonGroup } from '@/components/ui/button-group'
 import dynamic from 'next/dynamic'
 
@@ -149,6 +165,10 @@ export function DocumentProcessor({
   const [documentJobStatuses, setDocumentJobStatuses] = useState<Record<string, any>>({})
   const [currentBatchId, setCurrentBatchId] = useState<string | null>(null)
   const [currentJobId, setCurrentJobId] = useState<string | null>(null)
+
+  // Unsaved changes dialog state
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false)
+  const [pendingNavigation, setPendingNavigation] = useState<Document | null | 'next' | 'prev'>(null)
 
   // Show all models from all providers in one dropdown for admin overrides
   const allModels = getAllModels()
@@ -241,12 +261,11 @@ export function DocumentProcessor({
   const navigateDocument = (direction: 'next' | 'prev', skipConfirm = false) => {
     if (!selectedDocument || documents.length === 0) return
 
-    // Check for unsaved changes
+    // Check for unsaved changes - show dialog if needed
     if (hasUnsavedChanges && !skipConfirm) {
-      const shouldContinue = window.confirm(
-        'You have unsaved changes. Do you want to discard them and continue?'
-      )
-      if (!shouldContinue) return
+      setPendingNavigation(direction)
+      setShowUnsavedDialog(true)
+      return
     }
 
     const currentIndex = documents.findIndex(d => d.id === selectedDocument.id)
@@ -259,6 +278,23 @@ export function DocumentProcessor({
     if (newIndex !== currentIndex) {
       handleDocumentSelect(documents[newIndex], true) // skipConfirm since we already checked
     }
+  }
+
+  // Handle confirming navigation with unsaved changes
+  const handleConfirmNavigation = () => {
+    setShowUnsavedDialog(false)
+    if (pendingNavigation === 'next' || pendingNavigation === 'prev') {
+      navigateDocument(pendingNavigation, true)
+    } else if (pendingNavigation) {
+      handleDocumentSelect(pendingNavigation, true)
+    }
+    setPendingNavigation(null)
+  }
+
+  // Handle canceling navigation
+  const handleCancelNavigation = () => {
+    setShowUnsavedDialog(false)
+    setPendingNavigation(null)
   }
 
   // Keyboard shortcuts
@@ -472,12 +508,11 @@ export function DocumentProcessor({
       return // No change, do nothing
     }
 
-    // Check for unsaved changes before switching documents
+    // Check for unsaved changes before switching documents - show dialog if needed
     if (hasUnsavedChanges && !skipConfirm) {
-      const shouldContinue = window.confirm(
-        'You have unsaved changes. Do you want to discard them and continue?'
-      )
-      if (!shouldContinue) return
+      setPendingNavigation(doc)
+      setShowUnsavedDialog(true)
+      return
     }
 
     // DON'T close SSE - let it continue streaming in background
@@ -1142,6 +1177,48 @@ export function DocumentProcessor({
             )}
           </ButtonGroup>
           <div className="border-border flex items-center gap-2 border-l pl-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" title="Keyboard shortcuts">
+                  <Keyboard className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-64">
+                <div className="space-y-2">
+                  <h4 className="font-medium">Keyboard Shortcuts</h4>
+                  <div className="text-sm space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Save</span>
+                      <kbd className="bg-muted rounded px-1.5 py-0.5 text-xs">Ctrl+S</kbd>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Approve & next</span>
+                      <kbd className="bg-muted rounded px-1.5 py-0.5 text-xs">Ctrl+Enter</kbd>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Approve & stay</span>
+                      <kbd className="bg-muted rounded px-1.5 py-0.5 text-xs">Ctrl+Shift+Enter</kbd>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Process</span>
+                      <kbd className="bg-muted rounded px-1.5 py-0.5 text-xs">Ctrl+P</kbd>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Reject</span>
+                      <kbd className="bg-muted rounded px-1.5 py-0.5 text-xs">Ctrl+R</kbd>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Next document</span>
+                      <kbd className="bg-muted rounded px-1.5 py-0.5 text-xs">Ctrl+↓</kbd>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Previous document</span>
+                      <kbd className="bg-muted rounded px-1.5 py-0.5 text-xs">Ctrl+↑</kbd>
+                    </div>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
             <ThemeToggle />
           </div>
         </div>
@@ -1286,6 +1363,24 @@ export function DocumentProcessor({
           />
         </ResizablePanel>
       </ResizablePanelGroup>
+
+      {/* Unsaved changes confirmation dialog */}
+      <AlertDialog open={showUnsavedDialog} onOpenChange={setShowUnsavedDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes to this document. Do you want to discard them and continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelNavigation}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmNavigation}>
+              Discard Changes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
