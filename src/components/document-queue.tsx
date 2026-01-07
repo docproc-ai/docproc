@@ -609,7 +609,7 @@ export function DocumentQueue({
                   }
                 }}
                 className={cn(
-                  'hover:bg-muted group flex items-center justify-between pr-2',
+                  'hover:bg-muted group flex items-center',
                   selectedDocument?.id === doc.id && 'bg-muted',
                   selectedDocIds.has(doc.id) && 'bg-blue-50 dark:bg-blue-950',
                 )}
@@ -659,53 +659,19 @@ export function DocumentQueue({
                     </p>
                   </div>
                 </div>
-                {!selectedDocIds.has(doc.id) && (
-                  <>
-                    {processingDocuments.has(doc.id) || documentJobStatuses[doc.id]?.status === 'active' ? (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="flex-shrink-0"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onStopDocument?.(doc.id)
-                        }}
-                        title="Stop processing"
-                      >
-                        <Square className="h-4 w-4 text-orange-500" />
-                      </Button>
-                    ) : (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="flex-shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
-                          >
-                            <Trash2 className="text-destructive h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will permanently delete the document "{doc.filename}" and its data.
-                              This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => onDelete(doc.id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
-                  </>
+                {(processingDocuments.has(doc.id) || documentJobStatuses[doc.id]?.status === 'active') && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="mr-2 flex-shrink-0"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onStopDocument?.(doc.id)
+                    }}
+                    title="Stop processing"
+                  >
+                    <Square className="h-4 w-4 text-orange-500" />
+                  </Button>
                 )}
               </li>
             ))}
