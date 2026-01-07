@@ -1184,37 +1184,37 @@ export function DocumentProcessor({
                   <Keyboard className="h-4 w-4" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent align="end" className="w-72">
+              <PopoverContent align="end" className="w-80">
                 <div className="space-y-2">
                   <h4 className="font-medium">Keyboard Shortcuts</h4>
                   <div className="text-sm space-y-1.5">
                     <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Save</span>
-                      <span className="flex gap-1"><Kbd>Ctrl</Kbd><Kbd>S</Kbd></span>
+                      <span className="flex items-center gap-0.5"><Kbd>Ctrl</Kbd>+<Kbd>S</Kbd></span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Approve & next</span>
-                      <span className="flex gap-1"><Kbd>Ctrl</Kbd><Kbd>Enter</Kbd></span>
+                      <span className="flex items-center gap-0.5"><Kbd>Ctrl</Kbd>+<Kbd>Enter</Kbd></span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Approve & stay</span>
-                      <span className="flex gap-1"><Kbd>Ctrl</Kbd><Kbd>Shift</Kbd><Kbd>Enter</Kbd></span>
+                      <span className="flex items-center gap-0.5"><Kbd>Ctrl</Kbd>+<Kbd>Shift</Kbd>+<Kbd>Enter</Kbd></span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Process</span>
-                      <span className="flex gap-1"><Kbd>Ctrl</Kbd><Kbd>P</Kbd></span>
+                      <span className="flex items-center gap-0.5"><Kbd>Ctrl</Kbd>+<Kbd>P</Kbd></span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Reject</span>
-                      <span className="flex gap-1"><Kbd>Ctrl</Kbd><Kbd>R</Kbd></span>
+                      <span className="flex items-center gap-0.5"><Kbd>Ctrl</Kbd>+<Kbd>R</Kbd></span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Next document</span>
-                      <span className="flex gap-1"><Kbd>Ctrl</Kbd><Kbd>↓</Kbd></span>
+                      <span className="flex items-center gap-0.5"><Kbd>Ctrl</Kbd>+<Kbd>↓</Kbd></span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Previous document</span>
-                      <span className="flex gap-1"><Kbd>Ctrl</Kbd><Kbd>↑</Kbd></span>
+                      <span className="flex items-center gap-0.5"><Kbd>Ctrl</Kbd>+<Kbd>↑</Kbd></span>
                     </div>
                   </div>
                 </div>
