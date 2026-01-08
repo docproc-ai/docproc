@@ -26,6 +26,10 @@ yarn-error.log*
 # legacy code (local reference only)
 /_legacy/
 
+# shadcn creates this but we manage deps at root
+src/frontend/bun.lock
+src/frontend/node_modules
+
 # misc
 .DS_Store
 .nitro
