@@ -1,23 +1,25 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
+import { serveStatic } from 'hono/bun'
 
+// Create app with chained routes for type inference
 const app = new Hono()
+  .use('*', logger())
+  .use('/api/*', cors())
+  .get('/health', (c) => c.json({ status: 'ok' }))
+  .get('/api', (c) => c.json({ message: 'DocProc API', version: '1.0.0' }))
 
-// Middleware
-app.use('*', logger())
-app.use('/api/*', cors())
+// Export type for Hono RPC client
+export type AppType = typeof app
 
-// Health check
-app.get('/health', (c) => c.json({ status: 'ok' }))
-
-// API routes (to be added)
-app.get('/api', (c) => c.json({ message: 'DocProc API' }))
-
-// WebSocket upgrade will be handled separately with Bun.serve
+// In production, serve static frontend files
+if (process.env.NODE_ENV === 'production') {
+  app.use('/*', serveStatic({ root: './dist/frontend' }))
+}
 
 const server = Bun.serve({
-  port: 3001,
+  port: process.env.PORT ? Number(process.env.PORT) : 3001,
   fetch: app.fetch,
 })
 
