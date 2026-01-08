@@ -28,3 +28,5 @@ next-env.d.ts
 
 # data directory (filesystem storage)
 /data/
+
+/_legacy/

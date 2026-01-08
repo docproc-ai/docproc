@@ -8,20 +8,18 @@ services:
       - 3000:3000
     environment:
       - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-postgres}
-      - VALKEY_URL=redis://valkey:6379
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-your-secret}
       - BETTER_AUTH_URL=${BETTER_AUTH_URL:-http://localhost:3000}
       - AUTH_ADMIN_EMAIL=${AUTH_ADMIN_EMAIL:-admin@example.com}
       - AUTH_ADMIN_PASSWORD=${AUTH_ADMIN_PASSWORD:-password}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - API_KEY=${API_KEY}
       - DOCUMENT_STORAGE_DIR=/documents
     depends_on:
       postgres:
         condition: service_healthy
-      valkey:
-        condition: service_healthy
+      # rustfs:
+      #   condition: service_healthy
     volumes:
       - documents:/documents
 
@@ -36,24 +34,45 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres}']
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  valkey:
-    image: valkey/valkey:latest
-    ports:
-      - 6379:6379
-    volumes:
-      - valkey_data:/data
-    healthcheck:
-      test: ['CMD', 'valkey-cli', 'ping']
-      interval: 10s
-      timeout: 5s
-      retries: 5
+  # rustfs:
+  #   image: rustfs/rustfs:latest
+  #   ports:
+  #     - 9090:9090
+  #     - 9091:9091
+  #   environment:
+  #     - RUSTFS_VOLUMES=/data/rustfs
+  #     - RUSTFS_ADDRESS=0.0.0.0:9000
+  #     - RUSTFS_CONSOLE_ADDRESS=0.0.0.0:9001
+  #     - RUSTFS_CONSOLE_ENABLE=true
+  #     - RUSTFS_EXTERNAL_ADDRESS=:9000
+  #     - RUSTFS_CORS_ALLOWED_ORIGINS=*
+  #     - RUSTFS_CONSOLE_CORS_ALLOWED_ORIGINS=*
+  #     - RUSTFS_ACCESS_KEY=rustfsadmin # CHANGEME
+  #     - RUSTFS_SECRET_KEY=rustfsadmin # CHANGEME
+  #     - RUSTFS_OBS_LOGGER_LEVEL=info
+  #     - RUSTFS_TLS_PATH=/opt/tls
+  #     # Object Cache
+  #     - RUSTFS_OBJECT_CACHE_ENABLE=true
+  #     - RUSTFS_OBJECT_CACHE_TTL_SECS=300
+  #   volumes:
+  #     - rustfs_data:/data/rustfs
+  #   healthcheck:
+  #     test:
+  #       [
+  #         "CMD",
+  #         "sh", "-c",
+  #         "curl -f http://localhost:9000/health && curl -f http://localhost:9001/rustfs/console/health"
+  #       ]
+  #     interval: 10
+  #     timeout: 5s
+  #     retries: 5
 
 volumes:
   postgres_data:
-  valkey_data:
   documents:
+  # rustfs_data:
