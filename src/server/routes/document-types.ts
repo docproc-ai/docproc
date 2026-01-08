@@ -1,12 +1,6 @@
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
-import { z } from 'zod'
-
-const createDocumentTypeSchema = z.object({
-  name: z.string().min(1),
-  description: z.string().optional(),
-  schema: z.record(z.unknown()),
-})
+import { createDocumentTypeRequest } from '../../shared/schemas'
 
 const documentTypes = new Hono()
   .get('/', (c) => {
@@ -14,7 +8,7 @@ const documentTypes = new Hono()
     return c.json({ documentTypes: [] }, 200)
   })
   .post('/',
-    zValidator('json', createDocumentTypeSchema),
+    zValidator('json', createDocumentTypeRequest),
     (c) => {
       const data = c.req.valid('json')
       // TODO: create in database

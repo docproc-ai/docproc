@@ -1,11 +1,6 @@
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
-import { z } from 'zod'
-
-// Route-specific schemas (or import from shared)
-const createDocumentSchema = z.object({
-  documentTypeId: z.string().uuid(),
-})
+import { createDocumentRequest } from '../../shared/schemas'
 
 const documents = new Hono()
   .get('/', (c) => {
@@ -13,7 +8,7 @@ const documents = new Hono()
     return c.json({ documents: [] }, 200)
   })
   .post('/',
-    zValidator('json', createDocumentSchema),
+    zValidator('json', createDocumentRequest),
     (c) => {
       const { documentTypeId } = c.req.valid('json')
       // TODO: create document

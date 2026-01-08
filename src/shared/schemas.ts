@@ -1,64 +1,45 @@
+import { createInsertSchema, createSelectSchema } from 'drizzle-zod'
 import { z } from 'zod'
 
-// Document type schema - defines extraction structure
-export const documentTypeSchema = z.object({
-  id: z.string().uuid(),
-  name: z.string().min(1),
-  description: z.string().optional(),
-  schema: z.record(z.unknown()), // JSON Schema for extraction
-  createdAt: z.date(),
-  updatedAt: z.date(),
-})
+import { batch, document, documentType, job } from '../db/schema/app'
 
-export type DocumentType = z.infer<typeof documentTypeSchema>
+// Derive Zod schemas from Drizzle tables - single source of truth
+export const documentTypeSelectSchema = createSelectSchema(documentType)
+export const documentTypeInsertSchema = createInsertSchema(documentType)
 
-// Document schema
-export const documentStatusSchema = z.enum(['pending', 'processing', 'processed', 'approved', 'failed'])
-export type DocumentStatus = z.infer<typeof documentStatusSchema>
+export const documentSelectSchema = createSelectSchema(document)
+export const documentInsertSchema = createInsertSchema(document)
 
-export const documentSchema = z.object({
-  id: z.string().uuid(),
-  documentTypeId: z.string().uuid(),
-  filename: z.string(),
-  status: documentStatusSchema,
-  extractedData: z.record(z.unknown()).nullable(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
-})
+export const jobSelectSchema = createSelectSchema(job)
+export const jobInsertSchema = createInsertSchema(job)
 
-export type Document = z.infer<typeof documentSchema>
+export const batchSelectSchema = createSelectSchema(batch)
+export const batchInsertSchema = createInsertSchema(batch)
 
-// Job schema for processing queue
-export const jobStatusSchema = z.enum(['pending', 'running', 'completed', 'failed'])
-export type JobStatus = z.infer<typeof jobStatusSchema>
+// Re-export types from Drizzle
+export type {
+  BatchInsert,
+  BatchSelect,
+  DocumentInsert,
+  DocumentSelect,
+  DocumentTypeInsert,
+  DocumentTypeSelect,
+  JobInsert,
+  JobSelect,
+} from '../db/schema/app'
 
-export const jobSchema = z.object({
-  id: z.string(),
-  documentId: z.string().uuid(),
-  status: jobStatusSchema,
-  progress: z.object({
-    percent: z.number(),
-    partialData: z.unknown().optional(),
-  }).nullable(),
-  error: z.string().nullable(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
-})
-
-export type Job = z.infer<typeof jobSchema>
-
-// API request/response schemas
+// API-specific schemas (DTOs that differ from DB shape)
 export const createDocumentTypeRequest = z.object({
-  name: z.string().min(1),
+  name: z.string().min(1, 'Name is required'),
   description: z.string().optional(),
   schema: z.record(z.unknown()),
 })
 
-export const uploadDocumentRequest = z.object({
+export const createDocumentRequest = z.object({
   documentTypeId: z.string().uuid(),
 })
 
 export const processDocumentRequest = z.object({
   documentId: z.string().uuid(),
-  model: z.string().optional(), // Override default model
+  model: z.string().optional(),
 })
