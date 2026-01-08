@@ -3,15 +3,22 @@ import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import { serveStatic } from 'hono/bun'
 
-// Create app with chained routes for type inference
+import { documents } from './routes/documents'
+import { documentTypes } from './routes/document-types'
+
+// Base app with middleware
 const app = new Hono()
   .use('*', logger())
   .use('/api/*', cors())
-  .get('/health', (c) => c.json({ status: 'ok' }))
-  .get('/api', (c) => c.json({ message: 'DocProc API', version: '1.0.0' }))
+
+// Chain all routes - this is what gets exported for RPC types
+const routes = app
+  .get('/health', (c) => c.json({ status: 'ok' }, 200))
+  .route('/api/documents', documents)
+  .route('/api/document-types', documentTypes)
 
 // Export type for Hono RPC client
-export type AppType = typeof app
+export type AppType = typeof routes
 
 // In production, serve static frontend files
 if (process.env.NODE_ENV === 'production') {

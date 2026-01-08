@@ -1,15 +1,27 @@
 import { hc } from 'hono/client'
-// Type-only import - no server code in frontend bundle
 import type { AppType } from '../../server'
 
 // Create typed API client
-// In dev: requests go to Vite proxy → localhost:3001
-// In prod: requests go to same origin (Hono serves everything)
 export const api = hc<AppType>('/')
 
-// Usage examples:
-// const res = await api.health.$get()
-// const data = await res.json() // { status: 'ok' } - fully typed!
+// Usage with TanStack Query:
 //
-// const res = await api.api.$get()
-// const data = await res.json() // { message: 'DocProc API', version: '1.0.0' }
+// const { data } = useQuery({
+//   queryKey: ['documents'],
+//   queryFn: async () => {
+//     const res = await api.api.documents.$get()
+//     if (!res.ok) throw new Error('Failed to fetch')
+//     return res.json() // Typed as { documents: [] }
+//   }
+// })
+//
+// const mutation = useMutation({
+//   mutationFn: async (data: { documentTypeId: string }) => {
+//     const res = await api.api.documents.$post({ json: data })
+//     if (!res.ok) throw new Error('Failed to create')
+//     return res.json() // Typed as { id: string, documentTypeId: string }
+//   }
+// })
+//
+// Path params:
+// const res = await api.api.documents[':id'].$get({ param: { id: '123' } })
