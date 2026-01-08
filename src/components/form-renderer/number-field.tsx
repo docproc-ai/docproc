@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { Input } from '@/components/ui/input'
 import { Field, FieldLabel, FieldDescription } from '@/components/ui/field'
 import type { FormFieldProps } from './types'
@@ -8,8 +9,19 @@ export function NumberField({ name, schema, value, onChange, required, isStreami
   if (schema.type !== 'number' && schema.type !== 'integer') return null
 
   const fieldType = schema.type
-  // Display formatted value with locale (commas for thousands)
-  const displayValue = typeof value === 'number' ? value.toLocaleString() : (value ?? '')
+
+  // Track the raw input string to allow intermediate states like "12." or "12.0"
+  const [rawInput, setRawInput] = useState<string>(() =>
+    typeof value === 'number' ? value.toLocaleString() : (value ?? '')
+  )
+  const [isFocused, setIsFocused] = useState(false)
+
+  // Sync rawInput when value changes externally (e.g., from streaming or reset)
+  useEffect(() => {
+    if (!isFocused) {
+      setRawInput(typeof value === 'number' ? value.toLocaleString() : (value ?? ''))
+    }
+  }, [value, isFocused])
 
   return (
     <Field>
@@ -22,16 +34,30 @@ export function NumberField({ name, schema, value, onChange, required, isStreami
         id={name}
         type="text"
         inputMode="decimal"
-        value={displayValue}
+        value={rawInput}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => {
+          setIsFocused(false)
+          // On blur, format the display value
+          if (typeof value === 'number') {
+            setRawInput(value.toLocaleString())
+          }
+        }}
         onChange={(e) => {
           const raw = e.target.value.replace(/[^\d.-]/g, '')
+          setRawInput(raw)
+
           if (raw === '' || raw === '-') {
             onChange(raw === '-' ? raw : undefined)
             return
           }
-          const parsed = fieldType === 'integer' ? Number.parseInt(raw) : Number.parseFloat(raw)
-          if (!Number.isNaN(parsed)) {
-            onChange(parsed)
+
+          // Only parse and update if it's a complete number (not ending with . or -)
+          if (!raw.endsWith('.') && !raw.endsWith('-')) {
+            const parsed = fieldType === 'integer' ? Number.parseInt(raw) : Number.parseFloat(raw)
+            if (!Number.isNaN(parsed)) {
+              onChange(parsed)
+            }
           }
         }}
         onWheel={(e) => e.currentTarget.blur()}
