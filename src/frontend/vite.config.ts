@@ -24,6 +24,13 @@ export default defineConfig({
   },
   server: {
     proxy: {
+      // SSE streaming endpoint - needs special handling
+      '/api/process': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        timeout: 0, // Disable timeout for SSE
+        proxyTimeout: 0,
+      },
       '/api': {
         target: 'http://localhost:3001',
         changeOrigin: true,

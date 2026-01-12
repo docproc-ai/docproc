@@ -16,5 +16,5 @@
     }
   },
   "include": ["src/**/*", "drizzle.config.ts"],
-  "exclude": ["node_modules", "frontend", "_legacy"]
+  "exclude": ["node_modules", "src/frontend", "_legacy"]
 }

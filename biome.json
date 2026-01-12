@@ -29,7 +29,12 @@
 	},
 	"javascript": {
 		"formatter": {
-			"quoteStyle": "double"
+			"quoteStyle": "double",
+			"arrowParentheses": "always",
+			"semicolons": "asNeeded",
+			"indentStyle": "space",
+			"indentWidth": 2,
+			"trailingCommas": "all"
 		}
 	}
 }
