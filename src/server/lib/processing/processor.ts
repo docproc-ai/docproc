@@ -420,12 +420,7 @@ export async function prepareDocumentForStreaming(
         content: [
           {
             type: 'text' as const,
-            text: `Please analyze the attached document and extract the data according to the provided schema.
-
-Schema to follow:
-${JSON.stringify(schema, null, 2)}
-
-Remember: Output ONLY valid JSON that matches this schema. No explanatory text.`,
+            text: `Please analyze the attached document and extract the data according to the provided schema.`,
           },
           {
             type: 'image' as const,

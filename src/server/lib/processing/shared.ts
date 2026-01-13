@@ -72,6 +72,109 @@ export function getFileExtension(filename: string): string {
 }
 
 /**
+ * Close incomplete JSON by adding missing brackets/braces
+ * Handles streaming JSON that may be cut off mid-generation
+ */
+export function closeBrackets(json: string): string {
+  // Track open brackets/braces
+  const stack: string[] = []
+  let inString = false
+  let escape = false
+
+  for (const char of json) {
+    if (escape) {
+      escape = false
+      continue
+    }
+
+    if (char === '\\' && inString) {
+      escape = true
+      continue
+    }
+
+    if (char === '"' && !escape) {
+      inString = !inString
+      continue
+    }
+
+    if (inString) continue
+
+    if (char === '{') stack.push('}')
+    else if (char === '[') stack.push(']')
+    else if (char === '}' || char === ']') {
+      if (stack.length > 0 && stack[stack.length - 1] === char) {
+        stack.pop()
+      }
+    }
+  }
+
+  // If we're in a string, close it
+  let result = json
+  if (inString) {
+    result += '"'
+  }
+
+  // Close any incomplete values (trailing commas, colons)
+  result = result.replace(/,\s*$/, '')
+  result = result.replace(/:\s*$/, ': null')
+
+  // Close all open brackets
+  while (stack.length > 0) {
+    result += stack.pop()
+  }
+
+  return result
+}
+
+/**
+ * Try to parse JSON, using bracket closer if needed
+ */
+export function safeParseJson(text: string): Record<string, unknown> | null {
+  // First try direct parse
+  try {
+    return JSON.parse(text)
+  } catch {
+    // Try with bracket closing
+    try {
+      const closed = closeBrackets(text)
+      return JSON.parse(closed)
+    } catch {
+      return null
+    }
+  }
+}
+
+/**
+ * Recursively add additionalProperties: false to all object types in a schema
+ * Required for Anthropic's structured output
+ */
+export function addAdditionalPropertiesFalse(schema: Record<string, unknown>): Record<string, unknown> {
+  const result = { ...schema }
+
+  if (result.type === 'object') {
+    result.additionalProperties = false
+
+    // Process nested properties
+    if (result.properties && typeof result.properties === 'object') {
+      const props = result.properties as Record<string, Record<string, unknown>>
+      result.properties = Object.fromEntries(
+        Object.entries(props).map(([key, value]) => [
+          key,
+          addAdditionalPropertiesFalse(value),
+        ])
+      )
+    }
+  }
+
+  // Process array items
+  if (result.type === 'array' && result.items && typeof result.items === 'object') {
+    result.items = addAdditionalPropertiesFalse(result.items as Record<string, unknown>)
+  }
+
+  return result
+}
+
+/**
  * Default model to use when none is specified
  */
 export const DEFAULT_MODEL = 'anthropic/claude-sonnet-4'

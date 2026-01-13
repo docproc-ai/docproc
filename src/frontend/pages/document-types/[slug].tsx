@@ -1,7 +1,5 @@
 import { Link, useParams } from '@tanstack/react-router'
-import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
-import { experimental_useObject as useObject } from '@ai-sdk/react'
-import { jsonSchema } from 'ai'
+import { useState, useCallback, useRef, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -23,6 +21,7 @@ import {
   useDocuments,
   useDocument,
   useProcessDocument,
+  useProcessDocumentStreaming,
   useUpdateDocument,
   useDeleteDocument,
   useCreateBatch,
@@ -275,6 +274,7 @@ export default function DocumentTypeDetailPage() {
   const { data: selectedDoc } = useDocument(selectedDocId || '')
 
   const processDocument = useProcessDocument()
+  const { processWithStreaming } = useProcessDocumentStreaming()
   const updateDocument = useUpdateDocument()
   const deleteDocument = useDeleteDocument()
   const createBatch = useCreateBatch()
@@ -296,33 +296,11 @@ export default function DocumentTypeDetailPage() {
   // Auto-select first document or update edited data when selection changes
   const currentDoc = selectedDoc || (filteredDocs.length > 0 ? filteredDocs[0] : null)
 
-  // Get schema for AI SDK streaming
+  // Get schema for form rendering
   const schema = (selectedDoc?.schemaSnapshot || docType?.schema || {}) as JsonSchema
 
-  // AI SDK useObject hook for streaming
-  const {
-    object: streamedObject,
-    submit: submitStream,
-    isLoading: isStreaming,
-    stop: stopStreaming,
-  } = useObject({
-    api: '/api/process/stream',
-    schema: jsonSchema(schema),
-  })
-
-  // Update editedData when streaming object changes
-  useEffect(() => {
-    if (streamedObject && isStreaming) {
-      setEditedData(streamedObject as Record<string, unknown>)
-    }
-  }, [streamedObject, isStreaming])
-
-  // Refetch document data when streaming completes
-  useEffect(() => {
-    if (!isStreaming && streamedObject) {
-      refetch()
-    }
-  }, [isStreaming, streamedObject, refetch])
+  // Streaming state
+  const [isStreaming, setIsStreaming] = useState(false)
 
   // Update edited data when document changes
   const handleSelectDoc = useCallback((docId: string) => {
@@ -361,17 +339,34 @@ export default function DocumentTypeDetailPage() {
     [docType, refetch]
   )
 
-  const handleProcess = () => {
+  const handleProcess = async () => {
     if (!currentDoc) return
 
+    setIsStreaming(true)
     setEditedData({}) // Clear existing data to show streaming effect
     setHasChanges(false)
 
-    // Use AI SDK's submit to start streaming with documentId in body
-    submitStream({
-      documentId: currentDoc.id,
-      model: modelOverride || undefined,
-    })
+    try {
+      await processWithStreaming(
+        currentDoc.id,
+        modelOverride || undefined,
+        // onPartial - update form with streaming data
+        (partialData) => {
+          setEditedData({ ...partialData })
+        },
+        // onComplete - final data
+        (completeData) => {
+          setEditedData({ ...completeData })
+          setHasChanges(false)
+        },
+        // onError
+        (error) => {
+          console.error('Processing error:', error)
+        },
+      )
+    } finally {
+      setIsStreaming(false)
+    }
   }
 
   const handleSave = async () => {

@@ -1,10 +1,16 @@
 import { Hono } from 'hono'
+import { streamSSE } from 'hono/streaming'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
-import { streamObject, jsonSchema } from 'ai'
+import { streamText } from 'ai'
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { processDocumentRequest, createBatchRequest } from '../../shared/schemas'
-import { processAndSaveDocument, prepareDocumentForStreaming } from '../lib/processing'
+import {
+  processAndSaveDocument,
+  prepareDocumentForStreaming,
+  closeBrackets,
+  safeParseJson,
+} from '../lib/processing'
 
 // Initialize AI SDK OpenRouter provider for streaming
 const openrouterProvider = createOpenRouter({
@@ -41,7 +47,7 @@ import {
 export const processingRoutes = new Hono()
   .basePath('/api')
 
-  // POST /api/process/stream - Process with AI SDK streaming (documentId in body)
+  // POST /api/process/stream - Process with text streaming and bracket closing
   // NOTE: Must come before /process/:documentId to avoid "stream" matching as a documentId
   .post(
     '/process/stream',
@@ -66,22 +72,77 @@ export const processingRoutes = new Hono()
           overrideModel: model,
         })
 
-        // Use AI SDK streamObject with proper response
-        const result = streamObject({
-          model: openrouterProvider(streamingContext.modelName),
-          schema: jsonSchema(streamingContext.schema),
-          system: streamingContext.systemPrompt,
-          messages: streamingContext.messages,
-          onFinish: async ({ object }) => {
-            // Save to database when streaming completes
-            if (object) {
-              await streamingContext.updateDocumentOnComplete(object as Record<string, unknown>)
-            }
-          },
-        })
+        // Build prompt with schema included in text (works with all models)
+        const schemaPrompt = `Please analyze the attached document and extract the data according to the provided schema.
 
-        // Return streaming response in AI SDK format
-        return result.toTextStreamResponse()
+Schema to follow:
+${JSON.stringify(streamingContext.schema, null, 2)}
+
+Remember: Output ONLY valid JSON that matches this schema. No explanatory text. Start with { and end with }.`
+
+        return streamSSE(c, async (stream) => {
+          let fullText = ''
+
+          try {
+            // Get image from prepared context
+            const imageContent = streamingContext.messages[0].content[1]
+            const imageData = imageContent.type === 'image' ? imageContent.image : ''
+
+            const result = streamText({
+              model: openrouterProvider(streamingContext.modelName),
+              system: streamingContext.systemPrompt,
+              messages: [
+                {
+                  role: 'user',
+                  content: [
+                    { type: 'text', text: schemaPrompt },
+                    { type: 'image', image: imageData },
+                  ],
+                },
+              ],
+            })
+
+            // Stream text chunks
+            for await (const chunk of result.textStream) {
+              fullText += chunk
+
+              // Try to parse with bracket closing for partial updates
+              const parsed = safeParseJson(fullText)
+              if (parsed) {
+                await stream.writeSSE({
+                  event: 'partial',
+                  data: JSON.stringify(parsed),
+                })
+              }
+            }
+
+            // Final parse and save
+            const finalData = safeParseJson(fullText)
+            if (finalData) {
+              await streamingContext.updateDocumentOnComplete(finalData)
+              await stream.writeSSE({
+                event: 'complete',
+                data: JSON.stringify(finalData),
+              })
+            } else {
+              await stream.writeSSE({
+                event: 'error',
+                data: 'Failed to parse extracted data',
+              })
+            }
+
+            await stream.writeSSE({
+              event: 'done',
+              data: 'Processing complete',
+            })
+          } catch (error) {
+            const message = error instanceof Error ? error.message : 'Processing failed'
+            await stream.writeSSE({
+              event: 'error',
+              data: message,
+            })
+          }
+        })
       } catch (error) {
         console.error('Streaming error:', error)
         const message = error instanceof Error ? error.message : 'Processing failed'

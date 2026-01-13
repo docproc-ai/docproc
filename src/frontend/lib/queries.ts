@@ -193,8 +193,90 @@ export function useProcessDocument() {
   })
 }
 
-// Streaming Processing using AI SDK useObject hook
-// The hook is exported for use in components
+// Streaming Processing using SSE (text streaming with bracket closing on server)
+export function useProcessDocumentStreaming() {
+  const queryClient = useQueryClient()
+
+  const processWithStreaming = async (
+    documentId: string,
+    model: string | undefined,
+    onPartial: (data: Record<string, unknown>) => void,
+    onComplete: (data: Record<string, unknown>) => void,
+    onError: (error: string) => void,
+  ): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      // Use fetch with POST to send body, then read SSE stream
+      fetch('/api/process/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documentId, model }),
+        credentials: 'include',
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            const error = await response.json()
+            throw new Error(error.error || 'Failed to start streaming')
+          }
+
+          const reader = response.body?.getReader()
+          if (!reader) throw new Error('No response body')
+
+          const decoder = new TextDecoder()
+          let buffer = ''
+
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+
+            buffer += decoder.decode(value, { stream: true })
+
+            // Parse SSE events from buffer
+            const lines = buffer.split('\n')
+            buffer = lines.pop() || '' // Keep incomplete line in buffer
+
+            for (const line of lines) {
+              if (line.startsWith('event: ')) {
+                const eventType = line.slice(7)
+                const nextLine = lines[lines.indexOf(line) + 1]
+                if (nextLine?.startsWith('data: ')) {
+                  const data = nextLine.slice(6)
+
+                  if (eventType === 'partial') {
+                    try {
+                      onPartial(JSON.parse(data))
+                    } catch (e) {
+                      // Ignore parse errors for partial data
+                    }
+                  } else if (eventType === 'complete') {
+                    try {
+                      onComplete(JSON.parse(data))
+                    } catch (e) {
+                      console.error('Failed to parse complete data:', e)
+                    }
+                  } else if (eventType === 'error') {
+                    onError(data)
+                  } else if (eventType === 'done') {
+                    queryClient.invalidateQueries({ queryKey: ['document', documentId] })
+                    queryClient.invalidateQueries({ queryKey: ['documents'] })
+                    resolve()
+                    return
+                  }
+                }
+              }
+            }
+          }
+
+          resolve()
+        })
+        .catch((error) => {
+          onError(error.message || 'Connection error')
+          reject(error)
+        })
+    })
+  }
+
+  return { processWithStreaming }
+}
 
 // Batch Processing
 export function useCreateBatch() {
