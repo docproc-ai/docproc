@@ -46,6 +46,7 @@ import {
   useDocumentTypeLiveUpdates,
   useWebSocketStatus,
   useBatchSubscription,
+  useJobEvents,
 } from '@/lib/websocket'
 import { useDebounce } from '@/lib/hooks'
 import { DocumentEditorProvider } from '@/lib/document-editor-context'
@@ -139,6 +140,7 @@ function DocumentListItem({
   doc,
   isSelected,
   isChecked,
+  isProcessing,
   onSelect,
   onCheck,
   registerRef,
@@ -146,6 +148,7 @@ function DocumentListItem({
   doc: { id: string; filename: string; slug: string | null; status: string | null; createdAt: string | null }
   isSelected: boolean
   isChecked: boolean
+  isProcessing: boolean
   onSelect: () => void
   onCheck: (checked: boolean) => void
   registerRef: (id: string, el: HTMLDivElement | null) => void
@@ -167,7 +170,7 @@ function DocumentListItem({
         />
       </div>
       <div className="pl-2 self-center">
-        <StatusIcon status={doc.status || 'pending'} />
+        <StatusIcon status={isProcessing ? 'processing' : (doc.status || 'pending')} />
       </div>
       <button
         type="button"
@@ -225,6 +228,7 @@ export default function ProcessLayout() {
   const [isDragOver, setIsDragOver] = useState(false)
   const [activeBatchId, setActiveBatchId] = useState<string | null>(null)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [processingDocIds, setProcessingDocIds] = useState<Set<string>>(new Set())
   const documentRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
   // Document action state (for header controls)
@@ -255,6 +259,24 @@ export default function ProcessLayout() {
   const wsStatus = useWebSocketStatus()
   useDocumentTypeLiveUpdates(docType?.id)
   const { progress: batchProgress } = useBatchSubscription(activeBatchId || undefined)
+
+  // Track processing state from WebSocket events
+  useJobEvents(
+    useCallback((event) => {
+      if (!event.documentId) return
+
+      if (event.type === 'job:started') {
+        setProcessingDocIds((prev) => new Set(prev).add(event.documentId!))
+      } else if (event.type === 'job:completed' || event.type === 'job:failed') {
+        setProcessingDocIds((prev) => {
+          const next = new Set(prev)
+          next.delete(event.documentId!)
+          return next
+        })
+      }
+    }, []),
+    [docType?.id]
+  )
 
   // Documents from server (already filtered/paginated)
   const documents = documentsData?.documents || []
@@ -926,6 +948,7 @@ export default function ProcessLayout() {
                     doc={doc}
                     isSelected={selectedDocId === doc.id}
                     isChecked={checkedDocIds.has(doc.id)}
+                    isProcessing={processingDocIds.has(doc.id)}
                     onSelect={() => handleSelectDoc(doc.id)}
                     onCheck={(checked) => handleToggleCheck(doc.id, checked)}
                     registerRef={(id, el) => {
