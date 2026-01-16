@@ -173,42 +173,46 @@ function UserRow({
 
 function LoadingSkeleton() {
   return (
-    <div className="space-y-3">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <div key={i} className="animate-pulse flex items-center gap-4 p-4">
-          <div className="w-8 h-8 bg-muted rounded-full" />
-          <div className="flex-1 space-y-2">
-            <div className="h-4 bg-muted rounded w-1/4" />
-            <div className="h-3 bg-muted rounded w-1/3" />
+    <div className="bg-card border rounded-xl shadow-sm shadow-black/5 overflow-hidden">
+      <div className="space-y-0 divide-y">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="animate-pulse flex items-center gap-4 p-4">
+            <div className="w-8 h-8 bg-muted rounded-full" />
+            <div className="flex-1 space-y-2">
+              <div className="h-4 bg-muted rounded w-1/4" />
+              <div className="h-3 bg-muted rounded w-1/3" />
+            </div>
+            <div className="w-24 h-8 bg-muted rounded" />
           </div>
-          <div className="w-24 h-8 bg-muted rounded" />
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   )
 }
 
 function EmptyState({ search }: { search: string }) {
   return (
-    <div className="flex flex-col items-center justify-center py-20">
-      <div className="w-24 h-24 mb-6 relative">
-        <svg viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="48" cy="36" r="16" className="fill-muted stroke-border" strokeWidth="2" />
-          <path
-            d="M24 72C24 58.7452 34.7452 48 48 48C61.2548 48 72 58.7452 72 72V80H24V72Z"
-            className="fill-muted stroke-border"
-            strokeWidth="2"
-          />
-        </svg>
+    <div className="bg-card border rounded-xl shadow-sm shadow-black/5 p-8">
+      <div className="flex flex-col items-center justify-center py-12">
+        <div className="w-24 h-24 mb-6 relative">
+          <svg viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="48" cy="36" r="16" className="fill-muted stroke-border" strokeWidth="2" />
+            <path
+              d="M24 72C24 58.7452 34.7452 48 48 48C61.2548 48 72 58.7452 72 72V80H24V72Z"
+              className="fill-muted stroke-border"
+              strokeWidth="2"
+            />
+          </svg>
+        </div>
+        <h3 className="font-sans text-xl font-semibold mb-2">
+          {search ? 'No users found' : 'No users yet'}
+        </h3>
+        <p className="text-muted-foreground text-center max-w-sm">
+          {search
+            ? `No users match "${search}". Try a different search term.`
+            : 'Users will appear here once they sign up.'}
+        </p>
       </div>
-      <h3 className="font-sans text-xl font-semibold mb-2">
-        {search ? 'No users found' : 'No users yet'}
-      </h3>
-      <p className="text-muted-foreground text-center max-w-sm">
-        {search
-          ? `No users match "${search}". Try a different search term.`
-          : 'Users will appear here once they sign up.'}
-      </p>
     </div>
   )
 }
@@ -251,18 +255,18 @@ export default function UsersPage() {
       {isLoading ? (
         <LoadingSkeleton />
       ) : error ? (
-        <div className="bg-destructive/10 text-destructive rounded-lg p-6">
-          <h3 className="font-medium mb-1">Failed to load users</h3>
-          <p className="text-sm opacity-80">Please try refreshing the page.</p>
+        <div className="bg-card border border-destructive/30 rounded-xl shadow-sm shadow-black/5 p-6">
+          <h3 className="font-medium mb-1 text-destructive">Failed to load users</h3>
+          <p className="text-sm text-muted-foreground">Please try refreshing the page.</p>
         </div>
       ) : users.length === 0 ? (
         <EmptyState search={search} />
       ) : (
         <>
-          <div className="border rounded-lg">
+          <div className="bg-card border rounded-xl shadow-sm shadow-black/5 overflow-hidden">
             <Table>
               <TableHeader>
-                <TableRow>
+                <TableRow className="bg-muted/50 hover:bg-muted/50">
                   <TableHead>User</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Joined</TableHead>

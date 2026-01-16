@@ -10,6 +10,11 @@ export interface StorageProvider {
   download(key: string): Promise<{ buffer: Buffer; mimeType: string }>
 
   /**
+   * Save/overwrite a file at an existing storage key
+   */
+  save(key: string, buffer: Buffer): Promise<void>
+
+  /**
    * Delete a file by its storage key
    */
   delete(key: string): Promise<void>

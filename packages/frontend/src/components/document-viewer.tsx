@@ -20,6 +20,8 @@ function DocumentViewerComponent({ documentId, filename, onRotate }: DocumentVie
   const [optimisticRotation, setOptimisticRotation] = useState(0)
   const [fileVersion, setFileVersion] = useState(0)
   const [isPending, startTransition] = useTransition()
+  const [pendingRotationReset, setPendingRotationReset] = useState(false)
+  const [pdfLoadCount, setPdfLoadCount] = useState(0)
 
   const pdfRef = useRef<pdfjs.PDFDocumentProxy | null>(null)
   const transformWrapperRef = useRef<ReactZoomPanPinchRef | null>(null)
@@ -39,11 +41,14 @@ function DocumentViewerComponent({ documentId, filename, onRotate }: DocumentVie
     setNumPages(null)
     pdfRef.current = null
     setOptimisticRotation(0)
+    setPendingRotationReset(false)
+    setFileVersion(0)
   }, [documentId])
 
   const onDocumentLoadSuccess = useCallback((pdf: pdfjs.PDFDocumentProxy) => {
     pdfRef.current = pdf
     setNumPages(pdf.numPages)
+    setPdfLoadCount(c => c + 1) // Force re-render when new PDF loads
   }, [])
 
   // Render PDF page to canvas
@@ -74,6 +79,11 @@ function DocumentViewerComponent({ documentId, filename, onRotate }: DocumentVie
 
         if (isMounted) {
           setPageImage(canvas.toDataURL('image/png'))
+          // Reset optimistic rotation now that the actual rotated content is rendered
+          if (pendingRotationReset) {
+            setOptimisticRotation(0)
+            setPendingRotationReset(false)
+          }
         }
       } catch (error) {
         console.error('Failed to render page:', error)
@@ -92,7 +102,7 @@ function DocumentViewerComponent({ documentId, filename, onRotate }: DocumentVie
     return () => {
       isMounted = false
     }
-  }, [currentPage, numPages, fileVersion])
+  }, [currentPage, numPages, fileVersion, pdfLoadCount, pendingRotationReset])
 
   // Center view when content changes
   useEffect(() => {
@@ -114,10 +124,14 @@ function DocumentViewerComponent({ documentId, filename, onRotate }: DocumentVie
     startTransition(async () => {
       try {
         await onRotate(degrees)
+        // Mark that we need to reset rotation once new content loads
+        setPendingRotationReset(true)
+        // Clear current page image for PDFs to show loading state
+        if (isPdf) {
+          setPageImage(null)
+        }
         // Increment file version to bust cache and reload rotated file
         setFileVersion((v) => v + 1)
-        // Reset optimistic rotation after server confirms
-        setTimeout(() => setOptimisticRotation(0), 300)
       } catch (error) {
         // Revert optimistic update on error
         setOptimisticRotation((prev) => prev - degrees)
@@ -232,6 +246,14 @@ function DocumentViewerComponent({ documentId, filename, onRotate }: DocumentVie
     </div>
   )
 
+  // Handle image load event to reset optimistic rotation
+  const handleImageLoad = useCallback(() => {
+    if (pendingRotationReset) {
+      setOptimisticRotation(0)
+      setPendingRotationReset(false)
+    }
+  }, [pendingRotationReset])
+
   // Image rendering
   const renderImage = () => (
     <div className="flex h-full w-full flex-col">
@@ -256,6 +278,7 @@ function DocumentViewerComponent({ documentId, filename, onRotate }: DocumentVie
                 transform: `rotate(${optimisticRotation}deg)`,
                 transition: isPending ? 'none' : 'transform 0.3s ease-out',
               }}
+              onLoad={handleImageLoad}
             />
           </TransformComponent>
         </TransformWrapper>

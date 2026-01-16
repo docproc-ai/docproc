@@ -42,6 +42,11 @@ export class LocalStorageProvider implements StorageProvider {
     return { buffer, mimeType }
   }
 
+  async save(key: string, buffer: Buffer): Promise<void> {
+    const path = join(this.baseDir, key)
+    await writeFile(path, buffer)
+  }
+
   async delete(key: string): Promise<void> {
     const path = join(this.baseDir, key)
     try {
