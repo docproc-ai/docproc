@@ -36,6 +36,8 @@ import {
   useCreateBatch,
   useUpdateDocument,
   useActiveJobs,
+  useCancelJob,
+  useCancelBatch,
 } from '@/lib/queries'
 import { useQueryClient } from '@tanstack/react-query'
 import { useSession } from '@/lib/auth'
@@ -143,6 +145,7 @@ function DocumentListItem({
   isProcessing,
   onSelect,
   onCheck,
+  onCancelJob,
   registerRef,
 }: {
   doc: { id: string; filename: string; slug: string | null; status: string | null; createdAt: string | null }
@@ -151,6 +154,7 @@ function DocumentListItem({
   isProcessing: boolean
   onSelect: () => void
   onCheck: (checked: boolean) => void
+  onCancelJob?: () => void
   registerRef: (id: string, el: HTMLDivElement | null) => void
 }) {
   return (
@@ -169,8 +173,31 @@ function DocumentListItem({
           onClick={(e) => e.stopPropagation()}
         />
       </div>
+      {/* Status icon with cancel on hover when processing */}
       <div className="pl-2 self-center">
-        <StatusIcon status={isProcessing ? 'processing' : (doc.status || 'pending')} />
+        {isProcessing ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onCancelJob?.()
+            }}
+            className="group"
+            title="Click to cancel"
+          >
+            {/* Spinner - hidden on hover */}
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-blue-500 animate-spin group-hover:hidden">
+              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+            </svg>
+            {/* X icon - shown on hover */}
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-red-500 hidden group-hover:block">
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+        ) : (
+          <StatusIcon status={doc.status || 'pending'} />
+        )}
       </div>
       <button
         type="button"
@@ -227,7 +254,9 @@ export default function ProcessLayout() {
   const [isUploading, setIsUploading] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const [processingDocIds, setProcessingDocIds] = useState<Set<string>>(new Set())
+  // Track active jobs with their IDs for cancellation
+  const [activeJobsMap, setActiveJobsMap] = useState<Map<string, { jobId: string; batchId?: string }>>(new Map())
+  const processingDocIds = new Set(activeJobsMap.keys())
   const documentRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
   // Document action state (for header controls)
@@ -261,6 +290,8 @@ export default function ProcessLayout() {
   const deleteDocument = useDeleteDocument()
   const createBatch = useCreateBatch()
   const updateDocument = useUpdateDocument()
+  const cancelJob = useCancelJob()
+  const cancelBatch = useCancelBatch()
 
   // WebSocket for live updates
   const wsStatus = useWebSocketStatus()
@@ -269,14 +300,17 @@ export default function ProcessLayout() {
   // Query active jobs for this document type (for page load)
   const { data: activeJobsData } = useActiveJobs(docType?.id)
 
-  // Initialize processingDocIds from server on page load
+  // Initialize activeJobsMap from server on page load
   useEffect(() => {
     if (activeJobsData?.jobs) {
-      const activeDocIds = new Set(activeJobsData.jobs.map((j: { documentId: string }) => j.documentId))
-      setProcessingDocIds((prev) => {
-        // Merge with existing WebSocket-tracked ids
-        const merged = new Set([...prev, ...activeDocIds])
-        return merged.size !== prev.size ? merged : prev
+      setActiveJobsMap((prev) => {
+        const next = new Map(prev)
+        for (const job of activeJobsData.jobs as Array<{ id: string; documentId: string; batchId?: string }>) {
+          if (!next.has(job.documentId)) {
+            next.set(job.documentId, { jobId: job.id, batchId: job.batchId })
+          }
+        }
+        return next.size !== prev.size ? next : prev
       })
     }
   }, [activeJobsData])
@@ -286,11 +320,15 @@ export default function ProcessLayout() {
     useCallback((event) => {
       if (!event.documentId) return
 
-      if (event.type === 'job:started') {
-        setProcessingDocIds((prev) => new Set(prev).add(event.documentId!))
+      if (event.type === 'job:started' && event.jobId) {
+        setActiveJobsMap((prev) => {
+          const next = new Map(prev)
+          next.set(event.documentId!, { jobId: event.jobId!, batchId: event.batchId })
+          return next
+        })
       } else if (event.type === 'job:completed' || event.type === 'job:failed') {
-        setProcessingDocIds((prev) => {
-          const next = new Set(prev)
+        setActiveJobsMap((prev) => {
+          const next = new Map(prev)
           next.delete(event.documentId!)
           return next
         })
@@ -400,27 +438,41 @@ export default function ProcessLayout() {
 
     const idsToProcess = Array.from(checkedDocIds)
 
-    // Immediately mark as processing in local state
-    setProcessingDocIds((prev) => {
-      const next = new Set(prev)
+    // Immediately mark as processing in local state (placeholder job IDs)
+    setActiveJobsMap((prev) => {
+      const next = new Map(prev)
       for (const id of idsToProcess) {
-        next.add(id)
+        next.set(id, { jobId: `pending-${id}` })
       }
       return next
     })
 
     try {
-      await createBatch.mutateAsync({
+      const result = await createBatch.mutateAsync({
         documentTypeId: docType.id,
         documentIds: idsToProcess,
       })
+
+      // Update with real batch ID (real job IDs come from WebSocket)
+      if (result?.batchId) {
+        setActiveJobsMap((prev) => {
+          const next = new Map(prev)
+          for (const id of idsToProcess) {
+            const existing = next.get(id)
+            if (existing) {
+              next.set(id, { ...existing, batchId: result.batchId })
+            }
+          }
+          return next
+        })
+      }
 
       setCheckedDocIds(new Set())
     } catch (error) {
       console.error('Batch processing failed:', error)
       // Revert optimistic update on error
-      setProcessingDocIds((prev) => {
-        const next = new Set(prev)
+      setActiveJobsMap((prev) => {
+        const next = new Map(prev)
         for (const id of idsToProcess) {
           next.delete(id)
         }
@@ -443,6 +495,38 @@ export default function ProcessLayout() {
     setCheckedDocIds(new Set())
   }, [checkedDocIds, updateDocument])
 
+  // Cancel all processing jobs
+  const handleCancelAllProcessing = useCallback(async () => {
+    // Get unique batch IDs from active jobs
+    const batchIds = new Set<string>()
+    for (const job of activeJobsMap.values()) {
+      if (job.batchId) batchIds.add(job.batchId)
+    }
+
+    // Cancel all batches
+    for (const batchId of batchIds) {
+      await cancelBatch.mutateAsync(batchId)
+    }
+
+    // Clear local state
+    setActiveJobsMap(new Map())
+  }, [activeJobsMap, cancelBatch])
+
+  // Cancel a specific job by document ID
+  const handleCancelJob = useCallback(async (documentId: string) => {
+    const job = activeJobsMap.get(documentId)
+    if (!job) return
+
+    await cancelJob.mutateAsync(job.jobId)
+
+    // Remove from local state
+    setActiveJobsMap((prev) => {
+      const next = new Map(prev)
+      next.delete(documentId)
+      return next
+    })
+  }, [activeJobsMap, cancelJob])
+
   // Document action handlers (for header controls)
   const handleProcess = useCallback(async () => {
     if (!currentDoc) return
@@ -452,8 +536,12 @@ export default function ProcessLayout() {
     setStreamingData({})
     abortStreamRef.current = abortStreaming
 
-    // Mark as processing in local state
-    setProcessingDocIds((prev) => new Set(prev).add(currentDoc.id))
+    // Mark as processing in local state (streaming has no job ID)
+    setActiveJobsMap((prev) => {
+      const next = new Map(prev)
+      next.set(currentDoc.id, { jobId: `streaming-${currentDoc.id}` })
+      return next
+    })
 
     try {
       await processWithStreaming(
@@ -474,8 +562,8 @@ export default function ProcessLayout() {
       setStreamingDocId(null)
       abortStreamRef.current = null
       // Remove from processing state when done
-      setProcessingDocIds((prev) => {
-        const next = new Set(prev)
+      setActiveJobsMap((prev) => {
+        const next = new Map(prev)
         next.delete(currentDoc.id)
         return next
       })
@@ -848,16 +936,26 @@ export default function ProcessLayout() {
                     ? `${checkedDocIds.size} selected`
                     : 'Select all'}
                 </span>
-                {/* Processing count */}
+                {/* Processing count with cancel on hover */}
                 {(() => {
                   const processingCount = documents.filter(d => processingDocIds.has(d.id)).length
                   return processingCount > 0 ? (
-                    <span className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
-                      <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <button
+                      onClick={handleCancelAllProcessing}
+                      className="group flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                      title="Click to cancel all processing"
+                    >
+                      {/* Spinner - hidden on hover */}
+                      <svg className="w-3 h-3 animate-spin group-hover:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M21 12a9 9 0 1 1-6.219-8.56" />
                       </svg>
+                      {/* X icon - shown on hover */}
+                      <svg className="w-3 h-3 hidden group-hover:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M18 6 6 18" />
+                        <path d="m6 6 12 12" />
+                      </svg>
                       {processingCount}
-                    </span>
+                    </button>
                   ) : null
                 })()}
               </div>
@@ -997,6 +1095,7 @@ export default function ProcessLayout() {
                     isProcessing={processingDocIds.has(doc.id)}
                     onSelect={() => handleSelectDoc(doc.id)}
                     onCheck={(checked) => handleToggleCheck(doc.id, checked)}
+                    onCancelJob={() => handleCancelJob(doc.id)}
                     registerRef={(id, el) => {
                       if (el) {
                         documentRefs.current.set(id, el)

@@ -454,3 +454,22 @@ export function useActiveJobs(documentTypeId: string | undefined) {
     refetchInterval: 5000,
   })
 }
+
+export function useCancelJob() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (jobId: string) => {
+      const res = await fetch(`/api/jobs/${jobId}/cancel`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      if (!res.ok) throw new Error('Failed to cancel job')
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['documents'] })
+      queryClient.invalidateQueries({ queryKey: ['activeJobs'] })
+    },
+  })
+}

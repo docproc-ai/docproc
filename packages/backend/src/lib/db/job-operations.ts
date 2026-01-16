@@ -134,6 +134,33 @@ export async function deleteJob(id: string): Promise<void> {
   jobs.delete(id)
 }
 
+export async function cancelJob(id: string): Promise<Job | undefined> {
+  const job = jobs.get(id)
+  if (!job) return undefined
+
+  // Only cancel if pending or processing
+  if (job.status !== 'pending' && job.status !== 'processing') {
+    return job
+  }
+
+  job.status = 'failed'
+  job.error = 'Cancelled by user'
+  job.completedAt = new Date()
+
+  // Update batch progress if this job belongs to a batch
+  if (job.batchId) {
+    const batch = batches.get(job.batchId)
+    if (batch) {
+      const batchJobs = await getJobsByBatchId(job.batchId)
+      const completed = batchJobs.filter(j => j.status === 'completed').length
+      const failed = batchJobs.filter(j => j.status === 'failed').length
+      await updateBatchProgress(job.batchId, completed, failed)
+    }
+  }
+
+  return job
+}
+
 // ============================================
 // Batch Operations
 // ============================================

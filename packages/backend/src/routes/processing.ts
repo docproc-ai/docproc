@@ -23,9 +23,11 @@ import {
   createBatch,
   getBatch,
   getBatchWithJobs,
+  getJob,
   updateBatchStatus,
   updateBatchProgress,
   cancelBatch,
+  cancelJob,
   updateJobStatus,
   getJobsByBatchId,
   getActiveJobsForDocumentType,
@@ -337,6 +339,43 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
       } catch (error) {
         console.error('Failed to get active jobs:', error)
         return c.json({ error: 'Failed to get active jobs' }, 500)
+      }
+    },
+  )
+  // POST /api/jobs/:id/cancel - Cancel a specific job
+  .post(
+    '/jobs/:id/cancel',
+    requireAuth,
+    requirePermission('document', 'update'),
+    zValidator('param', z.object({ id: z.string() })),
+    async (c) => {
+      try {
+        const { id } = c.req.valid('param')
+        const job = await getJob(id)
+
+        if (!job) {
+          return c.json({ error: 'Job not found' }, 404)
+        }
+
+        const cancelled = await cancelJob(id)
+        if (!cancelled) {
+          return c.json({ error: 'Failed to cancel job' }, 500)
+        }
+
+        // Emit WebSocket event for job cancellation
+        emitJobCompleted(cancelled.documentId!, false)
+
+        return c.json({
+          success: true,
+          job: {
+            id: cancelled.id,
+            documentId: cancelled.documentId,
+            status: cancelled.status,
+          },
+        }, 200)
+      } catch (error) {
+        console.error('Failed to cancel job:', error)
+        return c.json({ error: 'Failed to cancel job' }, 500)
       }
     },
   )
