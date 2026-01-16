@@ -5,17 +5,17 @@
   "tsx": true,
   "tailwind": {
     "config": "",
-    "css": "src/frontend/styles.css",
-    "baseColor": "neutral",
+    "css": "packages/frontend/src/styles.css",
+    "baseColor": "zinc",
     "cssVariables": true,
     "prefix": ""
   },
   "aliases": {
-    "components": "@/components",
-    "utils": "@/lib/utils",
-    "ui": "@/components/ui",
-    "lib": "@/lib",
-    "hooks": "@/hooks"
+    "components": "@docproc/frontend/src/components",
+    "utils": "@docproc/frontend/src/lib/utils",
+    "ui": "@docproc/frontend/src/components/ui",
+    "lib": "@docproc/frontend/src/lib",
+    "hooks": "@docproc/frontend/src/hooks"
   },
   "iconLibrary": "lucide"
 }

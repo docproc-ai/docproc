@@ -7,14 +7,14 @@
     "strict": true,
     "skipLibCheck": true,
     "declaration": true,
-    "outDir": "./dist",
-    "rootDir": ".",
     "baseUrl": ".",
     "paths": {
-      "@/db/*": ["./src/db/*"],
-      "@/server/*": ["./src/server/*"]
+      "@docproc/frontend/*": ["./packages/frontend/*"],
+      "@docproc/backend/*": ["./packages/backend/*"],
+      "@docproc/shared/*": ["./packages/shared/*"],
+      "@docproc/shared": ["./packages/shared/src"],
+      "@docproc/backend": ["./packages/backend/src"]
     }
   },
-  "include": ["src/**/*", "drizzle.config.ts"],
-  "exclude": ["node_modules", "src/frontend", "_legacy"]
+  "exclude": ["packages/*/node_modules", "node_modules", "dist", "_legacy"]
 }

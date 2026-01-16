@@ -8,7 +8,6 @@ dist-ssr
 
 # env files
 .env
-.env.*
 *.local
 
 # debug
@@ -36,3 +35,5 @@ src/frontend/node_modules
 .tanstack
 .wrangler
 count.txtllms.txt
+
+.playwright-mcp/

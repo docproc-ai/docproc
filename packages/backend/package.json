@@ -1,0 +1,30 @@
+{
+  "name": "@docproc/backend",
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "start": "bun src/index.ts"
+  },
+  "dependencies": {
+    "@hono/zod-validator": "^0.7.6",
+    "@openrouter/ai-sdk-provider": "^1.5.4",
+    "@openrouter/sdk": "^0.1.0",
+    "ai": "^6.0.23",
+    "better-auth": "^1.4.10",
+    "drizzle-orm": "^0.45.1",
+    "drizzle-zod": "^0.8.3",
+    "hono": "^4.11.3",
+    "jsonrepair": "^3.13.1",
+    "mime-types": "^3.0.2",
+    "nanoid": "^5.1.6",
+    "p-limit": "^7.2.0",
+    "pdf-lib": "^1.17.1",
+    "postgres": "^3.4.8",
+    "sharp": "^0.34.5",
+    "zod": "^4.3.5"
+  },
+  "devDependencies": {
+    "@types/mime-types": "^3.0.1"
+  }
+}
