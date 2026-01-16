@@ -17,6 +17,7 @@ export interface JobEvent {
   jobId?: string
   batchId?: string
   documentId?: string
+  documentTypeId?: string
   data: {
     status?: string
     progress?: number
@@ -125,30 +126,32 @@ function disconnect() {
   }
 }
 
-function subscribe(jobId?: string, batchId?: string) {
+function subscribe(jobId?: string, batchId?: string, documentTypeId?: string) {
   if (!globalWs || globalWs.readyState !== WebSocket.OPEN) return
 
-  const message: { type: string; jobId?: string; batchId?: string } = {
+  const message: { type: string; jobId?: string; batchId?: string; documentTypeId?: string } = {
     type: 'subscribe',
   }
   if (jobId) message.jobId = jobId
   if (batchId) message.batchId = batchId
+  if (documentTypeId) message.documentTypeId = documentTypeId
 
   globalWs.send(JSON.stringify(message))
-  console.log('[WS] Subscribed to:', { jobId, batchId })
+  console.log('[WS] Subscribed to:', { jobId, batchId, documentTypeId })
 }
 
-function unsubscribe(jobId?: string, batchId?: string) {
+function unsubscribe(jobId?: string, batchId?: string, documentTypeId?: string) {
   if (!globalWs || globalWs.readyState !== WebSocket.OPEN) return
 
-  const message: { type: string; jobId?: string; batchId?: string } = {
+  const message: { type: string; jobId?: string; batchId?: string; documentTypeId?: string } = {
     type: 'unsubscribe',
   }
   if (jobId) message.jobId = jobId
   if (batchId) message.batchId = batchId
+  if (documentTypeId) message.documentTypeId = documentTypeId
 
   globalWs.send(JSON.stringify(message))
-  console.log('[WS] Unsubscribed from:', { jobId, batchId })
+  console.log('[WS] Unsubscribed from:', { jobId, batchId, documentTypeId })
 }
 
 // Hook for WebSocket connection status
@@ -260,9 +263,8 @@ export function useDocumentTypeLiveUpdates(documentTypeId: string | undefined) {
 
   useEffect(() => {
     if (status === 'connected' && documentTypeId) {
-      // For now we don't have document-type level subscriptions,
-      // but we could add them. The current system uses job/batch subscriptions.
-      // Events will still come through for any jobs we're subscribed to.
+      subscribe(undefined, undefined, documentTypeId)
+      return () => unsubscribe(undefined, undefined, documentTypeId)
     }
   }, [status, documentTypeId])
 

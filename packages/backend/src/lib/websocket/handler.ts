@@ -2,6 +2,8 @@ import type { ServerWebSocket } from 'bun'
 import {
   subscribeToJob,
   subscribeToBatch,
+  subscribeToDocumentType,
+  unsubscribeFromDocumentType,
   unsubscribeAll,
   registerClient,
 } from './job-events'
@@ -16,12 +18,14 @@ export interface WebSocketData {
  */
 interface SubscribeMessage {
   type: 'subscribe'
+  documentTypeId?: string
   jobId?: string
   batchId?: string
 }
 
 interface UnsubscribeMessage {
   type: 'unsubscribe'
+  documentTypeId?: string
   jobId?: string
   batchId?: string
 }
@@ -44,6 +48,12 @@ export function handleWebSocketMessage(
 
     switch (data.type) {
       case 'subscribe':
+        // Primary: subscribe to document type
+        if (data.documentTypeId) {
+          subscribeToDocumentType(ws as unknown as WebSocket, data.documentTypeId)
+          ws.data.subscriptions.push(`docType:${data.documentTypeId}`)
+        }
+        // Legacy: job/batch subscriptions
         if (data.jobId) {
           subscribeToJob(ws as unknown as WebSocket, data.jobId)
           ws.data.subscriptions.push(`job:${data.jobId}`)
@@ -52,12 +62,15 @@ export function handleWebSocketMessage(
           subscribeToBatch(ws as unknown as WebSocket, data.batchId)
           ws.data.subscriptions.push(`batch:${data.batchId}`)
         }
-        ws.send(JSON.stringify({ type: 'subscribed', jobId: data.jobId, batchId: data.batchId }))
+        ws.send(JSON.stringify({ type: 'subscribed', documentTypeId: data.documentTypeId, jobId: data.jobId, batchId: data.batchId }))
         break
 
       case 'unsubscribe':
-        // For simplicity, just acknowledge - cleanup happens on close
-        ws.send(JSON.stringify({ type: 'unsubscribed', jobId: data.jobId, batchId: data.batchId }))
+        if (data.documentTypeId) {
+          unsubscribeFromDocumentType(ws as unknown as WebSocket, data.documentTypeId)
+          ws.data.subscriptions = ws.data.subscriptions.filter(s => s !== `docType:${data.documentTypeId}`)
+        }
+        ws.send(JSON.stringify({ type: 'unsubscribed', documentTypeId: data.documentTypeId, jobId: data.jobId, batchId: data.batchId }))
         break
 
       case 'ping':

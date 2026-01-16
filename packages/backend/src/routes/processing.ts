@@ -236,7 +236,7 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
         })
 
         // Start batch processing in background (don't await)
-        processBatchInBackground(batch.id, documentIds, webhookUrl)
+        processBatchInBackground(batch.id, documentTypeId, documentIds, webhookUrl)
 
         return c.json({
           success: true,
@@ -316,7 +316,7 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
         // Emit WebSocket events for each cancelled job
         for (const job of result.cancelledJobs) {
           if (job.documentId) {
-            emitJobFailed(job.id, job.documentId, 'Batch cancelled', job.batchId)
+            emitJobFailed(job.id, job.documentId, result.batch.documentTypeId, 'Batch cancelled', job.batchId)
           }
         }
 
@@ -372,8 +372,17 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
           return c.json({ error: 'Failed to cancel job' }, 500)
         }
 
-        // Emit WebSocket event for job cancellation
-        emitJobFailed(cancelled.id, cancelled.documentId!, 'Job cancelled', cancelled.batchId)
+        // Get documentTypeId from batch if available
+        let documentTypeId: string | undefined
+        if (cancelled.batchId) {
+          const batch = await getBatch(cancelled.batchId)
+          documentTypeId = batch?.documentTypeId
+        }
+
+        // Emit WebSocket event for job cancellation (only if we have documentTypeId)
+        if (documentTypeId) {
+          emitJobFailed(cancelled.id, cancelled.documentId!, documentTypeId, 'Job cancelled', cancelled.batchId)
+        }
 
         return c.json({
           success: true,
@@ -398,13 +407,14 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
  */
 async function processBatchInBackground(
   batchId: string,
+  documentTypeId: string,
   documentIds: string[],
   webhookUrl?: string,
 ) {
   try {
     // Update batch status to processing
     await updateBatchStatus(batchId, 'processing')
-    emitBatchStarted(batchId, documentIds.length)
+    emitBatchStarted(batchId, documentTypeId, documentIds.length)
 
     // Get jobs for this batch
     const jobs = await getJobsByBatchId(batchId)
@@ -428,13 +438,13 @@ async function processBatchInBackground(
           // Job was cancelled - emit skipped event
           skipped++
           await updateBatchProgress(batchId, completed, failed + skipped)
-          emitBatchProgress(batchId, completed, failed + skipped, documentIds.length)
+          emitBatchProgress(batchId, documentTypeId, completed, failed + skipped, documentIds.length)
           return false
         }
 
         // Job is still pending - mark as processing and emit started
         await updateJobStatus(jobId, 'processing', { startedAt: new Date() })
-        emitJobStarted(jobId, documentId, batchId)
+        emitJobStarted(jobId, documentId, documentTypeId, batchId)
         return true
       },
       // Progress callback
@@ -448,24 +458,24 @@ async function processBatchInBackground(
             error: error.message,
             completedAt: new Date(),
           })
-          emitJobFailed(jobId, documentId, error.message, batchId)
+          emitJobFailed(jobId, documentId, documentTypeId, error.message, batchId)
         } else {
           completed++
           await updateJobStatus(jobId, 'completed', {
             completedAt: new Date(),
           })
-          emitJobCompleted(jobId, documentId, batchId)
+          emitJobCompleted(jobId, documentId, documentTypeId, batchId)
         }
 
         // Update batch progress
         await updateBatchProgress(batchId, completed, failed + skipped)
-        emitBatchProgress(batchId, completed, failed + skipped, total)
+        emitBatchProgress(batchId, documentTypeId, completed, failed + skipped, total)
       },
     )
 
     // Mark batch as complete
     await updateBatchStatus(batchId, 'completed')
-    emitBatchCompleted(batchId, completed, failed + skipped, documentIds.length)
+    emitBatchCompleted(batchId, documentTypeId, completed, failed + skipped, documentIds.length)
 
     // Call webhook if configured
     if (webhookUrl) {
@@ -492,6 +502,6 @@ async function processBatchInBackground(
   } catch (error) {
     console.error('Batch processing failed:', error)
     await updateBatchStatus(batchId, 'failed')
-    emitBatchFailed(batchId, error instanceof Error ? error.message : 'Unknown error')
+    emitBatchFailed(batchId, documentTypeId, error instanceof Error ? error.message : 'Unknown error')
   }
 }
