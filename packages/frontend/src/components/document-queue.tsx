@@ -1,24 +1,32 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
 import {
-  Loader2,
-  X,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Trash2,
-  Check,
-  Settings2,
-  Files,
   File,
-  FileJson,
   FileCheck,
+  FileJson,
+  Files,
   FileX,
+  Loader2,
   type LucideIcon,
+  MoreHorizontal,
+  Settings2,
+  Trash2,
+  X,
 } from 'lucide-react'
-import { Input } from '@/components/ui/input'
-import { Checkbox } from '@/components/ui/checkbox'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { DocumentListItem } from '@/components/document-list-item'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -26,29 +34,20 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { useDebounce } from '@/lib/hooks'
 import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogAction,
-  AlertDialogCancel,
-} from '@/components/ui/alert-dialog'
-import { DocumentListItem } from '@/components/document-list-item'
-import {
-  useDocuments,
-  useDeleteDocument,
-  useProcessDocument,
-  useCreateBatch,
-  useUpdateDocument,
   useActiveJobs,
-  useCancelJob,
   useCancelBatch,
+  useCancelJob,
+  useCreateBatch,
+  useDeleteDocument,
+  useDocuments,
+  useProcessDocument,
+  useUpdateDocument,
 } from '@/lib/queries'
 import { useJobEvents } from '@/lib/websocket'
-import { useDebounce } from '@/lib/hooks'
 
 // Status icon config
 const statusConfig: Record<string, { icon: LucideIcon; className: string; title: string }> = {
@@ -309,11 +308,11 @@ export function DocumentQueue({
     }
   }, [checkedDocIds, documentTypeId, createBatch, processDocument])
 
-  const handleBulkApprove = useCallback(async () => {
+  const handleBulkSetStatus = useCallback(async (status: 'pending' | 'processed' | 'approved' | 'rejected') => {
     if (checkedDocIds.size === 0) return
 
     for (const id of checkedDocIds) {
-      await updateDocument.mutateAsync({ id, data: { status: 'approved' } })
+      await updateDocument.mutateAsync({ id, data: { status } })
     }
     setCheckedDocIds(new Set())
   }, [checkedDocIds, updateDocument])
@@ -350,14 +349,8 @@ export function DocumentQueue({
 
   return (
     <div className="h-full flex flex-col bg-background">
-      {/* Search and filter */}
-      <div className="p-3 border-b space-y-2">
-        <Input
-          placeholder="Search documents..."
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          className="h-9"
-        />
+      {/* Status filter */}
+      <div className="p-3 border-b">
         <ToggleGroup
           type="single"
           value={urlStatus}
@@ -385,62 +378,81 @@ export function DocumentQueue({
         </ToggleGroup>
       </div>
 
-      {/* Bulk actions bar */}
-      <div className="px-3 h-10 border-b bg-muted/30 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Checkbox
-            checked={checkedDocIds.size === documents.length && documents.length > 0}
-            onCheckedChange={() => handleSelectAll()}
-          />
-          <span className="text-xs text-muted-foreground">
-            {checkedDocIds.size > 0
-              ? `${checkedDocIds.size} selected`
-              : 'Select all'}
-          </span>
-          {/* Processing count with cancel on hover */}
-          {(() => {
-            const processingCount = documents.filter(d => processingDocIds.has(d.id)).length
-            return processingCount > 0 ? (
-              <button
-                onClick={handleCancelAllProcessing}
-                className="group flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                title="Click to cancel all processing"
-              >
-                <Loader2 className="w-3 h-3 animate-spin group-hover:hidden" />
-                <X className="w-3 h-3 hidden group-hover:block" />
-                {processingCount}
-              </button>
-            ) : null
-          })()}
-        </div>
+      {/* Search bar with checkbox and actions */}
+      <div className="px-3 py-2 border-b flex items-center gap-2">
+        <Checkbox
+          checked={checkedDocIds.size === documents.length && documents.length > 0}
+          onCheckedChange={() => handleSelectAll()}
+        />
+        {checkedDocIds.size > 0 && (
+          <span className="text-xs text-muted-foreground tabular-nums">{checkedDocIds.size}</span>
+        )}
+        <Input
+          placeholder="Search documents..."
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          className="h-8 flex-1"
+        />
+        {/* Processing indicator */}
+        {(() => {
+          const processingCount = documents.filter(d => processingDocIds.has(d.id)).length
+          return processingCount > 0 ? (
+            <button
+              type="button"
+              onClick={handleCancelAllProcessing}
+              className="group flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+              title="Click to cancel all processing"
+            >
+              <Loader2 className="w-3.5 h-3.5 animate-spin group-hover:hidden" />
+              <X className="w-3.5 h-3.5 hidden group-hover:block" />
+            </button>
+          ) : null
+        })()}
+        {/* Actions menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 text-xs"
-              disabled={checkedDocIds.size === 0}
-            >
-              Actions
-              <ChevronDown className="ml-1 h-3 w-3" />
+            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+              <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={handleBulkProcess}>
+          <DropdownMenuContent align="end" className="w-48">
+            {checkedDocIds.size > 0 && (
+              <>
+                <div className="px-2 py-1.5 text-sm font-medium">
+                  {checkedDocIds.size} selected
+                </div>
+                <DropdownMenuSeparator />
+              </>
+            )}
+            <DropdownMenuItem onClick={handleBulkProcess} disabled={checkedDocIds.size === 0}>
               <Settings2 className="mr-2 h-4 w-4" />
-              Process selected
+              Process
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleBulkApprove}>
-              <Check className="mr-2 h-4 w-4" />
-              Approve selected
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => handleBulkSetStatus('pending')} disabled={checkedDocIds.size === 0}>
+              <File className="mr-2 h-4 w-4 text-muted-foreground" />
+              Mark as Pending
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleBulkSetStatus('processed')} disabled={checkedDocIds.size === 0}>
+              <FileJson className="mr-2 h-4 w-4 text-blue-500" />
+              Mark as Processed
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleBulkSetStatus('approved')} disabled={checkedDocIds.size === 0}>
+              <FileCheck className="mr-2 h-4 w-4 text-green-500" />
+              Mark as Approved
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleBulkSetStatus('rejected')} disabled={checkedDocIds.size === 0}>
+              <FileX className="mr-2 h-4 w-4 text-red-500" />
+              Mark as Rejected
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={handleBulkDelete}
+              disabled={checkedDocIds.size === 0}
               className="text-destructive focus:text-destructive"
             >
               <Trash2 className="mr-2 h-4 w-4" />
-              Delete selected
+              Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
