@@ -156,6 +156,7 @@ export default function DocumentEditorPage() {
       navigate({
         to: '/document-types/$slug/process/$id',
         params: { slug: docType.slug, id: filteredDocs[currentIdx + 1].id },
+        search: (prev) => prev,
       })
     }
   }
@@ -172,6 +173,7 @@ export default function DocumentEditorPage() {
       navigate({
         to: '/document-types/$slug/process/$id',
         params: { slug: docType.slug, id: filteredDocs[currentIdx + 1].id },
+        search: (prev) => prev,
       })
     }
   }
@@ -204,6 +206,7 @@ export default function DocumentEditorPage() {
       navigate({
         to: '/document-types/$slug/process/$id',
         params: { slug: docType.slug, id: nextDocId },
+        search: (prev) => prev,
       })
     }
   }, [filteredDocs, currentDoc?.id, hasChanges, docType?.slug, navigate])
@@ -486,6 +489,7 @@ export default function DocumentEditorPage() {
                 navigate({
                   to: '/document-types/$slug/process/$id',
                   params: { slug: docType.slug, id: pendingDocId },
+                  search: (prev) => prev,
                 })
               }
               setPendingDocId(null)

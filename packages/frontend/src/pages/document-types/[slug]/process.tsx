@@ -319,6 +319,7 @@ export default function ProcessLayout() {
       navigate({
         to: '/document-types/$slug/process/$id',
         params: { slug: docType.slug, id: documents[0].id },
+        search: (prev) => prev, // Preserve search params
         replace: true,
       })
     }
@@ -329,6 +330,7 @@ export default function ProcessLayout() {
       navigate({
         to: '/document-types/$slug/process/$id',
         params: { slug: docType.slug, id: docId },
+        search: (prev) => prev, // Preserve search params
       })
     }
   }, [docType?.slug, navigate])
