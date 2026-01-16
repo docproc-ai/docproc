@@ -45,7 +45,6 @@ import {
   useCreateBatch,
   useDeleteDocument,
   useDocuments,
-  useProcessDocument,
   useUpdateDocument,
 } from '@/lib/queries'
 import { useJobEvents } from '@/lib/websocket'
@@ -118,7 +117,6 @@ export function DocumentQueue({
   const { data: activeJobsData } = useActiveJobs(documentTypeId)
 
   const deleteDocument = useDeleteDocument()
-  const processDocument = useProcessDocument()
   const createBatch = useCreateBatch()
   const updateDocument = useUpdateDocument()
   const cancelJob = useCancelJob()
@@ -261,30 +259,18 @@ export function DocumentQueue({
 
     const idsToProcess = Array.from(checkedDocIds)
 
-    // Immediately mark as processing (placeholder job IDs)
-    setActiveJobsMap((prev) => {
-      const next = new Map(prev)
-      for (const id of idsToProcess) {
-        next.set(id, { jobId: `pending-${id}` })
-      }
-      return next
-    })
-
     try {
       const result = await createBatch.mutateAsync({
         documentTypeId,
         documentIds: idsToProcess,
       })
 
-      // Update with real batch ID
-      if (result?.batchId) {
+      // Set real job IDs from response
+      if (result?.batchId && result?.jobs) {
         setActiveJobsMap((prev) => {
           const next = new Map(prev)
-          for (const id of idsToProcess) {
-            const existing = next.get(id)
-            if (existing) {
-              next.set(id, { ...existing, batchId: result.batchId })
-            }
+          for (const job of result.jobs as Array<{ id: string; documentId: string }>) {
+            next.set(job.documentId, { jobId: job.id, batchId: result.batchId })
           }
           return next
         })
@@ -293,21 +279,8 @@ export function DocumentQueue({
       setCheckedDocIds(new Set())
     } catch (error) {
       console.error('Batch processing failed:', error)
-      // Revert optimistic update
-      setActiveJobsMap((prev) => {
-        const next = new Map(prev)
-        for (const id of idsToProcess) {
-          next.delete(id)
-        }
-        return next
-      })
-      // Fallback to individual processing
-      for (const id of checkedDocIds) {
-        await processDocument.mutateAsync({ documentId: id })
-      }
-      setCheckedDocIds(new Set())
     }
-  }, [checkedDocIds, documentTypeId, createBatch, processDocument])
+  }, [checkedDocIds, documentTypeId, createBatch])
 
   const handleBulkSetStatus = useCallback(async (status: 'pending' | 'processed' | 'approved' | 'rejected') => {
     if (checkedDocIds.size === 0) return
