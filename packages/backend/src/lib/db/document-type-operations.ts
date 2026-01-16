@@ -7,6 +7,13 @@ import { db } from '../../db'
 import { documentType, document } from '../../db/schema/app'
 import { eq, desc, count } from 'drizzle-orm'
 import { generateSlug } from '../generate-slug'
+import {
+  encryptWebhookConfig,
+  createSafeWebhookConfig,
+  mergeWebhookConfigs,
+  decryptWebhookConfig,
+  type DocumentWebhookConfig,
+} from '../webhook-encryption'
 import type { DocumentTypeSelect, DocumentTypeInsert } from '../../db/schema/app'
 
 export type { DocumentTypeSelect, DocumentTypeInsert }
@@ -37,6 +44,7 @@ export interface DocumentTypeWithCount extends DocumentTypeSelect {
 
 /**
  * Get all document types with document counts
+ * Returns safe webhook config (sensitive values masked)
  */
 export async function getDocumentTypes(): Promise<DocumentTypeWithCount[]> {
   const documentTypes = await db
@@ -51,8 +59,14 @@ export async function getDocumentTypes(): Promise<DocumentTypeWithCount[]> {
         .from(document)
         .where(eq(document.documentTypeId, type.id))
 
+      // Return with safe webhook config (sensitive values masked)
+      const safeWebhookConfig = type.webhookConfig
+        ? createSafeWebhookConfig(type.webhookConfig as DocumentWebhookConfig)
+        : null
+
       return {
         ...type,
+        webhookConfig: safeWebhookConfig,
         documentCount: countResult?.count ?? 0,
       }
     }),
@@ -63,8 +77,40 @@ export async function getDocumentTypes(): Promise<DocumentTypeWithCount[]> {
 
 /**
  * Get a single document type by ID
+ * Returns safe webhook config (sensitive values masked) by default
  */
-export async function getDocumentType(id: string): Promise<DocumentTypeSelect | null> {
+export async function getDocumentType(
+  id: string,
+  options?: { includeDecryptedWebhook?: boolean },
+): Promise<DocumentTypeSelect | null> {
+  const [result] = await db
+    .select()
+    .from(documentType)
+    .where(eq(documentType.id, id))
+
+  if (!result) return null
+
+  // Return with appropriate webhook config
+  if (options?.includeDecryptedWebhook) {
+    // For internal use (webhook triggering) - decrypt sensitive values
+    const decryptedConfig = result.webhookConfig
+      ? decryptWebhookConfig(result.webhookConfig as DocumentWebhookConfig)
+      : null
+    return { ...result, webhookConfig: decryptedConfig }
+  }
+
+  // Default: return safe config for API responses
+  const safeConfig = result.webhookConfig
+    ? createSafeWebhookConfig(result.webhookConfig as DocumentWebhookConfig)
+    : null
+  return { ...result, webhookConfig: safeConfig }
+}
+
+/**
+ * Get a document type by ID with raw (encrypted) webhook config
+ * Used for merging during updates
+ */
+export async function getDocumentTypeRaw(id: string): Promise<DocumentTypeSelect | null> {
   const [result] = await db
     .select()
     .from(documentType)
@@ -75,6 +121,7 @@ export async function getDocumentType(id: string): Promise<DocumentTypeSelect | 
 
 /**
  * Get a document type by slug
+ * Returns safe webhook config (sensitive values masked)
  */
 export async function getDocumentTypeBySlug(slug: string): Promise<DocumentTypeSelect | null> {
   const [result] = await db
@@ -82,12 +129,18 @@ export async function getDocumentTypeBySlug(slug: string): Promise<DocumentTypeS
     .from(documentType)
     .where(eq(documentType.slug, slug))
 
-  return result || null
+  if (!result) return null
+
+  const safeConfig = result.webhookConfig
+    ? createSafeWebhookConfig(result.webhookConfig as DocumentWebhookConfig)
+    : null
+  return { ...result, webhookConfig: safeConfig }
 }
 
 /**
  * Get a document type by slug or ID
  * Tries slug first, falls back to UUID if it looks like one
+ * Returns safe webhook config (sensitive values masked)
  */
 export async function getDocumentTypeBySlugOrId(
   slugOrId: string,
@@ -107,11 +160,17 @@ export async function getDocumentTypeBySlugOrId(
 
 /**
  * Create a new document type
+ * Encrypts sensitive webhook header values before storing
  */
 export async function createDocumentType(
   data: CreateDocumentTypeData,
 ): Promise<DocumentTypeSelect> {
   const slug = generateSlug(data.name)
+
+  // Encrypt webhook config if provided
+  const encryptedWebhookConfig = data.webhookConfig
+    ? encryptWebhookConfig(data.webhookConfig as DocumentWebhookConfig)
+    : null
 
   const [result] = await db
     .insert(documentType)
@@ -119,7 +178,7 @@ export async function createDocumentType(
       name: data.name,
       slug,
       schema: data.schema,
-      webhookConfig: data.webhookConfig || null,
+      webhookConfig: encryptedWebhookConfig,
       validationInstructions: data.validationInstructions || null,
       modelName: data.modelName || null,
       slugPattern: data.slugPattern || null,
@@ -127,11 +186,16 @@ export async function createDocumentType(
     })
     .returning()
 
-  return result
+  // Return with safe config (masked sensitive values)
+  const safeConfig = result.webhookConfig
+    ? createSafeWebhookConfig(result.webhookConfig as DocumentWebhookConfig)
+    : null
+  return { ...result, webhookConfig: safeConfig }
 }
 
 /**
  * Update a document type
+ * Merges webhook config to preserve encrypted values for unchanged sensitive headers
  */
 export async function updateDocumentType(
   id: string,
@@ -143,7 +207,25 @@ export async function updateDocumentType(
 
   if (data.name !== undefined) updateData.name = data.name
   if (data.schema !== undefined) updateData.schema = data.schema
-  if (data.webhookConfig !== undefined) updateData.webhookConfig = data.webhookConfig
+
+  // Handle webhook config merging
+  if (data.webhookConfig !== undefined) {
+    if (data.webhookConfig === null) {
+      // Explicitly clearing webhook config
+      updateData.webhookConfig = null
+    } else {
+      // Get existing encrypted config for merging
+      const existing = await getDocumentTypeRaw(id)
+      const existingConfig = existing?.webhookConfig as DocumentWebhookConfig | null
+
+      // Merge: preserve existing encrypted values for unedited sensitive fields
+      updateData.webhookConfig = mergeWebhookConfigs(
+        existingConfig,
+        data.webhookConfig as DocumentWebhookConfig,
+      )
+    }
+  }
+
   if (data.validationInstructions !== undefined) {
     updateData.validationInstructions = data.validationInstructions
   }
@@ -157,7 +239,13 @@ export async function updateDocumentType(
     .where(eq(documentType.id, id))
     .returning()
 
-  return result || null
+  if (!result) return null
+
+  // Return with safe config (masked sensitive values)
+  const safeConfig = result.webhookConfig
+    ? createSafeWebhookConfig(result.webhookConfig as DocumentWebhookConfig)
+    : null
+  return { ...result, webhookConfig: safeConfig }
 }
 
 /**
