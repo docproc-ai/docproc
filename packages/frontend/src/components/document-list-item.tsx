@@ -1,3 +1,4 @@
+import { Loader2, X } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { StatusIcon } from '@/components/status-icon'
 
@@ -56,15 +57,8 @@ export function DocumentListItem({
             className="group"
             title="Click to cancel"
           >
-            {/* Spinner - hidden on hover */}
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-blue-500 animate-spin group-hover:hidden">
-              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-            </svg>
-            {/* X icon - shown on hover */}
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-red-500 hidden group-hover:block">
-              <path d="M18 6 6 18" />
-              <path d="m6 6 12 12" />
-            </svg>
+            <Loader2 className="h-4 w-4 text-blue-500 animate-spin group-hover:hidden" />
+            <X className="h-4 w-4 text-red-500 hidden group-hover:block" />
           </button>
         ) : (
           <StatusIcon status={doc.status || 'pending'} />
