@@ -46,13 +46,13 @@ function getEncryptionKey(): Buffer | null {
   }
   // Validate hex format and length
   if (!/^[0-9a-fA-F]{64}$/.test(key)) {
-    console.warn('WEBHOOK_ENCRYPTION_KEY must be exactly 64 hex characters (32 bytes). Encryption disabled.')
+    console.warn('[Webhook] WEBHOOK_ENCRYPTION_KEY must be exactly 64 hex characters (32 bytes). Encryption disabled.')
     return null
   }
   const buffer = Buffer.from(key, 'hex')
   // Double-check buffer length (should be 32 bytes for AES-256)
   if (buffer.length !== 32) {
-    console.warn(`WEBHOOK_ENCRYPTION_KEY produced invalid buffer length: ${buffer.length}. Expected 32.`)
+    console.warn(`[Webhook] Encryption key produced invalid buffer length: ${buffer.length}. Expected 32.`)
     return null
   }
   return buffer
