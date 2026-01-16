@@ -1,8 +1,19 @@
 import { Link, Outlet, useNavigate, useParams, useSearch } from '@tanstack/react-router'
 import { useCallback, useRef, useEffect, useState } from 'react'
+import {
+  ChevronLeft,
+  Settings,
+  Upload,
+  Square,
+  Check,
+  Undo2,
+  ChevronDown,
+  Save,
+  XCircle,
+  Trash2,
+  Keyboard,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Checkbox } from '@/components/ui/checkbox'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -10,17 +21,6 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogAction,
-  AlertDialogCancel,
-} from '@/components/ui/alert-dialog'
 import {
   ResizablePanelGroup,
   ResizablePanel,
@@ -29,32 +29,18 @@ import {
 import {
   useDocumentType,
   useDocument,
-  useDocuments,
-  useProcessDocument,
   useProcessDocumentStreaming,
-  useDeleteDocument,
-  useCreateBatch,
   useUpdateDocument,
-  useActiveJobs,
-  useCancelJob,
-  useCancelBatch,
 } from '@/lib/queries'
-import { useQueryClient } from '@tanstack/react-query'
 import { useSession } from '@/lib/auth'
 import { ButtonGroup } from '@/components/ui/button-group'
 import { ModelSelector } from '@/components/model-selector'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { Kbd } from '@/components/ui/kbd'
-import {
-  useDocumentTypeLiveUpdates,
-  useWebSocketStatus,
-  useJobEvents,
-} from '@/lib/websocket'
-import { useDebounce } from '@/lib/hooks'
+import { useDocumentTypeLiveUpdates, useWebSocketStatus } from '@/lib/websocket'
 import { DocumentEditorProvider } from '@/lib/document-editor-context'
-import { StatusIcon } from '@/components/status-icon'
 import { ConnectionIndicator } from '@/components/connection-indicator'
-import { DocumentListItem } from '@/components/document-list-item'
+import { DocumentQueue, useDocumentProcessingState } from '@/components/document-queue'
 
 export default function ProcessLayout() {
   const params = useParams({ strict: false })
@@ -66,34 +52,6 @@ export default function ProcessLayout() {
   const { q: urlSearch, status: urlStatus, page: urlPage } = useSearch({
     from: '/document-types/$slug/process',
   })
-
-  // Local state for controlled input (syncs to URL on debounce)
-  const [searchInput, setSearchInput] = useState(urlSearch)
-  const debouncedSearch = useDebounce(searchInput, 300)
-
-  // Sync debounced search to URL
-  useEffect(() => {
-    if (debouncedSearch !== urlSearch) {
-      navigate({
-        search: (prev) => ({ ...prev, q: debouncedSearch || undefined, page: 1 }),
-        replace: true,
-      })
-    }
-  }, [debouncedSearch, urlSearch, navigate])
-
-  // Update local input when URL changes (e.g., back/forward navigation)
-  useEffect(() => {
-    setSearchInput(urlSearch)
-  }, [urlSearch])
-
-  const [checkedDocIds, setCheckedDocIds] = useState<Set<string>>(new Set())
-  const [isUploading, setIsUploading] = useState(false)
-  const [isDragOver, setIsDragOver] = useState(false)
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  // Track active jobs with their IDs for cancellation
-  const [activeJobsMap, setActiveJobsMap] = useState<Map<string, { jobId: string; batchId?: string }>>(new Map())
-  const processingDocIds = new Set(activeJobsMap.keys())
-  const documentRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
   // Document action state (for header controls)
   const [isStreaming, setIsStreaming] = useState(false)
@@ -114,256 +72,75 @@ export default function ProcessLayout() {
 
   const { data: docType, isLoading: typeLoading } = useDocumentType(slug)
   const { data: currentDoc } = useDocument(selectedDocId || '')
-  const { data: documentsData, refetch } = useDocuments(docType?.id || '', {
-    page: urlPage,
-    status: urlStatus,
-    search: urlSearch || undefined,
-  })
 
-  const queryClient = useQueryClient()
-  const processDocument = useProcessDocument()
   const { processWithStreaming, abort: abortStreaming } = useProcessDocumentStreaming()
-  const deleteDocument = useDeleteDocument()
-  const createBatch = useCreateBatch()
   const updateDocument = useUpdateDocument()
-  const cancelJob = useCancelJob()
-  const cancelBatch = useCancelBatch()
+
+  // Track processing state for the selected document
+  const { isProcessing: isDocProcessing, processingDocIds } = useDocumentProcessingState(docType?.id || '')
 
   // WebSocket for live updates
   const wsStatus = useWebSocketStatus()
   useDocumentTypeLiveUpdates(docType?.id)
 
-  // Query active jobs for this document type (for page load)
-  const { data: activeJobsData } = useActiveJobs(docType?.id)
+  // ============================================
+  // Navigation Handlers
+  // ============================================
 
-  // Initialize activeJobsMap from server on page load
-  useEffect(() => {
-    if (activeJobsData?.jobs) {
-      setActiveJobsMap((prev) => {
-        const next = new Map(prev)
-        for (const job of activeJobsData.jobs as Array<{ id: string; documentId: string; batchId?: string }>) {
-          if (!next.has(job.documentId)) {
-            next.set(job.documentId, { jobId: job.id, batchId: job.batchId })
-          }
-        }
-        return next.size !== prev.size ? next : prev
-      })
-    }
-  }, [activeJobsData])
-
-  // Track processing state from WebSocket events (real-time updates)
-  useJobEvents(
-    useCallback((event) => {
-      if (!event.documentId) return
-
-      if (event.type === 'job:started' && event.jobId) {
-        setActiveJobsMap((prev) => {
-          const next = new Map(prev)
-          next.set(event.documentId!, { jobId: event.jobId!, batchId: event.batchId })
-          return next
-        })
-      } else if (event.type === 'job:completed' || event.type === 'job:failed') {
-        setActiveJobsMap((prev) => {
-          const next = new Map(prev)
-          next.delete(event.documentId!)
-          return next
-        })
-      }
-    }, []),
-    [docType?.id]
-  )
-
-  // Documents from server (already filtered/paginated)
-  const documents = documentsData?.documents || []
-
-  // Scroll to selected document when it changes or documents load
-  useEffect(() => {
-    if (selectedDocId && documentRefs.current.has(selectedDocId)) {
-      const element = documentRefs.current.get(selectedDocId)
-      if (element) {
-        setTimeout(() => {
-          element.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-        }, 100)
-      }
-    }
-  }, [selectedDocId, documents])
-
-  // Auto-select first document if none selected
-  useEffect(() => {
-    if (!selectedDocId && documents.length > 0 && docType?.slug) {
-      navigate({
-        to: '/document-types/$slug/process/$id',
-        params: { slug: docType.slug, id: documents[0].id },
-        search: (prev) => prev, // Preserve search params
-        replace: true,
-      })
-    }
-  }, [selectedDocId, documents, docType?.slug, navigate])
-
-  const handleSelectDoc = useCallback((docId: string) => {
+  const handleDocumentSelect = useCallback((docId: string) => {
     if (docType?.slug) {
       navigate({
         to: '/document-types/$slug/process/$id',
         params: { slug: docType.slug, id: docId },
-        search: (prev) => prev, // Preserve search params
+        search: (prev) => prev,
       })
     }
   }, [docType?.slug, navigate])
 
+  const handleSearchChange = useCallback((search: string) => {
+    navigate({
+      search: (prev) => ({ ...prev, q: search || undefined, page: 1 }),
+      replace: true,
+    })
+  }, [navigate])
+
+  const handleStatusChange = useCallback((status: string) => {
+    navigate({
+      search: (prev) => ({ ...prev, status, page: 1 }),
+      replace: true,
+    })
+  }, [navigate])
+
+  const handlePageChange = useCallback((page: number) => {
+    navigate({
+      search: (prev) => ({ ...prev, page }),
+      replace: true,
+    })
+  }, [navigate])
+
+  // ============================================
+  // Document Action Handlers (Header Controls)
+  // ============================================
+
   const handleFileUpload = useCallback(
     async (files: FileList) => {
       if (!docType) return
-      setIsUploading(true)
       const formData = new FormData()
       for (const file of files) {
         formData.append('files', file)
       }
       try {
-        const res = await fetch(`/api/document-types/${docType.slug}/upload`, {
+        await fetch(`/api/document-types/${docType.slug}/upload`, {
           method: 'POST',
           body: formData,
         })
-        if (res.ok) {
-          refetch()
-        }
       } catch (err) {
         console.error('Upload failed:', err)
-      } finally {
-        setIsUploading(false)
       }
     },
-    [docType, refetch]
+    [docType]
   )
 
-  // Bulk action handlers
-  const handleToggleCheck = useCallback((docId: string, checked: boolean) => {
-    setCheckedDocIds((prev) => {
-      const next = new Set(prev)
-      if (checked) {
-        next.add(docId)
-      } else {
-        next.delete(docId)
-      }
-      return next
-    })
-  }, [])
-
-  const handleSelectAll = useCallback(() => {
-    if (checkedDocIds.size === documents.length) {
-      setCheckedDocIds(new Set())
-    } else {
-      setCheckedDocIds(new Set(documents.map((d) => d.id)))
-    }
-  }, [checkedDocIds.size, documents])
-
-  const handleBulkDelete = useCallback(() => {
-    if (checkedDocIds.size === 0) return
-    setShowDeleteDialog(true)
-  }, [checkedDocIds.size])
-
-  const confirmBulkDelete = useCallback(async () => {
-    for (const id of checkedDocIds) {
-      await deleteDocument.mutateAsync(id)
-    }
-    setCheckedDocIds(new Set())
-    setShowDeleteDialog(false)
-  }, [checkedDocIds, deleteDocument])
-
-  const handleBulkProcess = useCallback(async () => {
-    if (checkedDocIds.size === 0 || !docType?.id) return
-
-    const idsToProcess = Array.from(checkedDocIds)
-
-    // Immediately mark as processing in local state (placeholder job IDs)
-    setActiveJobsMap((prev) => {
-      const next = new Map(prev)
-      for (const id of idsToProcess) {
-        next.set(id, { jobId: `pending-${id}` })
-      }
-      return next
-    })
-
-    try {
-      const result = await createBatch.mutateAsync({
-        documentTypeId: docType.id,
-        documentIds: idsToProcess,
-      })
-
-      // Update with real batch ID (real job IDs come from WebSocket)
-      if (result?.batchId) {
-        setActiveJobsMap((prev) => {
-          const next = new Map(prev)
-          for (const id of idsToProcess) {
-            const existing = next.get(id)
-            if (existing) {
-              next.set(id, { ...existing, batchId: result.batchId })
-            }
-          }
-          return next
-        })
-      }
-
-      setCheckedDocIds(new Set())
-    } catch (error) {
-      console.error('Batch processing failed:', error)
-      // Revert optimistic update on error
-      setActiveJobsMap((prev) => {
-        const next = new Map(prev)
-        for (const id of idsToProcess) {
-          next.delete(id)
-        }
-        return next
-      })
-      // Fallback to individual processing
-      for (const id of checkedDocIds) {
-        await processDocument.mutateAsync({ documentId: id })
-      }
-      setCheckedDocIds(new Set())
-    }
-  }, [checkedDocIds, docType?.id, createBatch, processDocument])
-
-  const handleBulkApprove = useCallback(async () => {
-    if (checkedDocIds.size === 0) return
-
-    for (const id of checkedDocIds) {
-      await updateDocument.mutateAsync({ id, data: { status: 'approved' } })
-    }
-    setCheckedDocIds(new Set())
-  }, [checkedDocIds, updateDocument])
-
-  // Cancel all processing jobs
-  const handleCancelAllProcessing = useCallback(async () => {
-    // Get unique batch IDs from active jobs
-    const batchIds = new Set<string>()
-    for (const job of activeJobsMap.values()) {
-      if (job.batchId) batchIds.add(job.batchId)
-    }
-
-    // Cancel all batches
-    for (const batchId of batchIds) {
-      await cancelBatch.mutateAsync(batchId)
-    }
-
-    // Clear local state
-    setActiveJobsMap(new Map())
-  }, [activeJobsMap, cancelBatch])
-
-  // Cancel a specific job by document ID
-  const handleCancelJob = useCallback(async (documentId: string) => {
-    const job = activeJobsMap.get(documentId)
-    if (!job) return
-
-    await cancelJob.mutateAsync(job.jobId)
-
-    // Remove from local state
-    setActiveJobsMap((prev) => {
-      const next = new Map(prev)
-      next.delete(documentId)
-      return next
-    })
-  }, [activeJobsMap, cancelJob])
-
-  // Document action handlers (for header controls)
   const handleProcess = useCallback(async () => {
     if (!currentDoc) return
 
@@ -372,37 +149,18 @@ export default function ProcessLayout() {
     setStreamingData({})
     abortStreamRef.current = abortStreaming
 
-    // Mark as processing in local state (streaming has no job ID)
-    setActiveJobsMap((prev) => {
-      const next = new Map(prev)
-      next.set(currentDoc.id, { jobId: `streaming-${currentDoc.id}` })
-      return next
-    })
-
     try {
       await processWithStreaming(
         currentDoc.id,
         modelOverride || undefined,
-        (partialData) => {
-          setStreamingData({ ...partialData })
-        },
-        (completeData) => {
-          setStreamingData({ ...completeData })
-        },
-        (error) => {
-          console.error('Processing error:', error)
-        },
+        (partialData) => setStreamingData({ ...partialData }),
+        (completeData) => setStreamingData({ ...completeData }),
+        (error) => console.error('Processing error:', error),
       )
     } finally {
       setIsStreaming(false)
       setStreamingDocId(null)
       abortStreamRef.current = null
-      // Remove from processing state when done
-      setActiveJobsMap((prev) => {
-        const next = new Map(prev)
-        next.delete(currentDoc.id)
-        return next
-      })
     }
   }, [currentDoc, modelOverride, processWithStreaming, abortStreaming])
 
@@ -455,6 +213,10 @@ export default function ProcessLayout() {
     setIsStreaming(false)
   }, [selectedDocId])
 
+  // ============================================
+  // Render
+  // ============================================
+
   if (typeLoading) {
     return (
       <div className="h-screen flex items-center justify-center">
@@ -473,6 +235,8 @@ export default function ProcessLayout() {
     )
   }
 
+  const isSelectedDocProcessing = selectedDocId ? (isStreaming || isDocProcessing(selectedDocId)) : false
+
   return (
     <div className="h-screen flex flex-col">
       {/* Header */}
@@ -483,19 +247,7 @@ export default function ProcessLayout() {
             to="/document-types"
             className="p-2 hover:bg-muted rounded-lg transition-colors"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="m15 18-6-6 6-6" />
-            </svg>
+            <ChevronLeft className="h-5 w-5" />
           </Link>
           <div className="flex items-center gap-2">
             <h1 className="font-semibold">{docType.name}</h1>
@@ -505,20 +257,7 @@ export default function ProcessLayout() {
               className="p-1 hover:bg-muted rounded transition-colors text-muted-foreground hover:text-foreground"
               title="Settings"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
+              <Settings className="h-4 w-4" />
             </Link>
             <ConnectionIndicator status={wsStatus} />
           </div>
@@ -533,21 +272,7 @@ export default function ProcessLayout() {
             />
             <Button variant="outline" size="sm" asChild>
               <span className="flex items-center gap-2">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="17 8 12 3 7 8" />
-                  <line x1="12" x2="12" y1="3" y2="15" />
-                </svg>
+                <Upload className="h-4 w-4" />
                 Upload
               </span>
             </Button>
@@ -567,18 +292,9 @@ export default function ProcessLayout() {
             )}
 
             {/* Process/Stop ButtonGroup */}
-            {selectedDocId && processingDocIds.has(selectedDocId) ? (
+            {isSelectedDocProcessing ? (
               <Button variant="outline" size="sm" onClick={handleStop}>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  className="mr-1"
-                >
-                  <rect x="6" y="6" width="12" height="12" />
-                </svg>
+                <Square className="h-4 w-4 mr-1 fill-current" />
                 Stop
               </Button>
             ) : (
@@ -589,9 +305,7 @@ export default function ProcessLayout() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="icon" className="h-8 w-8" disabled={!currentDoc}>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="m6 9 6 6 6-6" />
-                      </svg>
+                      <ChevronDown className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
@@ -612,22 +326,17 @@ export default function ProcessLayout() {
                   onClick={handleUnapprove}
                   disabled={updateDocument.isPending}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
-                    <path d="M3 7v6h6" />
-                    <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
-                  </svg>
+                  <Undo2 className="h-4 w-4 mr-1" />
                   Unapprove
                 </Button>
               ) : (
                 <Button
                   size="sm"
                   onClick={handleApprove}
-                  disabled={updateDocument.isPending || (selectedDocId && processingDocIds.has(selectedDocId))}
+                  disabled={updateDocument.isPending || isSelectedDocProcessing}
                   className="bg-green-600 hover:bg-green-700 text-white"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
+                  <Check className="h-4 w-4 mr-1" />
                   Approve
                 </Button>
               )}
@@ -636,38 +345,24 @@ export default function ProcessLayout() {
                   <Button
                     size="icon"
                     className={`h-8 w-8 ${currentDoc.status === 'approved' ? '' : 'bg-green-600 hover:bg-green-700 text-white'}`}
-                    disabled={updateDocument.isPending || (selectedDocId && processingDocIds.has(selectedDocId))}
+                    disabled={updateDocument.isPending || isSelectedDocProcessing}
                     variant={currentDoc.status === 'approved' ? 'secondary' : 'default'}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="m6 9 6 6 6-6" />
-                    </svg>
+                    <ChevronDown className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={handleSaveFromHeader} disabled={!hasUnsavedChanges}>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
-                      <path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
-                      <path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7" />
-                      <path d="M7 3v4a1 1 0 0 0 1 1h7" />
-                    </svg>
+                    <Save className="mr-2 h-4 w-4" />
                     Save
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleReject} className="text-red-600 focus:text-red-600 focus:bg-red-50">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
-                      <circle cx="12" cy="12" r="10" />
-                      <path d="m15 9-6 6" />
-                      <path d="m9 9 6 6" />
-                    </svg>
+                    <XCircle className="mr-2 h-4 w-4" />
                     Reject
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleClear} className="text-orange-600 focus:text-orange-600 focus:bg-orange-50">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
-                      <path d="M3 6h18" />
-                      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                    </svg>
+                    <Trash2 className="mr-2 h-4 w-4" />
                     Clear Data
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -678,17 +373,7 @@ export default function ProcessLayout() {
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8" title="Keyboard shortcuts">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M10 8h.01" />
-                    <path d="M12 12h.01" />
-                    <path d="M14 8h.01" />
-                    <path d="M16 12h.01" />
-                    <path d="M18 8h.01" />
-                    <path d="M6 8h.01" />
-                    <path d="M7 16h10" />
-                    <path d="M8 12h.01" />
-                    <rect width="20" height="16" x="2" y="4" rx="2" />
-                  </svg>
+                  <Keyboard className="h-4 w-4" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-72">
@@ -713,266 +398,20 @@ export default function ProcessLayout() {
         className="flex-1"
         autoSaveId="docproc:panel-sizes"
       >
-        {/* Left: Document list */}
+        {/* Left: Document queue */}
         <ResizablePanel defaultSize={20} minSize={15} maxSize={30}>
-          <div className="h-full flex flex-col bg-background">
-            {/* Search and filter */}
-            <div className="p-3 border-b space-y-2">
-              <Input
-                placeholder="Search documents..."
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                className="h-9"
-              />
-              <ToggleGroup
-                type="single"
-                value={urlStatus}
-                onValueChange={(value: string) => {
-                  if (value) {
-                    navigate({
-                      search: (prev) => ({ ...prev, status: value, page: 1 }),
-                      replace: true,
-                    })
-                  }
-                }}
-                size="sm"
-                className="w-full"
-              >
-                <ToggleGroupItem value="all" className="flex-1" aria-label="All documents">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                    <path d="M20 7h-3a2 2 0 0 1-2-2V2" />
-                    <path d="M9 18a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h7l4 4v10a2 2 0 0 1-2 2Z" />
-                    <path d="M3 7.6v12.8A1.6 1.6 0 0 0 4.6 22h9.8" />
-                  </svg>
-                </ToggleGroupItem>
-                <ToggleGroupItem value="pending" className="flex-1" aria-label="Pending">
-                  <StatusIcon status="pending" size="sm" />
-                </ToggleGroupItem>
-                <ToggleGroupItem value="processed" className="flex-1" aria-label="Processed">
-                  <StatusIcon status="processed" size="sm" />
-                </ToggleGroupItem>
-                <ToggleGroupItem value="approved" className="flex-1" aria-label="Approved">
-                  <StatusIcon status="approved" size="sm" />
-                </ToggleGroupItem>
-                <ToggleGroupItem value="rejected" className="flex-1" aria-label="Rejected">
-                  <StatusIcon status="rejected" size="sm" />
-                </ToggleGroupItem>
-              </ToggleGroup>
-            </div>
-
-            {/* Bulk actions bar */}
-            <div className="px-3 h-10 border-b bg-muted/30 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  checked={checkedDocIds.size === documents.length && documents.length > 0}
-                  onCheckedChange={() => handleSelectAll()}
-                />
-                <span className="text-xs text-muted-foreground">
-                  {checkedDocIds.size > 0
-                    ? `${checkedDocIds.size} selected`
-                    : 'Select all'}
-                </span>
-                {/* Processing count with cancel on hover */}
-                {(() => {
-                  const processingCount = documents.filter(d => processingDocIds.has(d.id)).length
-                  return processingCount > 0 ? (
-                    <button
-                      onClick={handleCancelAllProcessing}
-                      className="group flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                      title="Click to cancel all processing"
-                    >
-                      {/* Spinner - hidden on hover */}
-                      <svg className="w-3 h-3 animate-spin group-hover:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                      </svg>
-                      {/* X icon - shown on hover */}
-                      <svg className="w-3 h-3 hidden group-hover:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M18 6 6 18" />
-                        <path d="m6 6 12 12" />
-                      </svg>
-                      {processingCount}
-                    </button>
-                  ) : null
-                })()}
-              </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs"
-                    disabled={checkedDocIds.size === 0}
-                  >
-                    Actions
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="ml-1"
-                    >
-                      <path d="m6 9 6 6 6-6" />
-                    </svg>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={handleBulkProcess}>
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="mr-2"
-                    >
-                      <path d="M12 3v3" />
-                      <path d="M18.5 13h-13" />
-                      <path d="m6 10 1.5 7" />
-                      <path d="m18 10-1.5 7" />
-                      <circle cx="12" cy="18" r="2" />
-                    </svg>
-                    Process selected
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleBulkApprove}>
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="mr-2"
-                    >
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                    Approve selected
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={handleBulkDelete}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="mr-2"
-                    >
-                      <path d="M3 6h18" />
-                      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                      <line x1="10" x2="10" y1="11" y2="17" />
-                      <line x1="14" x2="14" y1="11" y2="17" />
-                    </svg>
-                    Delete selected
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-            {/* Document list (dropzone) */}
-            <div
-              className={`flex-1 overflow-y-auto relative transition-colors ${
-                isDragOver ? 'bg-primary/5' : ''
-              }`}
-              onDrop={(e) => {
-                e.preventDefault()
-                setIsDragOver(false)
-                if (e.dataTransfer.files.length > 0) {
-                  handleFileUpload(e.dataTransfer.files)
-                }
-              }}
-              onDragOver={(e) => {
-                e.preventDefault()
-                setIsDragOver(true)
-              }}
-              onDragLeave={(e) => {
-                // Only set false if leaving the container (not entering a child)
-                if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                  setIsDragOver(false)
-                }
-              }}
-            >
-              {/* Drag overlay */}
-              {isDragOver && (
-                <div className="absolute inset-0 flex items-center justify-center bg-primary/10 border-2 border-dashed border-primary rounded-lg m-2 pointer-events-none z-10">
-                  <span className="text-sm font-medium text-primary">Drop files to upload</span>
-                </div>
-              )}
-              {documents.length === 0 ? (
-                <div className="p-4 text-center text-sm text-muted-foreground">
-                  {isUploading ? 'Uploading...' : 'No documents - drag files here to upload'}
-                </div>
-              ) : (
-                documents.map((doc) => (
-                  <DocumentListItem
-                    key={doc.id}
-                    doc={doc}
-                    isSelected={selectedDocId === doc.id}
-                    isChecked={checkedDocIds.has(doc.id)}
-                    isProcessing={processingDocIds.has(doc.id)}
-                    onSelect={() => handleSelectDoc(doc.id)}
-                    onCheck={(checked) => handleToggleCheck(doc.id, checked)}
-                    onCancelJob={() => handleCancelJob(doc.id)}
-                    registerRef={(id, el) => {
-                      if (el) {
-                        documentRefs.current.set(id, el)
-                      } else {
-                        documentRefs.current.delete(id)
-                      }
-                    }}
-                  />
-                ))
-              )}
-            </div>
-
-            {/* Pagination */}
-            <div className="px-3 py-2 border-t flex items-center justify-between text-sm">
-              <button
-                type="button"
-                onClick={() => navigate({
-                  search: (prev) => ({ ...prev, page: Math.max(1, urlPage - 1) }),
-                  replace: true,
-                })}
-                disabled={urlPage <= 1}
-                className="px-2 py-1 rounded hover:bg-muted disabled:opacity-50"
-              >
-                ‹
-              </button>
-              <span className="text-muted-foreground">
-                {urlPage} / {documentsData?.pagination?.totalPages || 1}
-              </span>
-              <button
-                type="button"
-                onClick={() => navigate({
-                  search: (prev) => ({ ...prev, page: urlPage + 1 }),
-                  replace: true,
-                })}
-                disabled={!documentsData?.pagination || urlPage >= documentsData.pagination.totalPages}
-                className="px-2 py-1 rounded hover:bg-muted disabled:opacity-50"
-              >
-                ›
-              </button>
-            </div>
-          </div>
+          <DocumentQueue
+            documentTypeId={docType.id}
+            documentTypeSlug={docType.slug}
+            selectedDocId={selectedDocId}
+            urlSearch={urlSearch}
+            urlStatus={urlStatus}
+            urlPage={urlPage}
+            onDocumentSelect={handleDocumentSelect}
+            onSearchChange={handleSearchChange}
+            onStatusChange={handleStatusChange}
+            onPageChange={handlePageChange}
+          />
         </ResizablePanel>
 
         <ResizableHandle />
@@ -981,7 +420,7 @@ export default function ProcessLayout() {
         <ResizablePanel defaultSize={80} minSize={50}>
           <DocumentEditorProvider
             streamingData={streamingDocId === selectedDocId ? streamingData : null}
-            isStreaming={selectedDocId ? processingDocIds.has(selectedDocId) : false}
+            isStreaming={isSelectedDocProcessing}
             registerSave={registerSave}
             hasUnsavedChanges={hasUnsavedChanges}
             setHasUnsavedChanges={setHasUnsavedChanges}
@@ -990,27 +429,6 @@ export default function ProcessLayout() {
           </DocumentEditorProvider>
         </ResizablePanel>
       </ResizablePanelGroup>
-
-      {/* Delete confirmation dialog */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Documents</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete {checkedDocIds.size} document(s)? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmBulkDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }
