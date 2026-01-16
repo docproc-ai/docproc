@@ -57,6 +57,7 @@ export const documentTypesRoutes = new Hono()
           schema: data.schema as Record<string, unknown>,
           validationInstructions: data.validationInstructions,
           modelName: data.modelName,
+          slugPattern: data.slugPattern,
           webhookConfig: data.webhookConfig as Record<string, unknown> | undefined,
           createdBy: user?.id,
         })
@@ -115,6 +116,7 @@ export const documentTypesRoutes = new Hono()
           schema: data.schema as Record<string, unknown> | undefined,
           validationInstructions: data.validationInstructions,
           modelName: data.modelName,
+          slugPattern: data.slugPattern,
           webhookConfig: data.webhookConfig as Record<string, unknown> | undefined,
           updatedBy: user?.id,
         })

@@ -39,6 +39,7 @@ export interface UpdateDocumentData {
   schemaSnapshot?: Record<string, unknown> | null
   status?: DocumentStatus
   rejectionReason?: string | null
+  slug?: string | null
   updatedBy?: string | null
 }
 
@@ -105,6 +106,31 @@ export async function getDocuments(
 export async function getDocument(id: string): Promise<DocumentSelect | null> {
   const [result] = await db.select().from(document).where(eq(document.id, id))
   return result || null
+}
+
+/**
+ * Check if a string is a valid UUID
+ */
+function isUUID(str: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)
+}
+
+/**
+ * Get a single document by slug or ID (slug first, falls back to ID)
+ * This enables backwards compatibility for legacy documents without slugs
+ */
+export async function getDocumentBySlugOrId(slugOrId: string): Promise<DocumentSelect | null> {
+  // Try slug first
+  const [bySlug] = await db.select().from(document).where(eq(document.slug, slugOrId))
+  if (bySlug) return bySlug
+
+  // Fall back to ID lookup (only if it looks like a UUID)
+  if (isUUID(slugOrId)) {
+    const [byId] = await db.select().from(document).where(eq(document.id, slugOrId))
+    return byId || null
+  }
+
+  return null
 }
 
 /**
@@ -180,6 +206,9 @@ export async function updateDocument(
   }
   if (data.rejectionReason !== undefined) {
     updateData.rejectionReason = data.rejectionReason
+  }
+  if (data.slug !== undefined) {
+    updateData.slug = data.slug
   }
   if (data.updatedBy !== undefined) {
     updateData.updatedBy = data.updatedBy

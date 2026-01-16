@@ -20,6 +20,7 @@ export default function DocumentTypeSettingsPage() {
     name: string
     validationInstructions: string
     modelName: string
+    slugPattern: string
     schema: JsonSchema
     isValid: boolean
   } | null>(null)
@@ -33,8 +34,9 @@ export default function DocumentTypeSettingsPage() {
       const hasNameChange = formData.name !== docType.name
       const hasInstructionsChange = (formData.validationInstructions || '') !== (docType.validationInstructions || '')
       const hasModelChange = (formData.modelName || '') !== (docType.modelName || '')
+      const hasSlugPatternChange = (formData.slugPattern || '') !== (docType.slugPattern || '')
       const hasSchemaChange = JSON.stringify(formData.schema) !== JSON.stringify(docType.schema)
-      setHasChanges(hasNameChange || hasInstructionsChange || hasModelChange || hasSchemaChange)
+      setHasChanges(hasNameChange || hasInstructionsChange || hasModelChange || hasSlugPatternChange || hasSchemaChange)
     }
   }, [docType, formData])
 
@@ -54,6 +56,7 @@ export default function DocumentTypeSettingsPage() {
           schema: formData.schema as Record<string, unknown>,
           validationInstructions: formData.validationInstructions || null,
           modelName: formData.modelName || null,
+          slugPattern: formData.slugPattern || null,
         },
       })
 
@@ -227,6 +230,7 @@ export default function DocumentTypeSettingsPage() {
             name: docType.name,
             validationInstructions: docType.validationInstructions || null,
             modelName: docType.modelName || '',
+            slugPattern: docType.slugPattern || null,
             schema: docType.schema as JsonSchema,
           }}
           onFormDataChange={setFormData}

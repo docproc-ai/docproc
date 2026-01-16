@@ -30,6 +30,7 @@ export const createDocumentTypeRequest = z.object({
   schema: z.record(z.string(), z.unknown()),
   validationInstructions: z.string().nullable().optional(),
   modelName: z.string().nullable().optional(),
+  slugPattern: z.string().nullable().optional(),
   webhookConfig: z.record(z.string(), z.unknown()).nullable().optional(),
 })
 
@@ -38,6 +39,7 @@ export const updateDocumentTypeRequest = z.object({
   schema: z.record(z.string(), z.unknown()).optional(),
   validationInstructions: z.string().nullable().optional(),
   modelName: z.string().nullable().optional(),
+  slugPattern: z.string().nullable().optional(),
   webhookConfig: z.record(z.string(), z.unknown()).nullable().optional(),
 })
 

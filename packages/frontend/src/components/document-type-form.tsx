@@ -13,12 +13,14 @@ interface DocumentTypeFormProps {
     name: string
     validationInstructions: string | null
     modelName: string
+    slugPattern: string | null
     schema: JsonSchema
   }
   onFormDataChange?: (formData: {
     name: string
     validationInstructions: string
     modelName: string
+    slugPattern: string
     schema: JsonSchema
     isValid: boolean
   }) => void
@@ -46,6 +48,7 @@ export function DocumentTypeForm({
     initialData?.validationInstructions || '',
   )
   const [modelName, setModelName] = useState(initialData?.modelName || '')
+  const [slugPattern, setSlugPattern] = useState(initialData?.slugPattern || '')
   const [schemaText, setSchemaText] = useState(
     JSON.stringify(initialData?.schema || defaultSchema, null, 2),
   )
@@ -67,11 +70,12 @@ export function DocumentTypeForm({
         name,
         validationInstructions,
         modelName,
+        slugPattern,
         schema,
         isValid,
       })
     }
-  }, [name, validationInstructions, modelName, schema, isValid, onFormDataChange])
+  }, [name, validationInstructions, modelName, slugPattern, schema, isValid, onFormDataChange])
 
   const handleSchemaTextChange = useCallback((text: string | undefined) => {
     setSchemaText(text || '')
@@ -107,6 +111,21 @@ export function DocumentTypeForm({
             />
             <p className="text-xs text-muted-foreground">
               Leave blank to use the default model. You can also type a custom model ID.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="slugPattern">Document Slug Pattern (optional)</Label>
+            <Input
+              id="slugPattern"
+              value={slugPattern}
+              onChange={(e) => setSlugPattern(e.target.value)}
+              placeholder="e.g., {vendor}-{invoice_number}-{id()}"
+              className="font-mono text-sm"
+            />
+            <p className="text-xs text-muted-foreground">
+              Pattern for generating document slugs from extracted data.
+              Use <code className="bg-muted px-1 rounded">{'{field_name}'}</code> to reference schema fields,
+              or <code className="bg-muted px-1 rounded">{'{id()}'}</code> for a unique ID.
             </p>
           </div>
         </CardContent>

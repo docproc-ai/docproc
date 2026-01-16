@@ -17,6 +17,7 @@ export interface CreateDocumentTypeData {
   webhookConfig?: Record<string, unknown> | null
   validationInstructions?: string | null
   modelName?: string | null
+  slugPattern?: string | null
   createdBy?: string | null
 }
 
@@ -26,6 +27,7 @@ export interface UpdateDocumentTypeData {
   webhookConfig?: Record<string, unknown> | null
   validationInstructions?: string | null
   modelName?: string | null
+  slugPattern?: string | null
   updatedBy?: string | null
 }
 
@@ -120,6 +122,7 @@ export async function createDocumentType(
       webhookConfig: data.webhookConfig || null,
       validationInstructions: data.validationInstructions || null,
       modelName: data.modelName || null,
+      slugPattern: data.slugPattern || null,
       createdBy: data.createdBy || null,
     })
     .returning()
@@ -145,6 +148,7 @@ export async function updateDocumentType(
     updateData.validationInstructions = data.validationInstructions
   }
   if (data.modelName !== undefined) updateData.modelName = data.modelName
+  if (data.slugPattern !== undefined) updateData.slugPattern = data.slugPattern
   if (data.updatedBy !== undefined) updateData.updatedBy = data.updatedBy
 
   const [result] = await db

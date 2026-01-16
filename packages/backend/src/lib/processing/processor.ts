@@ -15,6 +15,7 @@ import {
   type ProcessingOptions,
   type ProcessingResult,
 } from './shared'
+import { generateSlugFromPattern } from '../slug-template'
 
 // Initialize OpenRouter client (for non-streaming)
 const openrouter = new OpenRouter({
@@ -234,11 +235,18 @@ export async function processAndSaveDocument(
 
   const { data, validation } = await processDocument(documentId, options)
 
-  // Update document with extracted data
+  // Generate slug if document doesn't have one and document type has a pattern
+  let slug: string | null = null
+  if (!doc.slug && docType.slugPattern) {
+    slug = generateSlugFromPattern(docType.slugPattern, data, doc.id)
+  }
+
+  // Update document with extracted data and optionally the slug
   const updatedDoc = await updateDocument(documentId, {
     extractedData: data,
     status: 'processed',
     schemaSnapshot: docType.schema as Record<string, unknown>,
+    ...(slug && { slug }),
   })
 
   // Validation rejection is already handled in processDocument
@@ -335,11 +343,18 @@ export async function* processDocumentStreaming(
     yield { type: 'partial', data: finalData }
   }
 
+  // Generate slug if document doesn't have one and document type has a pattern
+  let slug: string | null = null
+  if (!doc.slug && docType.slugPattern) {
+    slug = generateSlugFromPattern(docType.slugPattern, finalData, doc.id)
+  }
+
   // Save to database
   await updateDocument(documentId, {
     extractedData: finalData,
     status: 'processed',
     schemaSnapshot: schema,
+    ...(slug && { slug }),
   })
 
   yield { type: 'complete', data: finalData }
@@ -431,10 +446,17 @@ export async function prepareDocumentForStreaming(
     ],
     documentId,
     updateDocumentOnComplete: async (data: Record<string, unknown>) => {
+      // Generate slug if document doesn't have one and document type has a pattern
+      let slug: string | null = null
+      if (!doc.slug && docType.slugPattern) {
+        slug = generateSlugFromPattern(docType.slugPattern, data, doc.id)
+      }
+
       await updateDocument(documentId, {
         extractedData: data,
         status: 'processed',
         schemaSnapshot: schema,
+        ...(slug && { slug }),
       })
     },
   }

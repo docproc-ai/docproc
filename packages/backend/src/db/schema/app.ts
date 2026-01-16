@@ -12,6 +12,8 @@ export const documentType = pgTable('document_type', {
   // providerName is deprecated but kept for migration compatibility
   providerName: text('provider_name'),
   modelName: text('model_name'),
+  // Pattern for generating document slugs, e.g. "{vendor}-{invoice_number}-{id()}"
+  slugPattern: text('slug_pattern'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at')
     .defaultNow()
@@ -37,6 +39,8 @@ export const document = pgTable(
     status: documentStatus('status').default('pending'),
     filename: text('filename').notNull(),
     storagePath: text('storage_path').notNull(), // Will be renamed to storageKey in future migration
+    // Friendly slug/alias for the document (nullable for legacy docs, falls back to id)
+    slug: text('slug'),
     extractedData: json('extracted_data'),
     schemaSnapshot: json('schema_snapshot'),
     rejectionReason: text('rejection_reason'),
@@ -50,6 +54,7 @@ export const document = pgTable(
   (table) => [
     index('idx_document_document_type_id').on(table.documentTypeId),
     index('idx_document_status').on(table.status),
+    index('idx_document_slug').on(table.slug),
   ],
 )
 

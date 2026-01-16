@@ -10,6 +10,7 @@ import {
 import {
   getDocuments,
   getDocument,
+  getDocumentBySlugOrId,
   updateDocument,
   deleteDocument,
   bulkUpdateDocumentStatus,
@@ -111,15 +112,15 @@ export const documentsRoutes = new Hono()
     },
   )
 
-  // GET /api/documents/:id - Get one
+  // GET /api/documents/:id - Get one (supports both slug and UUID)
   .get(
     '/:id',
     requireApiKeyOrAuth,
-    zValidator('param', z.object({ id: z.uuid() })),
+    zValidator('param', z.object({ id: z.string().min(1) })),
     async (c) => {
       try {
         const { id } = c.req.valid('param')
-        const result = await getDocument(id)
+        const result = await getDocumentBySlugOrId(id)
 
         if (!result) {
           return c.json({ error: 'Document not found' }, 404)
@@ -133,12 +134,12 @@ export const documentsRoutes = new Hono()
     },
   )
 
-  // PUT /api/documents/:id - Update
+  // PUT /api/documents/:id - Update (supports both slug and UUID)
   .put(
     '/:id',
     requireAuth,
     requirePermission('document', 'update'),
-    zValidator('param', z.object({ id: z.uuid() })),
+    zValidator('param', z.object({ id: z.string().min(1) })),
     zValidator('json', updateDocumentRequest),
     async (c) => {
       try {
@@ -146,7 +147,13 @@ export const documentsRoutes = new Hono()
         const data = c.req.valid('json')
         const user = c.get('user')
 
-        const result = await updateDocument(id, {
+        // Resolve slug to actual document ID
+        const doc = await getDocumentBySlugOrId(id)
+        if (!doc) {
+          return c.json({ error: 'Document not found' }, 404)
+        }
+
+        const result = await updateDocument(doc.id, {
           extractedData: data.extractedData as Record<string, unknown> | undefined,
           schemaSnapshot: data.schemaSnapshot as Record<string, unknown> | undefined,
           status: data.status,
@@ -166,16 +173,16 @@ export const documentsRoutes = new Hono()
     },
   )
 
-  // DELETE /api/documents/:id - Delete
+  // DELETE /api/documents/:id - Delete (supports both slug and UUID)
   .delete(
     '/:id',
     requireAuth,
     requirePermission('document', 'delete'),
-    zValidator('param', z.object({ id: z.uuid() })),
+    zValidator('param', z.object({ id: z.string().min(1) })),
     async (c) => {
       try {
         const { id } = c.req.valid('param')
-        const doc = await getDocument(id)
+        const doc = await getDocumentBySlugOrId(id)
 
         if (!doc) {
           return c.json({ error: 'Document not found' }, 404)
@@ -185,11 +192,11 @@ export const documentsRoutes = new Hono()
         try {
           await storage.delete(doc.storagePath)
         } catch (err) {
-          console.error(`Failed to delete file for document ${id}:`, err)
+          console.error(`Failed to delete file for document ${doc.id}:`, err)
         }
 
         // Delete document from database
-        await deleteDocument(id)
+        await deleteDocument(doc.id)
 
         return c.json({ success: true }, 200)
       } catch (error) {
@@ -199,15 +206,15 @@ export const documentsRoutes = new Hono()
     },
   )
 
-  // GET /api/documents/:id/file - Download file
+  // GET /api/documents/:id/file - Download file (supports both slug and UUID)
   .get(
     '/:id/file',
     requireApiKeyOrAuth,
-    zValidator('param', z.object({ id: z.uuid() })),
+    zValidator('param', z.object({ id: z.string().min(1) })),
     async (c) => {
       try {
         const { id } = c.req.valid('param')
-        const doc = await getDocument(id)
+        const doc = await getDocumentBySlugOrId(id)
 
         if (!doc) {
           return c.json({ error: 'Document not found' }, 404)

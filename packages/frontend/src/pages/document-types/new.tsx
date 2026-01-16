@@ -121,6 +121,7 @@ export default function NewDocumentTypePage() {
   const [name, setName] = useState('')
   const [validationInstructions, setValidationInstructions] = useState('')
   const [modelName, setModelName] = useState('')
+  const [slugPattern, setSlugPattern] = useState('')
   const [fields, setFields] = useState<Array<{ name: string; type: string; description: string }>>([])
   const [error, setError] = useState<string | null>(null)
 
@@ -162,6 +163,7 @@ export default function NewDocumentTypePage() {
         schema,
         validationInstructions: validationInstructions || undefined,
         modelName: modelName || undefined,
+        slugPattern: slugPattern || undefined,
       })
 
       navigate({ to: '/document-types/$slug', params: { slug: result.slug } })
@@ -227,6 +229,22 @@ export default function NewDocumentTypePage() {
               />
               <p className="text-xs text-muted-foreground">
                 Leave blank to use the default model configured in the server.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="slugPattern">Document Slug Pattern (optional)</Label>
+              <Input
+                id="slugPattern"
+                value={slugPattern}
+                onChange={(e) => setSlugPattern(e.target.value)}
+                placeholder="e.g., {vendor}-{invoice_number}-{id()}"
+                className="max-w-md font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                Pattern for generating document slugs from extracted data.
+                Use <code className="bg-muted px-1 rounded">{'{field_name}'}</code> to reference schema fields,
+                or <code className="bg-muted px-1 rounded">{'{id()}'}</code> for a unique ID.
               </p>
             </div>
           </CardContent>
