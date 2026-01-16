@@ -7,26 +7,24 @@ import {
   RouterProvider,
   useNavigate,
   useRouterState,
-} from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-import { StrictMode } from 'react'
-import ReactDOM from 'react-dom/client'
+} from "@tanstack/react-router"
+import { TanStackRouterDevtools } from "@tanstack/react-router-devtools"
+import { StrictMode } from "react"
+import ReactDOM from "react-dom/client"
 
-import { Button } from './components/ui/button'
-import * as TanStackQueryProvider from './integrations/tanstack-query/root-provider.tsx'
-import { useSession, signOut } from './lib/auth'
-import { ThemeProvider, useTheme } from './lib/theme'
-
+import { Button } from "./components/ui/button"
+import * as TanStackQueryProvider from "./integrations/tanstack-query/root-provider.tsx"
+import { signOut, useSession } from "./lib/auth"
+import { ThemeProvider, useTheme } from "./lib/theme"
+import DocumentTypesPage from "./pages/document-types"
+import DocumentTypeDetailPage from "./pages/document-types/[slug]"
+import DocumentTypeSettingsPage from "./pages/document-types/[slug]/settings"
+import NewDocumentTypePage from "./pages/document-types/new"
 // Page components
-import LoginPage from './pages/login'
-import DocumentTypesPage from './pages/document-types'
-import DocumentTypeDetailPage from './pages/document-types/[slug]'
-import DocumentTypeSettingsPage from './pages/document-types/[slug]/settings'
-import NewDocumentTypePage from './pages/document-types/new'
-import DocumentDetailPage from './pages/documents/[id]'
+import LoginPage from "./pages/login"
 
-import './styles.css'
-import reportWebVitals from './reportWebVitals.ts'
+import "./styles.css"
+import reportWebVitals from "./reportWebVitals.ts"
 
 // Decorative logo mark
 function LogoMark() {
@@ -67,9 +65,9 @@ function ThemeToggle() {
       size="icon"
       onClick={toggleTheme}
       className="h-9 w-9"
-      aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+      aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
     >
-      {theme === 'dark' ? (
+      {theme === "dark" ? (
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="18"
@@ -117,7 +115,7 @@ function AppHeader() {
 
   const handleSignOut = async () => {
     await signOut()
-    navigate({ to: '/login' })
+    navigate({ to: "/login" })
   }
 
   return (
@@ -187,11 +185,11 @@ function HomePage() {
   }
 
   if (!session?.user) {
-    navigate({ to: '/login' })
+    navigate({ to: "/login" })
     return null
   }
 
-  navigate({ to: '/document-types' })
+  navigate({ to: "/document-types" })
   return null
 }
 
@@ -202,9 +200,10 @@ function RootLayout() {
 
   // Hide main header on document type detail pages (3-pane view has its own header)
   // But show it on settings and new pages
-  const hideHeader = pathname.startsWith('/document-types/') &&
-    pathname !== '/document-types/new' &&
-    !pathname.endsWith('/settings')
+  const hideHeader =
+    pathname.startsWith("/document-types/") &&
+    pathname !== "/document-types/new" &&
+    !pathname.endsWith("/settings")
 
   return (
     <div className="min-h-screen bg-background relative">
@@ -229,44 +228,38 @@ const rootRoute = createRootRoute({
 // Create routes
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/',
+  path: "/",
   component: HomePage,
 })
 
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/login',
+  path: "/login",
   component: LoginPage,
 })
 
 const documentTypesRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/document-types',
+  path: "/document-types",
   component: DocumentTypesPage,
 })
 
 const newDocumentTypeRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/document-types/new',
+  path: "/document-types/new",
   component: NewDocumentTypePage,
 })
 
 const documentTypeDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/document-types/$slug',
+  path: "/document-types/$slug",
   component: DocumentTypeDetailPage,
 })
 
 const documentTypeSettingsRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/document-types/$slug/settings',
+  path: "/document-types/$slug/settings",
   component: DocumentTypeSettingsPage,
-})
-
-const documentDetailRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/documents/$id',
-  component: DocumentDetailPage,
 })
 
 // Build route tree
@@ -277,7 +270,6 @@ const routeTree = rootRoute.addChildren([
   newDocumentTypeRoute,
   documentTypeSettingsRoute,
   documentTypeDetailRoute,
-  documentDetailRoute,
 ])
 
 // Create router
@@ -287,21 +279,21 @@ const router = createRouter({
   context: {
     ...TanStackQueryProviderContext,
   },
-  defaultPreload: 'intent',
+  defaultPreload: "intent",
   scrollRestoration: true,
   defaultStructuralSharing: true,
   defaultPreloadStaleTime: 0,
 })
 
 // Type registration
-declare module '@tanstack/react-router' {
+declare module "@tanstack/react-router" {
   interface Register {
     router: typeof router
   }
 }
 
 // Mount app
-const rootElement = document.getElementById('app')
+const rootElement = document.getElementById("app")
 if (rootElement && !rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
   root.render(

@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from './api'
 
@@ -196,6 +197,7 @@ export function useProcessDocument() {
 // Streaming Processing using SSE (text streaming with bracket closing on server)
 export function useProcessDocumentStreaming() {
   const queryClient = useQueryClient()
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   const processWithStreaming = async (
     documentId: string,
@@ -204,6 +206,9 @@ export function useProcessDocumentStreaming() {
     onComplete: (data: Record<string, unknown>) => void,
     onError: (error: string) => void,
   ): Promise<void> => {
+    // Create new abort controller for this request
+    abortControllerRef.current = new AbortController()
+
     return new Promise((resolve, reject) => {
       // Use fetch with POST to send body, then read SSE stream
       fetch('/api/process/stream', {
@@ -211,6 +216,7 @@ export function useProcessDocumentStreaming() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ documentId, model }),
         credentials: 'include',
+        signal: abortControllerRef.current!.signal,
       })
         .then(async (response) => {
           if (!response.ok) {
@@ -269,13 +275,23 @@ export function useProcessDocumentStreaming() {
           resolve()
         })
         .catch((error) => {
+          // Don't report abort errors as failures
+          if (error.name === 'AbortError') {
+            resolve()
+            return
+          }
           onError(error.message || 'Connection error')
           reject(error)
         })
     })
   }
 
-  return { processWithStreaming }
+  const abort = () => {
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = null
+  }
+
+  return { processWithStreaming, abort }
 }
 
 // Batch Processing
@@ -320,6 +336,25 @@ export function useBatch(batchId: string | undefined) {
         return 2000
       }
       return false
+    },
+  })
+}
+
+export function useCancelBatch() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (batchId: string) => {
+      const res = await fetch(`/api/batches/${batchId}/cancel`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      if (!res.ok) throw new Error('Failed to cancel batch')
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['documents'] })
+      queryClient.invalidateQueries({ queryKey: ['batch'] })
     },
   })
 }
