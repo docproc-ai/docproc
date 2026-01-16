@@ -26,6 +26,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { ButtonGroup } from '@/components/ui/button-group'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   DropdownMenu,
@@ -387,12 +388,6 @@ export function DocumentQueue({
         {checkedDocIds.size > 0 && (
           <span className="text-xs text-muted-foreground tabular-nums">{checkedDocIds.size}</span>
         )}
-        <Input
-          placeholder="Search documents..."
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          className="h-8 flex-1"
-        />
         {/* Processing indicator */}
         {(() => {
           const processingCount = documents.filter(d => processingDocIds.has(d.id)).length
@@ -408,13 +403,20 @@ export function DocumentQueue({
             </button>
           ) : null
         })()}
-        {/* Actions menu */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
+        {/* Search + actions menu */}
+        <ButtonGroup className="flex-1">
+          <Input
+            placeholder="Search documents..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            className="h-8 rounded-r-none border-r-0"
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon" className="h-8 w-8 shrink-0">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
             {checkedDocIds.size > 0 && (
               <>
@@ -455,7 +457,8 @@ export function DocumentQueue({
               Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
-        </DropdownMenu>
+          </DropdownMenu>
+        </ButtonGroup>
       </div>
 
       {/* Document list (dropzone) */}
