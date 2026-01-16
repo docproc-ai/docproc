@@ -1,6 +1,13 @@
-import { Loader2, X } from 'lucide-react'
+import { Loader2, X, File, FileJson, FileCheck, FileX, type LucideIcon } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
-import { StatusIcon } from '@/components/status-icon'
+
+const statusConfig: Record<string, { icon: LucideIcon; className: string }> = {
+  pending: { icon: File, className: 'text-muted-foreground' },
+  processing: { icon: Loader2, className: 'text-blue-500 animate-spin' },
+  processed: { icon: FileJson, className: 'text-blue-500' },
+  approved: { icon: FileCheck, className: 'text-green-500' },
+  rejected: { icon: FileX, className: 'text-red-500' },
+}
 
 export interface DocumentListItemProps {
   doc: {
@@ -29,6 +36,9 @@ export function DocumentListItem({
   onCancelJob,
   registerRef,
 }: DocumentListItemProps) {
+  const config = statusConfig[doc.status || 'pending'] || statusConfig.pending
+  const StatusIcon = config.icon
+
   return (
     <div
       ref={(el) => registerRef(doc.id, el)}
@@ -61,7 +71,7 @@ export function DocumentListItem({
             <X className="h-4 w-4 text-red-500 hidden group-hover:block" />
           </button>
         ) : (
-          <StatusIcon status={doc.status || 'pending'} />
+          <StatusIcon className={`h-4 w-4 ${config.className}`} />
         )}
       </div>
       <button

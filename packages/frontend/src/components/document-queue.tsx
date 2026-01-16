@@ -1,7 +1,20 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { useNavigate } from '@tanstack/react-router'
-import { useQueryClient } from '@tanstack/react-query'
-import { Loader2, X, ChevronDown, ChevronLeft, ChevronRight, Trash2, Check, Settings2, Files } from 'lucide-react'
+import {
+  Loader2,
+  X,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Trash2,
+  Check,
+  Settings2,
+  Files,
+  File,
+  FileJson,
+  FileCheck,
+  FileX,
+  type LucideIcon,
+} from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
@@ -23,7 +36,6 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from '@/components/ui/alert-dialog'
-import { StatusIcon } from '@/components/status-icon'
 import { DocumentListItem } from '@/components/document-list-item'
 import {
   useDocuments,
@@ -37,6 +49,25 @@ import {
 } from '@/lib/queries'
 import { useJobEvents } from '@/lib/websocket'
 import { useDebounce } from '@/lib/hooks'
+
+// Status icon config
+const statusConfig: Record<string, { icon: LucideIcon; className: string; title: string }> = {
+  pending: { icon: File, className: 'text-muted-foreground', title: 'Pending' },
+  processing: { icon: Loader2, className: 'text-blue-500 animate-spin', title: 'Processing' },
+  processed: { icon: FileJson, className: 'text-blue-500', title: 'Processed' },
+  approved: { icon: FileCheck, className: 'text-green-500', title: 'Approved' },
+  rejected: { icon: FileX, className: 'text-red-500', title: 'Rejected' },
+}
+
+function StatusIcon({ status, size = 16 }: { status: string; size?: number }) {
+  const config = statusConfig[status] || statusConfig.pending
+  const Icon = config.icon
+  return (
+    <span className="shrink-0" title={config.title}>
+      <Icon size={size} className={config.className} />
+    </span>
+  )
+}
 
 interface DocumentQueueProps {
   documentTypeId: string
@@ -68,7 +99,6 @@ export function DocumentQueue({
   // ============================================
   const [searchInput, setSearchInput] = useState(urlSearch)
   const [checkedDocIds, setCheckedDocIds] = useState<Set<string>>(new Set())
-  const [isUploading, setIsUploading] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [activeJobsMap, setActiveJobsMap] = useState<Map<string, { jobId: string; batchId?: string }>>(new Map())
@@ -80,7 +110,6 @@ export function DocumentQueue({
   // ============================================
   // Queries & Mutations
   // ============================================
-  const queryClient = useQueryClient()
   const { data: documentsData, refetch } = useDocuments(documentTypeId, {
     page: urlPage,
     status: urlStatus,
@@ -175,7 +204,6 @@ export function DocumentQueue({
 
   const handleFileUpload = useCallback(
     async (files: FileList) => {
-      setIsUploading(true)
       const formData = new FormData()
       for (const file of files) {
         formData.append('files', file)
@@ -190,8 +218,6 @@ export function DocumentQueue({
         }
       } catch (err) {
         console.error('Upload failed:', err)
-      } finally {
-        setIsUploading(false)
       }
     },
     [documentTypeSlug, refetch]
@@ -317,15 +343,6 @@ export function DocumentQueue({
       return next
     })
   }, [activeJobsMap, cancelJob])
-
-  // ============================================
-  // Expose processing state for parent
-  // ============================================
-
-  // Check if a specific document is processing
-  const isDocumentProcessing = useCallback((docId: string) => {
-    return processingDocIds.has(docId)
-  }, [processingDocIds])
 
   // ============================================
   // Render
@@ -457,11 +474,7 @@ export function DocumentQueue({
             <span className="text-sm font-medium text-primary">Drop files to upload</span>
           </div>
         )}
-        {documents.length === 0 ? (
-          <div className="p-4 text-center text-sm text-muted-foreground">
-            {isUploading ? 'Uploading...' : 'No documents - drag files here to upload'}
-          </div>
-        ) : (
+        {documents.length === 0 ? null : (
           documents.map((doc) => (
             <DocumentListItem
               key={doc.id}
