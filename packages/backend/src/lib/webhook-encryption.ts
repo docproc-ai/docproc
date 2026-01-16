@@ -65,6 +65,10 @@ export function isEncryptionEnabled(): boolean {
   return getEncryptionKey() !== null
 }
 
+// Log encryption status on module load
+const encryptionEnabled = isEncryptionEnabled()
+console.log(`[Webhook] Encryption ${encryptionEnabled ? 'ENABLED' : 'DISABLED - sensitive headers stored in plaintext'}`)
+
 /**
  * Encrypt a single value
  * Returns original value if encryption is disabled
