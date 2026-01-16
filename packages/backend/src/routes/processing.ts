@@ -308,7 +308,17 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
           return c.json({ error: 'Batch already finished' }, 400)
         }
 
-        await cancelBatch(id)
+        const result = await cancelBatch(id)
+        if (!result) {
+          return c.json({ error: 'Failed to cancel batch' }, 500)
+        }
+
+        // Emit WebSocket events for each cancelled job
+        for (const job of result.cancelledJobs) {
+          if (job.documentId) {
+            emitJobFailed(job.id, job.documentId, 'Batch cancelled', job.batchId)
+          }
+        }
 
         return c.json({ success: true }, 200)
       } catch (error) {
@@ -363,7 +373,7 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
         }
 
         // Emit WebSocket event for job cancellation
-        emitJobCompleted(cancelled.documentId!, false)
+        emitJobFailed(cancelled.id, cancelled.documentId!, 'Job cancelled', cancelled.batchId)
 
         return c.json({
           success: true,

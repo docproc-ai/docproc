@@ -255,24 +255,26 @@ export async function deleteBatch(id: string): Promise<void> {
   batches.delete(id)
 }
 
-export async function cancelBatch(id: string): Promise<Batch | undefined> {
+export async function cancelBatch(id: string): Promise<{ batch: Batch; cancelledJobs: Job[] } | undefined> {
   const batch = batches.get(id)
   if (!batch) return undefined
 
   batch.status = 'cancelled'
   batch.completedAt = new Date()
 
-  // Update pending jobs to failed
+  // Update pending/processing jobs to failed and collect them
+  const cancelledJobs: Job[] = []
   for (const job of jobs.values()) {
-    if (job.batchId === id && job.status === 'pending') {
+    if (job.batchId === id && (job.status === 'pending' || job.status === 'processing')) {
       job.status = 'failed'
       job.error = 'Batch cancelled'
       job.completedAt = new Date()
+      cancelledJobs.push(job)
     }
   }
 
   scheduleCleanup(id)
-  return batch
+  return { batch, cancelledJobs }
 }
 
 // ============================================
