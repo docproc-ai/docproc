@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { SchemaEditorTab } from '@/components/editor-tabs'
 import Editor from '@/components/editor'
 import { ModelSelector } from '@/components/model-selector'
+import { WebhookConfigComponent, type WebhookConfig } from '@/components/webhook-config'
 
 interface DocumentTypeFormProps {
   initialData?: {
@@ -15,6 +16,7 @@ interface DocumentTypeFormProps {
     modelName: string
     slugPattern: string | null
     schema: JsonSchema
+    webhookConfig?: WebhookConfig | null
   }
   onFormDataChange?: (formData: {
     name: string
@@ -22,6 +24,7 @@ interface DocumentTypeFormProps {
     modelName: string
     slugPattern: string
     schema: JsonSchema
+    webhookConfig: WebhookConfig | null
     isValid: boolean
   }) => void
 }
@@ -52,6 +55,9 @@ export function DocumentTypeForm({
   const [schemaText, setSchemaText] = useState(
     JSON.stringify(initialData?.schema || defaultSchema, null, 2),
   )
+  const [webhookConfig, setWebhookConfig] = useState<WebhookConfig | null>(
+    initialData?.webhookConfig || null,
+  )
 
   const isValid = !!name
 
@@ -72,10 +78,11 @@ export function DocumentTypeForm({
         modelName,
         slugPattern,
         schema,
+        webhookConfig,
         isValid,
       })
     }
-  }, [name, validationInstructions, modelName, slugPattern, schema, isValid, onFormDataChange])
+  }, [name, validationInstructions, modelName, slugPattern, schema, webhookConfig, isValid, onFormDataChange])
 
   const handleSchemaTextChange = useCallback((text: string | undefined) => {
     setSchemaText(text || '')
@@ -180,6 +187,18 @@ export function DocumentTypeForm({
               </TabsContent>
             </div>
           </Tabs>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Integrations</CardTitle>
+          <CardDescription>
+            Configure webhooks to notify external services when documents are processed.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <WebhookConfigComponent config={webhookConfig} onChange={setWebhookConfig} />
         </CardContent>
       </Card>
     </div>

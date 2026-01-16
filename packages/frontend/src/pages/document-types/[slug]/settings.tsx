@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { useDocumentType, useUpdateDocumentType, useDeleteDocumentType } from '@/lib/queries'
 import { DocumentTypeForm } from '@/components/document-type-form'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { JsonSchema } from '@/components/schema-builder'
+import type { WebhookConfig } from '@/components/webhook-config'
 
 export default function DocumentTypeSettingsPage() {
   const params = useParams({ strict: false })
@@ -22,6 +23,7 @@ export default function DocumentTypeSettingsPage() {
     modelName: string
     slugPattern: string
     schema: JsonSchema
+    webhookConfig: WebhookConfig | null
     isValid: boolean
   } | null>(null)
 
@@ -36,7 +38,8 @@ export default function DocumentTypeSettingsPage() {
       const hasModelChange = (formData.modelName || '') !== (docType.modelName || '')
       const hasSlugPatternChange = (formData.slugPattern || '') !== (docType.slugPattern || '')
       const hasSchemaChange = JSON.stringify(formData.schema) !== JSON.stringify(docType.schema)
-      setHasChanges(hasNameChange || hasInstructionsChange || hasModelChange || hasSlugPatternChange || hasSchemaChange)
+      const hasWebhookChange = JSON.stringify(formData.webhookConfig) !== JSON.stringify(docType.webhookConfig || null)
+      setHasChanges(hasNameChange || hasInstructionsChange || hasModelChange || hasSlugPatternChange || hasSchemaChange || hasWebhookChange)
     }
   }, [docType, formData])
 
@@ -57,6 +60,7 @@ export default function DocumentTypeSettingsPage() {
           validationInstructions: formData.validationInstructions || null,
           modelName: formData.modelName || null,
           slugPattern: formData.slugPattern || null,
+          webhookConfig: formData.webhookConfig as Record<string, unknown> | null,
         },
       })
 
@@ -232,6 +236,7 @@ export default function DocumentTypeSettingsPage() {
             modelName: docType.modelName || '',
             slugPattern: docType.slugPattern || null,
             schema: docType.schema as JsonSchema,
+            webhookConfig: docType.webhookConfig as WebhookConfig | null,
           }}
           onFormDataChange={setFormData}
         />

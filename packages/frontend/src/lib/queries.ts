@@ -62,6 +62,8 @@ export function useUpdateDocumentType() {
         schema?: Record<string, unknown>
         validationInstructions?: string | null
         modelName?: string | null
+        slugPattern?: string | null
+        webhookConfig?: Record<string, unknown> | null
       }
     }) => {
       const res = await api.api['document-types'][':slugOrId'].$put({
