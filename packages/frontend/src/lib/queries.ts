@@ -361,3 +361,56 @@ export function useCancelBatch() {
     },
   })
 }
+
+// Users
+export function useUsers(options?: { page?: number; search?: string }) {
+  return useQuery({
+    queryKey: ['users', options],
+    queryFn: async () => {
+      const res = await api.api.users.$get({
+        query: {
+          page: String(options?.page || 1),
+          ...(options?.search && { search: options.search }),
+        },
+      })
+      if (!res.ok) throw new Error('Failed to fetch users')
+      return res.json()
+    },
+    placeholderData: (previousData) => previousData,
+  })
+}
+
+export function useUpdateUserRole() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: 'admin' | 'user' | 'none' }) => {
+      const res = await api.api.users[':id'].role.$patch({
+        param: { id: userId },
+        json: { role },
+      })
+      if (!res.ok) throw new Error('Failed to update user role')
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+    },
+  })
+}
+
+export function useDeleteUser() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await api.api.users[':id'].$delete({
+        param: { id: userId },
+      })
+      if (!res.ok) throw new Error('Failed to delete user')
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+    },
+  })
+}

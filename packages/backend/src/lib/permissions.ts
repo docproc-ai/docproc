@@ -4,7 +4,7 @@
  */
 
 export type Role = 'admin' | 'user' | 'none'
-export type Resource = 'documentType' | 'document'
+export type Resource = 'documentType' | 'document' | 'user'
 export type Action = 'create' | 'list' | 'update' | 'delete'
 
 // Define what each role can do
@@ -12,14 +12,17 @@ const rolePermissions: Record<Role, Record<Resource, Action[]>> = {
   admin: {
     documentType: ['create', 'list', 'update', 'delete'],
     document: ['create', 'list', 'update', 'delete'],
+    user: ['create', 'list', 'update', 'delete'],
   },
   user: {
     documentType: ['list'],
     document: ['create', 'list', 'update', 'delete'],
+    user: [],
   },
   none: {
     documentType: [],
     document: [],
+    user: [],
   },
 }
 

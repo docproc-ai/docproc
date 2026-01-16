@@ -10,6 +10,7 @@ import { authRoutes } from './routes/auth'
 import { documentsRoutes } from './routes/documents'
 import { documentTypesRoutes } from './routes/document-types'
 import { processingRoutes } from './routes/processing'
+import { usersRoutes } from './routes/users'
 import modelsRoutes from './routes/models'
 import { createWebSocketHandler, type WebSocketData } from './lib/websocket'
 
@@ -22,6 +23,7 @@ const app = new Hono()
   .route('/', documentsRoutes)
   .route('/', documentTypesRoutes)
   .route('/', processingRoutes)
+  .route('/', usersRoutes)
   .route('/api/models', modelsRoutes)
 
 // Export type for Hono RPC client

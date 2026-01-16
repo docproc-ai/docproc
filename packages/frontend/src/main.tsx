@@ -21,6 +21,7 @@ import DocumentTypeSettingsPage from "./pages/document-types/[slug]/settings"
 import ProcessLayout from "./pages/document-types/[slug]/process"
 import DocumentEditorPage from "./pages/document-types/[slug]/process/[id]"
 import NewDocumentTypePage from "./pages/document-types/new"
+import UsersPage from "./pages/users"
 // Page components
 import LoginPage from "./pages/login"
 
@@ -113,6 +114,7 @@ function ThemeToggle() {
 function AppHeader() {
   const { data: session, isPending } = useSession()
   const navigate = useNavigate()
+  const isAdmin = (session?.user as { role?: string } | undefined)?.role === 'admin'
 
   const handleSignOut = async () => {
     await signOut()
@@ -136,6 +138,14 @@ function AppHeader() {
             >
               Document Types
             </Link>
+            {isAdmin && (
+              <Link
+                to="/users"
+                className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-all [&.active]:text-foreground [&.active]:bg-muted [&.active]:font-medium"
+              >
+                Users
+              </Link>
+            )}
           </nav>
         </div>
         <div className="flex items-center gap-3">
@@ -243,6 +253,12 @@ const documentTypesRoute = createRoute({
   component: DocumentTypesPage,
 })
 
+const usersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/users",
+  component: UsersPage,
+})
+
 const newDocumentTypeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/document-types/new",
@@ -277,6 +293,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
   documentTypesRoute,
+  usersRoute,
   newDocumentTypeRoute,
   documentTypeSettingsRoute,
   documentTypeProcessRoute.addChildren([documentEditorRoute]),
