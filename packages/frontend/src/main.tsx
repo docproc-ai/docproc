@@ -17,8 +17,9 @@ import * as TanStackQueryProvider from "./integrations/tanstack-query/root-provi
 import { signOut, useSession } from "./lib/auth"
 import { ThemeProvider, useTheme } from "./lib/theme"
 import DocumentTypesPage from "./pages/document-types"
-import DocumentTypeDetailPage from "./pages/document-types/[slug]"
 import DocumentTypeSettingsPage from "./pages/document-types/[slug]/settings"
+import ProcessLayout from "./pages/document-types/[slug]/process"
+import DocumentEditorPage from "./pages/document-types/[slug]/process/[id]"
 import NewDocumentTypePage from "./pages/document-types/new"
 // Page components
 import LoginPage from "./pages/login"
@@ -198,12 +199,10 @@ function RootLayout() {
   const routerState = useRouterState()
   const pathname = routerState.location.pathname
 
-  // Hide main header on document type detail pages (3-pane view has its own header)
+  // Hide main header on document type process pages (3-pane view has its own header)
   // But show it on settings and new pages
   const hideHeader =
-    pathname.startsWith("/document-types/") &&
-    pathname !== "/document-types/new" &&
-    !pathname.endsWith("/settings")
+    pathname.includes("/process")
 
   return (
     <div className="min-h-screen bg-background relative">
@@ -250,10 +249,16 @@ const newDocumentTypeRoute = createRoute({
   component: NewDocumentTypePage,
 })
 
-const documentTypeDetailRoute = createRoute({
+const documentTypeProcessRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/document-types/$slug",
-  component: DocumentTypeDetailPage,
+  path: "/document-types/$slug/process",
+  component: ProcessLayout,
+})
+
+const documentEditorRoute = createRoute({
+  getParentRoute: () => documentTypeProcessRoute,
+  path: "$id",
+  component: DocumentEditorPage,
 })
 
 const documentTypeSettingsRoute = createRoute({
@@ -269,7 +274,7 @@ const routeTree = rootRoute.addChildren([
   documentTypesRoute,
   newDocumentTypeRoute,
   documentTypeSettingsRoute,
-  documentTypeDetailRoute,
+  documentTypeProcessRoute.addChildren([documentEditorRoute]),
 ])
 
 // Create router

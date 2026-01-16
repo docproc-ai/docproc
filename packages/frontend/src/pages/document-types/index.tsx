@@ -85,7 +85,7 @@ function DocumentTypeCard({
           </Link>
         </Button>
         <Button size="sm" asChild>
-          <Link to="/document-types/$slug" params={{ slug: docType.slug }}>
+          <Link to="/document-types/$slug/process" params={{ slug: docType.slug }}>
             Process
             <svg
               xmlns="http://www.w3.org/2000/svg"
