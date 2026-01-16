@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate, useParams } from '@tanstack/react-router'
+import { useNavigate, useParams, useRouter } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { useDocumentType, useUpdateDocumentType, useDeleteDocumentType } from '@/lib/queries'
@@ -12,6 +12,11 @@ export default function DocumentTypeSettingsPage() {
   const params = useParams({ strict: false })
   const slug = params.slug as string
   const navigate = useNavigate()
+  const router = useRouter()
+
+  const handleBack = () => {
+    router.history.back()
+  }
 
   const { data: docType, isLoading } = useDocumentType(slug)
   const updateDocumentType = useUpdateDocumentType()
@@ -117,24 +122,22 @@ export default function DocumentTypeSettingsPage() {
     return (
       <div className="bg-background text-foreground flex h-screen flex-col">
         <header className="border-border flex flex-shrink-0 items-center gap-4 border-b px-6 py-3">
-          <Button variant="outline" size="icon" asChild>
-            <Link to="/document-types">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="m12 19-7-7 7-7" />
-                <path d="M19 12H5" />
-              </svg>
-              <span className="sr-only">Back</span>
-            </Link>
+          <Button variant="outline" size="icon" onClick={handleBack}>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="m12 19-7-7 7-7" />
+              <path d="M19 12H5" />
+            </svg>
+            <span className="sr-only">Back</span>
           </Button>
           <h1 className="text-xl font-semibold">Edit Document Type</h1>
         </header>
@@ -158,24 +161,22 @@ export default function DocumentTypeSettingsPage() {
   return (
     <div className="bg-background text-foreground flex h-screen flex-col">
       <header className="border-border flex flex-shrink-0 items-center gap-4 border-b px-6 py-3">
-        <Button variant="outline" size="icon" asChild>
-          <Link to="/document-types">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="m12 19-7-7 7-7" />
-              <path d="M19 12H5" />
-            </svg>
-            <span className="sr-only">Back</span>
-          </Link>
+        <Button variant="outline" size="icon" onClick={handleBack}>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="m12 19-7-7 7-7" />
+            <path d="M19 12H5" />
+          </svg>
+          <span className="sr-only">Back</span>
         </Button>
         <h1 className="text-xl font-semibold">Edit Document Type</h1>
         <div className="ml-auto flex items-center gap-2">

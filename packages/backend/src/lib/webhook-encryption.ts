@@ -40,15 +40,22 @@ export interface DocumentWebhookConfig {
  * Returns null if not configured (encryption disabled)
  */
 function getEncryptionKey(): Buffer | null {
-  const key = process.env.WEBHOOK_ENCRYPTION_KEY
+  const key = process.env.WEBHOOK_ENCRYPTION_KEY?.trim()
   if (!key) {
     return null
   }
-  if (key.length !== 64) {
-    console.warn('WEBHOOK_ENCRYPTION_KEY must be 64 hex characters (32 bytes). Encryption disabled.')
+  // Validate hex format and length
+  if (!/^[0-9a-fA-F]{64}$/.test(key)) {
+    console.warn('WEBHOOK_ENCRYPTION_KEY must be exactly 64 hex characters (32 bytes). Encryption disabled.')
     return null
   }
-  return Buffer.from(key, 'hex')
+  const buffer = Buffer.from(key, 'hex')
+  // Double-check buffer length (should be 32 bytes for AES-256)
+  if (buffer.length !== 32) {
+    console.warn(`WEBHOOK_ENCRYPTION_KEY produced invalid buffer length: ${buffer.length}. Expected 32.`)
+    return null
+  }
+  return buffer
 }
 
 /**

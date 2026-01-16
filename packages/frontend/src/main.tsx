@@ -209,10 +209,9 @@ function RootLayout() {
   const routerState = useRouterState()
   const pathname = routerState.location.pathname
 
-  // Hide main header on document type process pages (3-pane view has its own header)
-  // But show it on settings and new pages
+  // Hide main header on pages with their own headers (process, settings)
   const hideHeader =
-    pathname.includes("/process")
+    pathname.includes("/process") || pathname.includes("/settings")
 
   return (
     <div className="min-h-screen bg-background relative">
