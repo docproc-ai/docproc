@@ -414,3 +414,23 @@ export function useDeleteUser() {
     },
   })
 }
+
+// Document rotation
+export function useRotateDocument() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ documentId, degrees }: { documentId: string; degrees: number }) => {
+      const res = await api.api.documents[':id'].rotate.$post({
+        param: { id: documentId },
+        json: { degrees },
+      })
+      if (!res.ok) throw new Error('Failed to rotate document')
+      return res.json()
+    },
+    onSuccess: (_, { documentId }) => {
+      // Invalidate document to force refetch (cache bust for file)
+      queryClient.invalidateQueries({ queryKey: ['document', documentId] })
+    },
+  })
+}

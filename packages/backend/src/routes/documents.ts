@@ -1,6 +1,8 @@
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
+import sharp from 'sharp'
+import { PDFDocument, degrees } from 'pdf-lib'
 import {
   getDocumentsQuery,
   updateDocumentRequest,
@@ -108,6 +110,59 @@ export const documentsRoutes = new Hono()
       } catch (error) {
         console.error('Failed to bulk delete:', error)
         return c.json({ error: 'Failed to bulk delete' }, 500)
+      }
+    },
+  )
+
+  // POST /api/documents/:id/rotate - Rotate document (before /:id to ensure proper matching)
+  .post(
+    '/:id/rotate',
+    requireAuth,
+    requirePermission('document', 'update'),
+    zValidator('param', z.object({ id: z.string().min(1) })),
+    zValidator('json', z.object({ degrees: z.number().multipleOf(90) })),
+    async (c) => {
+      try {
+        const { id } = c.req.valid('param')
+        const { degrees: rotationDegrees } = c.req.valid('json')
+
+        const doc = await getDocumentBySlugOrId(id)
+        if (!doc) {
+          return c.json({ error: 'Document not found' }, 404)
+        }
+
+        // Download the current file
+        const { buffer: fileBuffer, mimeType } = await storage.download(doc.storagePath)
+
+        let rotatedBuffer: Buffer
+        const fileExtension = doc.filename.toLowerCase().split('.').pop()
+
+        if (mimeType === 'application/pdf' || fileExtension === 'pdf') {
+          // Handle PDF rotation
+          const pdfDoc = await PDFDocument.load(fileBuffer)
+          const pages = pdfDoc.getPages()
+
+          // Apply relative rotation to all pages
+          for (const page of pages) {
+            const currentRotation = page.getRotation().angle || 0
+            page.setRotation(degrees(currentRotation + rotationDegrees))
+          }
+
+          rotatedBuffer = Buffer.from(await pdfDoc.save())
+        } else if (['jpg', 'jpeg', 'png', 'webp', 'tiff', 'bmp', 'gif'].includes(fileExtension || '')) {
+          // Handle image rotation using Sharp
+          rotatedBuffer = await sharp(fileBuffer).rotate(rotationDegrees).toBuffer()
+        } else {
+          return c.json({ error: 'Unsupported file type for rotation' }, 400)
+        }
+
+        // Write the rotated file back to storage
+        await storage.save(doc.storagePath, rotatedBuffer)
+
+        return c.json({ success: true }, 200)
+      } catch (error) {
+        console.error('Failed to rotate document:', error)
+        return c.json({ error: 'Failed to rotate document' }, 500)
       }
     },
   )

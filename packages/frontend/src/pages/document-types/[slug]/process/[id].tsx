@@ -21,33 +21,12 @@ import {
   useDocument,
   useDocuments,
   useUpdateDocument,
+  useRotateDocument,
 } from '@/lib/queries'
 import { FormRenderer } from '@/components/form-renderer'
+import { DocumentViewer } from '@/components/document-viewer'
 import { useDocumentEditorContext } from '@/lib/document-editor-context'
 import type { JsonSchema } from '@/components/schema-builder/types'
-
-// Document preview panel
-function DocumentPreview({ documentId, filename }: { documentId: string; filename: string }) {
-  const isPdf = filename.toLowerCase().endsWith('.pdf')
-
-  return (
-    <div className="h-full bg-muted/30 flex items-center justify-center">
-      {isPdf ? (
-        <iframe
-          src={`/api/documents/${documentId}/file`}
-          className="w-full h-full"
-          title="Document preview"
-        />
-      ) : (
-        <img
-          src={`/api/documents/${documentId}/file`}
-          alt={filename}
-          className="max-w-full max-h-full object-contain"
-        />
-      )}
-    </div>
-  )
-}
 
 export default function DocumentEditorPage() {
   const params = useParams({ strict: false })
@@ -67,6 +46,7 @@ export default function DocumentEditorPage() {
   const { data: currentDoc } = useDocument(documentId)
   const { data: documentsData } = useDocuments(docType?.id || '', { status: 'all' })
   const updateDocument = useUpdateDocument()
+  const rotateDocument = useRotateDocument()
 
   const filteredDocs = documentsData?.documents || []
 
@@ -102,6 +82,14 @@ export default function DocumentEditorPage() {
     })
     setHasChanges(false)
   }, [currentDoc, editedData, updateDocument])
+
+  const handleRotate = useCallback(async (degrees: number) => {
+    if (!currentDoc) return
+    await rotateDocument.mutateAsync({
+      documentId: currentDoc.id,
+      degrees,
+    })
+  }, [currentDoc, rotateDocument])
 
   // Navigation between documents
   const navigateDocument = useCallback((direction: 'prev' | 'next') => {
@@ -207,7 +195,11 @@ export default function DocumentEditorPage() {
 
         {/* Document preview */}
         <ResizablePanel defaultSize={50} minSize={30}>
-          <DocumentPreview documentId={currentDoc.id} filename={currentDoc.filename} />
+          <DocumentViewer
+            documentId={currentDoc.id}
+            filename={currentDoc.filename}
+            onRotate={handleRotate}
+          />
         </ResizablePanel>
       </ResizablePanelGroup>
 
