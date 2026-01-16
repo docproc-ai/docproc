@@ -145,18 +145,18 @@ function DocumentListItem({
   isChecked,
   onSelect,
   onCheck,
-  itemRef,
+  registerRef,
 }: {
   doc: { id: string; filename: string; status: string | null; createdAt: string | null }
   isSelected: boolean
   isChecked: boolean
   onSelect: () => void
   onCheck: (checked: boolean) => void
-  itemRef?: React.RefObject<HTMLDivElement | null>
+  registerRef: (id: string, el: HTMLDivElement | null) => void
 }) {
   return (
     <div
-      ref={itemRef}
+      ref={(el) => registerRef(doc.id, el)}
       className={`flex items-center w-full border-b transition-colors ${
         isSelected
           ? 'bg-primary/10 border-l-2 border-l-primary'
@@ -297,7 +297,7 @@ export default function DocumentTypeDetailPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [pendingDocId, setPendingDocId] = useState<string | null>(null)
   const abortStreamRef = useRef<(() => void) | null>(null)
-  const selectedItemRef = useRef<HTMLDivElement | null>(null)
+  const documentRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
   const { data: session } = useSession()
   const isAdmin = session?.user?.role === 'admin'
@@ -526,13 +526,16 @@ export default function DocumentTypeDetailPage() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   })
 
-  // Scroll selected document into view when selection changes
+  // Scroll to selected document when it changes
   useEffect(() => {
-    if (selectedItemRef.current) {
-      selectedItemRef.current.scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest',
-      })
+    if (selectedDocId && documentRefs.current.has(selectedDocId)) {
+      const element = documentRefs.current.get(selectedDocId)
+      if (element) {
+        // Small delay to ensure element is fully rendered
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        }, 100)
+      }
     }
   }, [selectedDocId])
 
@@ -1023,7 +1026,13 @@ export default function DocumentTypeDetailPage() {
                   isChecked={checkedDocIds.has(doc.id)}
                   onSelect={() => handleSelectDoc(doc.id)}
                   onCheck={(checked) => handleToggleCheck(doc.id, checked)}
-                  itemRef={currentDoc?.id === doc.id ? selectedItemRef : undefined}
+                  registerRef={(id, el) => {
+                    if (el) {
+                      documentRefs.current.set(id, el)
+                    } else {
+                      documentRefs.current.delete(id)
+                    }
+                  }}
                 />
               ))
             )}
