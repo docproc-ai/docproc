@@ -53,47 +53,8 @@ export const document = pgTable(
   ],
 )
 
-// Job tracking for processing queue
-export const job = pgTable(
-  'job',
-  {
-    id: text('id').primaryKey(),
-    documentId: uuid('document_id').references(() => document.id, { onDelete: 'cascade' }),
-    batchId: uuid('batch_id').references(() => batch.id, { onDelete: 'cascade' }),
-    status: text('status').notNull().default('pending'), // pending, processing, completed, failed
-    progress: json('progress').$type<{ percent: number; partialData?: unknown }>(),
-    error: text('error'),
-    createdAt: timestamp('created_at').defaultNow(),
-    startedAt: timestamp('started_at'),
-    completedAt: timestamp('completed_at'),
-    createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' }),
-  },
-  (table) => [
-    index('idx_job_status').on(table.status),
-    index('idx_job_batch_id').on(table.batchId),
-    index('idx_job_document_id').on(table.documentId),
-  ],
-)
-
-export const batch = pgTable('batch', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  documentTypeId: uuid('document_type_id').references(() => documentType.id),
-  total: text('total').notNull(),
-  completed: text('completed').default('0'),
-  failed: text('failed').default('0'),
-  status: text('status').notNull().default('pending'), // pending, processing, completed, failed, cancelled
-  webhookUrl: text('webhook_url'),
-  createdAt: timestamp('created_at').defaultNow(),
-  completedAt: timestamp('completed_at'),
-  createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' }),
-})
-
 // Type exports
 export type DocumentTypeSelect = typeof documentType.$inferSelect
 export type DocumentTypeInsert = typeof documentType.$inferInsert
 export type DocumentSelect = typeof document.$inferSelect
 export type DocumentInsert = typeof document.$inferInsert
-export type JobSelect = typeof job.$inferSelect
-export type JobInsert = typeof job.$inferInsert
-export type BatchSelect = typeof batch.$inferSelect
-export type BatchInsert = typeof batch.$inferInsert

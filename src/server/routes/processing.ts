@@ -252,7 +252,7 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
   .get(
     '/batches/:id',
     requireApiKeyOrAuth,
-    zValidator('param', z.object({ id: z.uuid() })),
+    zValidator('param', z.object({ id: z.string() })),
     async (c) => {
       try {
         const { id } = c.req.valid('param')
@@ -291,7 +291,7 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
     '/batches/:id/cancel',
     requireAuth,
     requirePermission('document', 'update'),
-    zValidator('param', z.object({ id: z.uuid() })),
+    zValidator('param', z.object({ id: z.string() })),
     async (c) => {
       try {
         const { id } = c.req.valid('param')

@@ -1,7 +1,7 @@
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod'
 import { z } from 'zod'
 
-import { batch, document, documentType, job } from '../db/schema/app'
+import { document, documentType } from '../db/schema/app'
 
 // Derive Zod schemas from Drizzle tables - single source of truth
 export const documentTypeSelectSchema = createSelectSchema(documentType)
@@ -10,23 +10,16 @@ export const documentTypeInsertSchema = createInsertSchema(documentType)
 export const documentSelectSchema = createSelectSchema(document)
 export const documentInsertSchema = createInsertSchema(document)
 
-export const jobSelectSchema = createSelectSchema(job)
-export const jobInsertSchema = createInsertSchema(job)
-
-export const batchSelectSchema = createSelectSchema(batch)
-export const batchInsertSchema = createInsertSchema(batch)
-
 // Re-export types from Drizzle
 export type {
-  BatchInsert,
-  BatchSelect,
   DocumentInsert,
   DocumentSelect,
   DocumentTypeInsert,
   DocumentTypeSelect,
-  JobInsert,
-  JobSelect,
 } from '../db/schema/app'
+
+// Job and Batch types are now in-memory (see src/server/lib/db/job-operations.ts)
+export type { Job, Batch, JobStatus, BatchStatus } from '../server/lib/db/job-operations'
 
 // ============================================
 // Document Type API Schemas

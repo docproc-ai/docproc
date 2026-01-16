@@ -1,6 +1,3 @@
-import { eq, and, inArray } from 'drizzle-orm'
-import { db } from '../../../db'
-import { job, batch } from '../../../db/schema/app'
 import { nanoid } from 'nanoid'
 
 export type JobStatus = 'pending' | 'processing' | 'completed' | 'failed'
@@ -11,6 +8,54 @@ export interface JobProgress {
   partialData?: unknown
 }
 
+export interface Job {
+  id: string
+  documentId: string
+  batchId?: string
+  status: JobStatus
+  progress?: JobProgress
+  error?: string
+  createdAt: Date
+  startedAt?: Date
+  completedAt?: Date
+  createdBy?: string
+}
+
+export interface Batch {
+  id: string
+  documentTypeId: string
+  total: string
+  completed: string
+  failed: string
+  status: BatchStatus
+  webhookUrl?: string
+  createdAt: Date
+  completedAt?: Date
+  createdBy?: string
+}
+
+// In-memory storage for batches and jobs
+const batches = new Map<string, Batch>()
+const jobs = new Map<string, Job>()
+
+// Auto-cleanup completed batches after 1 hour
+const BATCH_TTL = 60 * 60 * 1000
+
+function scheduleCleanup(batchId: string) {
+  setTimeout(() => {
+    const batch = batches.get(batchId)
+    if (batch && (batch.status === 'completed' || batch.status === 'failed' || batch.status === 'cancelled')) {
+      // Delete batch and its jobs
+      for (const [jobId, job] of jobs) {
+        if (job.batchId === batchId) {
+          jobs.delete(jobId)
+        }
+      }
+      batches.delete(batchId)
+    }
+  }, BATCH_TTL)
+}
+
 // ============================================
 // Job Operations
 // ============================================
@@ -19,37 +64,40 @@ export async function createJob(data: {
   documentId: string
   batchId?: string
   createdBy?: string
-}) {
-  const [result] = await db
-    .insert(job)
-    .values({
-      id: nanoid(),
-      documentId: data.documentId,
-      batchId: data.batchId,
-      status: 'pending',
-      createdBy: data.createdBy,
-    })
-    .returning()
+}): Promise<Job> {
+  const job: Job = {
+    id: nanoid(),
+    documentId: data.documentId,
+    batchId: data.batchId,
+    status: 'pending',
+    createdAt: new Date(),
+    createdBy: data.createdBy,
+  }
+  jobs.set(job.id, job)
+  return job
+}
 
+export async function getJob(id: string): Promise<Job | undefined> {
+  return jobs.get(id)
+}
+
+export async function getJobByDocumentId(documentId: string): Promise<Job | undefined> {
+  for (const job of jobs.values()) {
+    if (job.documentId === documentId) {
+      return job
+    }
+  }
+  return undefined
+}
+
+export async function getJobsByBatchId(batchId: string): Promise<Job[]> {
+  const result: Job[] = []
+  for (const job of jobs.values()) {
+    if (job.batchId === batchId) {
+      result.push(job)
+    }
+  }
   return result
-}
-
-export async function getJob(id: string) {
-  return db.query.job.findFirst({
-    where: eq(job.id, id),
-  })
-}
-
-export async function getJobByDocumentId(documentId: string) {
-  return db.query.job.findFirst({
-    where: eq(job.documentId, documentId),
-  })
-}
-
-export async function getJobsByBatchId(batchId: string) {
-  return db.query.job.findMany({
-    where: eq(job.batchId, batchId),
-  })
 }
 
 export async function updateJobStatus(
@@ -61,34 +109,29 @@ export async function updateJobStatus(
     startedAt?: Date
     completedAt?: Date
   },
-) {
-  const [result] = await db
-    .update(job)
-    .set({
-      status,
-      progress: extra?.progress,
-      error: extra?.error,
-      startedAt: extra?.startedAt,
-      completedAt: extra?.completedAt,
-    })
-    .where(eq(job.id, id))
-    .returning()
+): Promise<Job | undefined> {
+  const job = jobs.get(id)
+  if (!job) return undefined
 
-  return result
+  job.status = status
+  if (extra?.progress) job.progress = extra.progress
+  if (extra?.error) job.error = extra.error
+  if (extra?.startedAt) job.startedAt = extra.startedAt
+  if (extra?.completedAt) job.completedAt = extra.completedAt
+
+  return job
 }
 
-export async function updateJobProgress(id: string, progress: JobProgress) {
-  const [result] = await db
-    .update(job)
-    .set({ progress })
-    .where(eq(job.id, id))
-    .returning()
+export async function updateJobProgress(id: string, progress: JobProgress): Promise<Job | undefined> {
+  const job = jobs.get(id)
+  if (!job) return undefined
 
-  return result
+  job.progress = progress
+  return job
 }
 
-export async function deleteJob(id: string) {
-  await db.delete(job).where(eq(job.id, id))
+export async function deleteJob(id: string): Promise<void> {
+  jobs.delete(id)
 }
 
 // ============================================
@@ -100,134 +143,132 @@ export async function createBatch(data: {
   documentIds: string[]
   webhookUrl?: string
   createdBy?: string
-}) {
-  // Create batch record
-  const [batchResult] = await db
-    .insert(batch)
-    .values({
-      documentTypeId: data.documentTypeId,
-      total: String(data.documentIds.length),
-      completed: '0',
-      failed: '0',
-      status: 'pending',
-      webhookUrl: data.webhookUrl,
-      createdBy: data.createdBy,
-    })
-    .returning()
+}): Promise<{ batch: Batch; jobs: Job[] }> {
+  const batch: Batch = {
+    id: nanoid(),
+    documentTypeId: data.documentTypeId,
+    total: String(data.documentIds.length),
+    completed: '0',
+    failed: '0',
+    status: 'pending',
+    webhookUrl: data.webhookUrl,
+    createdAt: new Date(),
+    createdBy: data.createdBy,
+  }
+  batches.set(batch.id, batch)
 
   // Create jobs for each document
-  const jobPromises = data.documentIds.map((documentId) =>
-    createJob({
+  const createdJobs: Job[] = []
+  for (const documentId of data.documentIds) {
+    const job = await createJob({
       documentId,
-      batchId: batchResult.id,
+      batchId: batch.id,
       createdBy: data.createdBy,
-    }),
-  )
-
-  const jobs = await Promise.all(jobPromises)
-
-  return { batch: batchResult, jobs }
-}
-
-export async function getBatch(id: string) {
-  return db.query.batch.findFirst({
-    where: eq(batch.id, id),
-  })
-}
-
-export async function getBatchWithJobs(id: string) {
-  const batchResult = await db.query.batch.findFirst({
-    where: eq(batch.id, id),
-  })
-
-  if (!batchResult) return null
-
-  const jobs = await getJobsByBatchId(id)
-
-  return { batch: batchResult, jobs }
-}
-
-export async function updateBatchStatus(id: string, status: BatchStatus) {
-  const [result] = await db
-    .update(batch)
-    .set({
-      status,
-      completedAt: status === 'completed' || status === 'failed' ? new Date() : undefined,
     })
-    .where(eq(batch.id, id))
-    .returning()
+    createdJobs.push(job)
+  }
 
-  return result
+  return { batch, jobs: createdJobs }
+}
+
+export async function getBatch(id: string): Promise<Batch | undefined> {
+  return batches.get(id)
+}
+
+export async function getBatchWithJobs(id: string): Promise<{ batch: Batch; jobs: Job[] } | null> {
+  const batch = batches.get(id)
+  if (!batch) return null
+
+  const batchJobs = await getJobsByBatchId(id)
+  return { batch, jobs: batchJobs }
+}
+
+export async function updateBatchStatus(id: string, status: BatchStatus): Promise<Batch | undefined> {
+  const batch = batches.get(id)
+  if (!batch) return undefined
+
+  batch.status = status
+  if (status === 'completed' || status === 'failed') {
+    batch.completedAt = new Date()
+    scheduleCleanup(id)
+  }
+
+  return batch
 }
 
 export async function updateBatchProgress(
   id: string,
   completed: number,
   failed: number,
-) {
-  const batchResult = await getBatch(id)
-  if (!batchResult) return null
+): Promise<Batch | undefined> {
+  const batch = batches.get(id)
+  if (!batch) return undefined
 
-  const total = parseInt(batchResult.total)
+  const total = parseInt(batch.total)
   const isComplete = completed + failed >= total
 
-  const [result] = await db
-    .update(batch)
-    .set({
-      completed: String(completed),
-      failed: String(failed),
-      status: isComplete ? (failed > 0 ? 'completed' : 'completed') : 'processing',
-      completedAt: isComplete ? new Date() : undefined,
-    })
-    .where(eq(batch.id, id))
-    .returning()
+  batch.completed = String(completed)
+  batch.failed = String(failed)
+  batch.status = isComplete ? 'completed' : 'processing'
+  if (isComplete) {
+    batch.completedAt = new Date()
+    scheduleCleanup(id)
+  }
 
-  return result
+  return batch
 }
 
-export async function deleteBatch(id: string) {
-  // Jobs will be cascade deleted due to FK constraint
-  await db.delete(batch).where(eq(batch.id, id))
+export async function deleteBatch(id: string): Promise<void> {
+  // Delete jobs first
+  for (const [jobId, job] of jobs) {
+    if (job.batchId === id) {
+      jobs.delete(jobId)
+    }
+  }
+  batches.delete(id)
 }
 
-export async function cancelBatch(id: string) {
-  // Update batch status
-  const [result] = await db
-    .update(batch)
-    .set({
-      status: 'cancelled',
-      completedAt: new Date(),
-    })
-    .where(eq(batch.id, id))
-    .returning()
+export async function cancelBatch(id: string): Promise<Batch | undefined> {
+  const batch = batches.get(id)
+  if (!batch) return undefined
+
+  batch.status = 'cancelled'
+  batch.completedAt = new Date()
 
   // Update pending jobs to failed
-  await db
-    .update(job)
-    .set({
-      status: 'failed',
-      error: 'Batch cancelled',
-      completedAt: new Date(),
-    })
-    .where(and(eq(job.batchId, id), eq(job.status, 'pending')))
+  for (const job of jobs.values()) {
+    if (job.batchId === id && job.status === 'pending') {
+      job.status = 'failed'
+      job.error = 'Batch cancelled'
+      job.completedAt = new Date()
+    }
+  }
 
-  return result
+  scheduleCleanup(id)
+  return batch
 }
 
 // ============================================
 // Query Helpers
 // ============================================
 
-export async function getPendingJobs(limit: number = 10) {
-  return db.query.job.findMany({
-    where: eq(job.status, 'pending'),
-    limit,
-    orderBy: (job, { asc }) => [asc(job.createdAt)],
-  })
+export async function getPendingJobs(limit: number = 10): Promise<Job[]> {
+  const pending: Job[] = []
+  for (const job of jobs.values()) {
+    if (job.status === 'pending') {
+      pending.push(job)
+      if (pending.length >= limit) break
+    }
+  }
+  return pending.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
 }
 
-export async function getActiveBatches() {
-  return db.query.batch.findMany({
-    where: inArray(batch.status, ['pending', 'processing']),
-  })
+export async function getActiveBatches(): Promise<Batch[]> {
+  const active: Batch[] = []
+  for (const batch of batches.values()) {
+    if (batch.status === 'pending' || batch.status === 'processing') {
+      active.push(batch)
+    }
+  }
+  return active
 }

@@ -54,54 +54,64 @@ function ConnectionIndicator({ status }: { status: string }) {
   )
 }
 
-// Status icon - compact colored icons instead of text badges
-function StatusIcon({ status }: { status: string }) {
-  const icons: Record<string, { icon: React.ReactNode; className: string; title: string }> = {
+// Status icon - File-based icons matching legacy design
+function StatusIcon({ status, size = 'md' }: { status: string; size?: 'sm' | 'md' | 'lg' }) {
+  const sizeClasses = { sm: 'h-3 w-3', md: 'h-4 w-4', lg: 'h-5 w-5' }
+  const sizeClass = sizeClasses[size]
+
+  const icons: Record<string, { icon: React.ReactNode; title: string }> = {
     pending: {
       icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="10" />
-          <polyline points="12 6 12 12 16 14" />
+        // File icon (lucide)
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${sizeClass} text-muted-foreground`}>
+          <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+          <path d="M14 2v4a2 2 0 0 0 2 2h4" />
         </svg>
       ),
-      className: 'text-amber-500',
       title: 'Pending',
     },
     processing: {
       icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin">
+        // Spinner for processing state
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${sizeClass} text-blue-500 animate-spin`}>
           <path d="M21 12a9 9 0 1 1-6.219-8.56" />
         </svg>
       ),
-      className: 'text-purple-500',
       title: 'Processing',
     },
     processed: {
       icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
-          <path d="m9 12 2 2 4-4" />
+        // FileJson icon (lucide)
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${sizeClass} text-blue-500`}>
+          <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+          <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+          <path d="M10 12a1 1 0 0 0-1 1v1a1 1 0 0 1-1 1 1 1 0 0 1 1 1v1a1 1 0 0 0 1 1" />
+          <path d="M14 18a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1 1 1 0 0 1-1-1v-1a1 1 0 0 0-1-1" />
         </svg>
       ),
-      className: 'text-blue-500',
       title: 'Processed',
     },
     approved: {
       icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+        // FileCheck icon (lucide)
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${sizeClass} text-green-500`}>
+          <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+          <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+          <path d="m9 15 2 2 4-4" />
         </svg>
       ),
-      className: 'text-green-500',
       title: 'Approved',
     },
     rejected: {
       icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z" />
+        // FileX icon (lucide)
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${sizeClass} text-red-500`}>
+          <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+          <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+          <path d="m14.5 12.5-5 5" />
+          <path d="m9.5 12.5 5 5" />
         </svg>
       ),
-      className: 'text-red-500',
       title: 'Rejected',
     },
   }
@@ -109,7 +119,7 @@ function StatusIcon({ status }: { status: string }) {
   const config = icons[status] || icons.pending
 
   return (
-    <span className={`shrink-0 ${config.className}`} title={config.title}>
+    <span className="shrink-0" title={config.title}>
       {config.icon}
     </span>
   )
@@ -137,23 +147,28 @@ function DocumentListItem({
           : 'hover:bg-muted/50'
       }`}
     >
-      <div className="pl-3 py-3">
+      {/* Checkbox - self-centered */}
+      <div className="pl-3 py-3 self-center">
         <Checkbox
           checked={isChecked}
           onCheckedChange={(checked) => onCheck(checked === true)}
           onClick={(e) => e.stopPropagation()}
         />
       </div>
+
+      {/* Status icon - centered with entire row */}
+      <div className="pl-2 self-center">
+        <StatusIcon status={doc.status || 'pending'} />
+      </div>
+
+      {/* Content (filename + date) */}
       <button
         onClick={onSelect}
         className="flex-1 text-left py-3 pr-3 pl-2 min-w-0"
       >
-        <div className="flex items-center gap-2">
-          <StatusIcon status={doc.status || 'pending'} />
-          <p className="text-sm font-medium truncate flex-1">{doc.filename}</p>
-        </div>
+        <p className="text-sm font-medium truncate">{doc.filename}</p>
         {doc.createdAt && (
-          <p className="text-xs text-muted-foreground mt-0.5 pl-[22px]">
+          <p className="text-xs text-muted-foreground mt-0.5">
             {new Date(doc.createdAt).toLocaleDateString('en-US', {
               month: 'short',
               day: 'numeric',
@@ -451,8 +466,8 @@ export default function DocumentTypeDetailPage() {
       })
 
       // Subscribe to batch updates
-      if (result?.batch?.id) {
-        setActiveBatchId(result.batch.id)
+      if (result?.batchId) {
+        setActiveBatchId(result.batchId)
       }
 
       setCheckedDocIds(new Set())
@@ -658,16 +673,25 @@ export default function DocumentTypeDetailPage() {
               size="sm"
               className="w-full"
             >
-              {['all', 'pending', 'processed', 'approved', 'rejected'].map((status) => (
-                <ToggleGroupItem
-                  key={status}
-                  value={status}
-                  className="flex-1 capitalize text-[11px]"
-                  aria-label={`Filter by ${status}`}
-                >
-                  {status}
-                </ToggleGroupItem>
-              ))}
+              <ToggleGroupItem value="all" className="flex-1" aria-label="All documents">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                  <path d="M20 7h-3a2 2 0 0 1-2-2V2" />
+                  <path d="M9 18a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h7l4 4v10a2 2 0 0 1-2 2Z" />
+                  <path d="M3 7.6v12.8A1.6 1.6 0 0 0 4.6 22h9.8" />
+                </svg>
+              </ToggleGroupItem>
+              <ToggleGroupItem value="pending" className="flex-1" aria-label="Pending">
+                <StatusIcon status="pending" size="sm" />
+              </ToggleGroupItem>
+              <ToggleGroupItem value="processed" className="flex-1" aria-label="Processed">
+                <StatusIcon status="processed" size="sm" />
+              </ToggleGroupItem>
+              <ToggleGroupItem value="approved" className="flex-1" aria-label="Approved">
+                <StatusIcon status="approved" size="sm" />
+              </ToggleGroupItem>
+              <ToggleGroupItem value="rejected" className="flex-1" aria-label="Rejected">
+                <StatusIcon status="rejected" size="sm" />
+              </ToggleGroupItem>
             </ToggleGroup>
           </div>
 

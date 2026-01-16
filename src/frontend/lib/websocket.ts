@@ -223,7 +223,7 @@ export function useDocumentTypeLiveUpdates(documentTypeId: string | undefined) {
             queryClient.invalidateQueries({ queryKey: ['document', event.documentId] })
             queryClient.invalidateQueries({ queryKey: ['documents'] })
           } else if (event.type === 'job:started') {
-            // Mark document as processing
+            // Optimistically mark document as processing in individual cache
             queryClient.setQueryData(['document', event.documentId], (old: unknown) => {
               if (!old || typeof old !== 'object') return old
               return {
@@ -231,7 +231,17 @@ export function useDocumentTypeLiveUpdates(documentTypeId: string | undefined) {
                 status: 'processing',
               }
             })
-            queryClient.invalidateQueries({ queryKey: ['documents'] })
+            // Also update documents list cache to show processing status
+            queryClient.setQueriesData({ queryKey: ['documents'] }, (old: unknown) => {
+              if (!old || typeof old !== 'object' || !('documents' in old)) return old
+              const data = old as { documents: Array<{ id: string; status: string | null }> }
+              return {
+                ...data,
+                documents: data.documents.map((doc) =>
+                  doc.id === event.documentId ? { ...doc, status: 'processing' } : doc
+                ),
+              }
+            })
           }
         }
 
