@@ -28,6 +28,7 @@ import {
   cancelBatch,
   updateJobStatus,
   getJobsByBatchId,
+  getActiveJobsForDocumentType,
 } from '../lib/db/job-operations'
 import {
   requireApiKeyOrAuth,
@@ -311,6 +312,31 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
       } catch (error) {
         console.error('Failed to cancel batch:', error)
         return c.json({ error: 'Failed to cancel batch' }, 500)
+      }
+    },
+  )
+
+  // GET /api/jobs/active - Get active jobs for a document type
+  .get(
+    '/jobs/active',
+    requireApiKeyOrAuth,
+    zValidator('query', z.object({ documentTypeId: z.string().uuid() })),
+    async (c) => {
+      try {
+        const { documentTypeId } = c.req.valid('query')
+        const jobs = await getActiveJobsForDocumentType(documentTypeId)
+
+        return c.json({
+          jobs: jobs.map((j) => ({
+            id: j.id,
+            documentId: j.documentId,
+            batchId: j.batchId,
+            status: j.status,
+          })),
+        }, 200)
+      } catch (error) {
+        console.error('Failed to get active jobs:', error)
+        return c.json({ error: 'Failed to get active jobs' }, 500)
       }
     },
   )

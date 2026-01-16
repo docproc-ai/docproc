@@ -204,7 +204,7 @@ export async function updateBatchProgress(
   const batch = batches.get(id)
   if (!batch) return undefined
 
-  const total = parseInt(batch.total)
+  const total = parseInt(batch.total, 10)
   const isComplete = completed + failed >= total
 
   batch.completed = String(completed)
@@ -268,6 +268,35 @@ export async function getActiveBatches(): Promise<Batch[]> {
   for (const batch of batches.values()) {
     if (batch.status === 'pending' || batch.status === 'processing') {
       active.push(batch)
+    }
+  }
+  return active
+}
+
+export async function getActiveJobs(): Promise<Job[]> {
+  const active: Job[] = []
+  for (const job of jobs.values()) {
+    if (job.status === 'pending' || job.status === 'processing') {
+      active.push(job)
+    }
+  }
+  return active
+}
+
+export async function getActiveJobsForDocumentType(documentTypeId: string): Promise<Job[]> {
+  // Get active batches for this document type
+  const activeBatchIds = new Set<string>()
+  for (const batch of batches.values()) {
+    if (batch.documentTypeId === documentTypeId && (batch.status === 'pending' || batch.status === 'processing')) {
+      activeBatchIds.add(batch.id)
+    }
+  }
+
+  // Get jobs from those batches
+  const active: Job[] = []
+  for (const job of jobs.values()) {
+    if (job.batchId && activeBatchIds.has(job.batchId) && (job.status === 'pending' || job.status === 'processing')) {
+      active.push(job)
     }
   }
   return active

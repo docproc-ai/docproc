@@ -436,3 +436,21 @@ export function useRotateDocument() {
     },
   })
 }
+
+// Active jobs for a document type
+export function useActiveJobs(documentTypeId: string | undefined) {
+  return useQuery({
+    queryKey: ['activeJobs', documentTypeId],
+    queryFn: async () => {
+      if (!documentTypeId) return { jobs: [] }
+      const res = await api.api.jobs.active.$get({
+        query: { documentTypeId },
+      })
+      if (!res.ok) throw new Error('Failed to fetch active jobs')
+      return res.json()
+    },
+    enabled: !!documentTypeId,
+    // Refetch periodically to stay in sync
+    refetchInterval: 5000,
+  })
+}

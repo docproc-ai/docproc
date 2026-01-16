@@ -35,6 +35,7 @@ import {
   useDeleteDocument,
   useCreateBatch,
   useUpdateDocument,
+  useActiveJobs,
 } from '@/lib/queries'
 import { useQueryClient } from '@tanstack/react-query'
 import { useSession } from '@/lib/auth'
@@ -45,7 +46,6 @@ import { Kbd } from '@/components/ui/kbd'
 import {
   useDocumentTypeLiveUpdates,
   useWebSocketStatus,
-  useBatchSubscription,
   useJobEvents,
 } from '@/lib/websocket'
 import { useDebounce } from '@/lib/hooks'
@@ -226,13 +226,13 @@ export default function ProcessLayout() {
   const [checkedDocIds, setCheckedDocIds] = useState<Set<string>>(new Set())
   const [isUploading, setIsUploading] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
-  const [activeBatchId, setActiveBatchId] = useState<string | null>(null)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [processingDocIds, setProcessingDocIds] = useState<Set<string>>(new Set())
   const documentRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
   // Document action state (for header controls)
   const [isStreaming, setIsStreaming] = useState(false)
+  const [streamingDocId, setStreamingDocId] = useState<string | null>(null)
   const [modelOverride, setModelOverride] = useState('')
   const [streamingData, setStreamingData] = useState<Record<string, unknown> | null>(null)
   const abortStreamRef = useRef<(() => void) | null>(null)
@@ -258,9 +258,23 @@ export default function ProcessLayout() {
   // WebSocket for live updates
   const wsStatus = useWebSocketStatus()
   useDocumentTypeLiveUpdates(docType?.id)
-  const { progress: batchProgress } = useBatchSubscription(activeBatchId || undefined)
 
-  // Track processing state from WebSocket events
+  // Query active jobs for this document type (for page load)
+  const { data: activeJobsData } = useActiveJobs(docType?.id)
+
+  // Initialize processingDocIds from server on page load
+  useEffect(() => {
+    if (activeJobsData?.jobs) {
+      const activeDocIds = new Set(activeJobsData.jobs.map((j: { documentId: string }) => j.documentId))
+      setProcessingDocIds((prev) => {
+        // Merge with existing WebSocket-tracked ids
+        const merged = new Set([...prev, ...activeDocIds])
+        return merged.size !== prev.size ? merged : prev
+      })
+    }
+  }, [activeJobsData])
+
+  // Track processing state from WebSocket events (real-time updates)
   useJobEvents(
     useCallback((event) => {
       if (!event.documentId) return
@@ -281,7 +295,7 @@ export default function ProcessLayout() {
   // Documents from server (already filtered/paginated)
   const documents = documentsData?.documents || []
 
-  // Scroll to selected document when it changes
+  // Scroll to selected document when it changes or documents load
   useEffect(() => {
     if (selectedDocId && documentRefs.current.has(selectedDocId)) {
       const element = documentRefs.current.get(selectedDocId)
@@ -291,7 +305,7 @@ export default function ProcessLayout() {
         }, 100)
       }
     }
-  }, [selectedDocId])
+  }, [selectedDocId, documents])
 
   // Auto-select first document if none selected
   useEffect(() => {
@@ -377,40 +391,41 @@ export default function ProcessLayout() {
   const handleBulkProcess = useCallback(async () => {
     if (checkedDocIds.size === 0 || !docType?.id) return
 
-    // Optimistically mark selected documents as processing immediately
     const idsToProcess = Array.from(checkedDocIds)
-    queryClient.setQueriesData({ queryKey: ['documents'] }, (old: unknown) => {
-      if (!old || typeof old !== 'object' || !('documents' in old)) return old
-      const data = old as { documents: Array<{ id: string; status: string | null }> }
-      return {
-        ...data,
-        documents: data.documents.map((doc) =>
-          idsToProcess.includes(doc.id) ? { ...doc, status: 'processing' } : doc
-        ),
+
+    // Immediately mark as processing in local state
+    setProcessingDocIds((prev) => {
+      const next = new Set(prev)
+      for (const id of idsToProcess) {
+        next.add(id)
       }
+      return next
     })
 
     try {
-      const result = await createBatch.mutateAsync({
+      await createBatch.mutateAsync({
         documentTypeId: docType.id,
         documentIds: idsToProcess,
       })
-
-      if (result?.batchId) {
-        setActiveBatchId(result.batchId)
-      }
 
       setCheckedDocIds(new Set())
     } catch (error) {
       console.error('Batch processing failed:', error)
       // Revert optimistic update on error
-      queryClient.invalidateQueries({ queryKey: ['documents'] })
+      setProcessingDocIds((prev) => {
+        const next = new Set(prev)
+        for (const id of idsToProcess) {
+          next.delete(id)
+        }
+        return next
+      })
+      // Fallback to individual processing
       for (const id of checkedDocIds) {
         await processDocument.mutateAsync({ documentId: id })
       }
       setCheckedDocIds(new Set())
     }
-  }, [checkedDocIds, docType?.id, createBatch, processDocument, queryClient])
+  }, [checkedDocIds, docType?.id, createBatch, processDocument])
 
   const handleBulkApprove = useCallback(async () => {
     if (checkedDocIds.size === 0) return
@@ -426,20 +441,12 @@ export default function ProcessLayout() {
     if (!currentDoc) return
 
     setIsStreaming(true)
+    setStreamingDocId(currentDoc.id)
     setStreamingData({})
     abortStreamRef.current = abortStreaming
 
-    // Optimistically mark document as processing
-    queryClient.setQueriesData({ queryKey: ['documents'] }, (old: unknown) => {
-      if (!old || typeof old !== 'object' || !('documents' in old)) return old
-      const data = old as { documents: Array<{ id: string; status: string | null }> }
-      return {
-        ...data,
-        documents: data.documents.map((doc) =>
-          doc.id === currentDoc.id ? { ...doc, status: 'processing' } : doc
-        ),
-      }
-    })
+    // Mark as processing in local state
+    setProcessingDocIds((prev) => new Set(prev).add(currentDoc.id))
 
     try {
       await processWithStreaming(
@@ -457,13 +464,21 @@ export default function ProcessLayout() {
       )
     } finally {
       setIsStreaming(false)
+      setStreamingDocId(null)
       abortStreamRef.current = null
+      // Remove from processing state when done
+      setProcessingDocIds((prev) => {
+        const next = new Set(prev)
+        next.delete(currentDoc.id)
+        return next
+      })
     }
-  }, [currentDoc, modelOverride, processWithStreaming, abortStreaming, queryClient])
+  }, [currentDoc, modelOverride, processWithStreaming, abortStreaming])
 
   const handleStop = useCallback(() => {
     abortStreamRef.current?.()
     setIsStreaming(false)
+    setStreamingDocId(null)
     abortStreamRef.current = null
   }, [])
 
@@ -594,24 +609,6 @@ export default function ProcessLayout() {
               </span>
             </Button>
           </label>
-          {/* Batch progress indicator */}
-          {activeBatchId && batchProgress && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-              <div className="w-3 h-3 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
-              <span className="text-xs font-medium text-purple-700 dark:text-purple-300">
-                Processing {batchProgress.completed}/{batchProgress.total}
-              </span>
-              {batchProgress.completed === batchProgress.total && (
-                <button
-                  type="button"
-                  onClick={() => setActiveBatchId(null)}
-                  className="ml-1 text-purple-500 hover:text-purple-700"
-                >
-                  ×
-                </button>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Right side: document-specific controls */}
@@ -627,7 +624,7 @@ export default function ProcessLayout() {
             )}
 
             {/* Process/Stop ButtonGroup */}
-            {isStreaming ? (
+            {selectedDocId && processingDocIds.has(selectedDocId) ? (
               <Button variant="outline" size="sm" onClick={handleStop}>
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -682,7 +679,7 @@ export default function ProcessLayout() {
                 <Button
                   size="sm"
                   onClick={handleApprove}
-                  disabled={updateDocument.isPending || isStreaming}
+                  disabled={updateDocument.isPending || (selectedDocId && processingDocIds.has(selectedDocId))}
                   className="bg-green-600 hover:bg-green-700 text-white"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
@@ -814,6 +811,18 @@ export default function ProcessLayout() {
                     ? `${checkedDocIds.size} selected`
                     : 'Select all'}
                 </span>
+                {/* Processing count */}
+                {(() => {
+                  const processingCount = documents.filter(d => processingDocIds.has(d.id)).length
+                  return processingCount > 0 ? (
+                    <span className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
+                      <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                      </svg>
+                      {processingCount}
+                    </span>
+                  ) : null
+                })()}
               </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -998,7 +1007,10 @@ export default function ProcessLayout() {
 
         {/* Middle + Right: Child route (editor + preview) */}
         <ResizablePanel defaultSize={80} minSize={50}>
-          <DocumentEditorProvider streamingData={streamingData} isStreaming={isStreaming}>
+          <DocumentEditorProvider
+            streamingData={streamingDocId === selectedDocId ? streamingData : null}
+            isStreaming={selectedDocId ? processingDocIds.has(selectedDocId) : false}
+          >
             <Outlet />
           </DocumentEditorProvider>
         </ResizablePanel>
