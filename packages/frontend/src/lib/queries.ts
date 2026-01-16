@@ -96,7 +96,7 @@ export function useDeleteDocumentType() {
 }
 
 // Documents
-export function useDocuments(documentTypeId: string, options?: { page?: number; status?: string }) {
+export function useDocuments(documentTypeId: string, options?: { page?: number; status?: string; search?: string }) {
   return useQuery({
     queryKey: ['documents', documentTypeId, options],
     queryFn: async () => {
@@ -105,12 +105,15 @@ export function useDocuments(documentTypeId: string, options?: { page?: number; 
           documentTypeId,
           page: String(options?.page || 1),
           status: options?.status || 'all',
+          ...(options?.search && { search: options.search }),
         },
       })
       if (!res.ok) throw new Error('Failed to fetch documents')
       return res.json()
     },
     enabled: !!documentTypeId,
+    // Keep showing previous results while new search results load
+    placeholderData: (previousData) => previousData,
   })
 }
 

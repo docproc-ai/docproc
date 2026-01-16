@@ -5,7 +5,7 @@
 
 import { db } from '../../db'
 import { document, documentType } from '../../db/schema/app'
-import { eq, desc, and, or, count, like, sql } from 'drizzle-orm'
+import { eq, desc, and, or, count, like } from 'drizzle-orm'
 import type { DocumentSelect, DocumentInsert } from '../../db/schema/app'
 
 export type { DocumentSelect, DocumentInsert }
@@ -68,9 +68,15 @@ export async function getDocuments(
     }
   }
 
-  // Handle search filtering
+  // Handle search filtering (search by filename or slug)
   if (search && search.trim()) {
-    conditions.push(like(document.filename, `%${search.trim()}%`))
+    const searchPattern = `%${search.trim()}%`
+    conditions.push(
+      or(
+        like(document.filename, searchPattern),
+        like(document.slug, searchPattern)
+      )!
+    )
   }
 
   // Get total count for pagination

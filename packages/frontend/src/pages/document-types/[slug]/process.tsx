@@ -1,5 +1,5 @@
 import { Link, Outlet, useNavigate, useParams } from '@tanstack/react-router'
-import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -39,6 +39,7 @@ import {
   useWebSocketStatus,
   useBatchSubscription,
 } from '@/lib/websocket'
+import { useDebounce } from '@/lib/hooks'
 
 // WebSocket connection indicator
 function ConnectionIndicator({ status }: { status: string }) {
@@ -259,10 +260,19 @@ export default function ProcessLayout() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const documentRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
+  // Debounce search to avoid excessive API calls
+  const debouncedSearch = useDebounce(searchQuery, 300)
+
+  // Reset page when search changes
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedSearch])
+
   const { data: docType, isLoading: typeLoading } = useDocumentType(slug)
   const { data: documentsData, refetch } = useDocuments(docType?.id || '', {
     page,
     status: statusFilter,
+    search: debouncedSearch || undefined,
   })
 
   const processDocument = useProcessDocument()
@@ -275,16 +285,8 @@ export default function ProcessLayout() {
   useDocumentTypeLiveUpdates(docType?.id)
   const { progress: batchProgress } = useBatchSubscription(activeBatchId || undefined)
 
-  // Filter documents by search
-  const filteredDocs = useMemo(() => {
-    if (!documentsData?.documents) return []
-    if (!searchQuery) return documentsData.documents
-    const query = searchQuery.toLowerCase()
-    return documentsData.documents.filter((d) =>
-      d.filename.toLowerCase().includes(query) ||
-      (d.slug && d.slug.toLowerCase().includes(query))
-    )
-  }, [documentsData?.documents, searchQuery])
+  // Documents from server (already filtered/paginated)
+  const documents = documentsData?.documents || []
 
   // Scroll to selected document when it changes
   useEffect(() => {
@@ -300,14 +302,14 @@ export default function ProcessLayout() {
 
   // Auto-select first document if none selected
   useEffect(() => {
-    if (!selectedDocId && filteredDocs.length > 0 && docType?.slug) {
+    if (!selectedDocId && documents.length > 0 && docType?.slug) {
       navigate({
         to: '/document-types/$slug/process/$id',
-        params: { slug: docType.slug, id: filteredDocs[0].id },
+        params: { slug: docType.slug, id: documents[0].id },
         replace: true,
       })
     }
-  }, [selectedDocId, filteredDocs, docType?.slug, navigate])
+  }, [selectedDocId, documents, docType?.slug, navigate])
 
   const handleSelectDoc = useCallback((docId: string) => {
     if (docType?.slug) {
@@ -357,12 +359,12 @@ export default function ProcessLayout() {
   }, [])
 
   const handleSelectAll = useCallback(() => {
-    if (checkedDocIds.size === filteredDocs.length) {
+    if (checkedDocIds.size === documents.length) {
       setCheckedDocIds(new Set())
     } else {
-      setCheckedDocIds(new Set(filteredDocs.map((d) => d.id)))
+      setCheckedDocIds(new Set(documents.map((d) => d.id)))
     }
-  }, [checkedDocIds.size, filteredDocs])
+  }, [checkedDocIds.size, documents])
 
   const handleBulkDelete = useCallback(() => {
     if (checkedDocIds.size === 0) return
@@ -555,7 +557,7 @@ export default function ProcessLayout() {
             <div className="px-3 h-10 border-b bg-muted/30 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Checkbox
-                  checked={checkedDocIds.size === filteredDocs.length && filteredDocs.length > 0}
+                  checked={checkedDocIds.size === documents.length && documents.length > 0}
                   onCheckedChange={() => handleSelectAll()}
                 />
                 <span className="text-xs text-muted-foreground">
@@ -659,12 +661,12 @@ export default function ProcessLayout() {
 
             {/* Document list */}
             <div className="flex-1 overflow-y-auto">
-              {filteredDocs.length === 0 ? (
+              {documents.length === 0 ? (
                 <div className="p-4 text-center text-sm text-muted-foreground">
                   No documents
                 </div>
               ) : (
-                filteredDocs.map((doc) => (
+                documents.map((doc) => (
                   <DocumentListItem
                     key={doc.id}
                     doc={doc}
