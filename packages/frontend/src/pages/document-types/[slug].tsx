@@ -145,15 +145,18 @@ function DocumentListItem({
   isChecked,
   onSelect,
   onCheck,
+  itemRef,
 }: {
   doc: { id: string; filename: string; status: string | null; createdAt: string | null }
   isSelected: boolean
   isChecked: boolean
   onSelect: () => void
   onCheck: (checked: boolean) => void
+  itemRef?: React.RefObject<HTMLDivElement | null>
 }) {
   return (
     <div
+      ref={itemRef}
       className={`flex items-center w-full border-b transition-colors ${
         isSelected
           ? 'bg-primary/10 border-l-2 border-l-primary'
@@ -294,6 +297,7 @@ export default function DocumentTypeDetailPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [pendingDocId, setPendingDocId] = useState<string | null>(null)
   const abortStreamRef = useRef<(() => void) | null>(null)
+  const selectedItemRef = useRef<HTMLDivElement | null>(null)
 
   const { data: session } = useSession()
   const isAdmin = session?.user?.role === 'admin'
@@ -521,6 +525,16 @@ export default function DocumentTypeDetailPage() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   })
+
+  // Scroll selected document into view when selection changes
+  useEffect(() => {
+    if (selectedItemRef.current) {
+      selectedItemRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+      })
+    }
+  }, [selectedDocId])
 
   // Bulk action handlers
   const handleToggleCheck = useCallback((docId: string, checked: boolean) => {
@@ -1009,6 +1023,7 @@ export default function DocumentTypeDetailPage() {
                   isChecked={checkedDocIds.has(doc.id)}
                   onSelect={() => handleSelectDoc(doc.id)}
                   onCheck={(checked) => handleToggleCheck(doc.id, checked)}
+                  itemRef={currentDoc?.id === doc.id ? selectedItemRef : undefined}
                 />
               ))
             )}
