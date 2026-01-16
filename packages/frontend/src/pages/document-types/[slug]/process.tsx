@@ -712,7 +712,7 @@ export default function ProcessLayout() {
                   <Button
                     size="icon"
                     className={`h-8 w-8 ${currentDoc.status === 'approved' ? '' : 'bg-green-600 hover:bg-green-700 text-white'}`}
-                    disabled={updateDocument.isPending}
+                    disabled={updateDocument.isPending || (selectedDocId && processingDocIds.has(selectedDocId))}
                     variant={currentDoc.status === 'approved' ? 'secondary' : 'default'}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -721,13 +721,30 @@ export default function ProcessLayout() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={handleReject}>
+                  <DropdownMenuItem onClick={handleSaveFromHeader} disabled={!hasUnsavedChanges}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
+                      <path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
+                      <path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7" />
+                      <path d="M7 3v4a1 1 0 0 0 1 1h7" />
+                    </svg>
+                    Save
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleReject} className="text-red-600 focus:text-red-600 focus:bg-red-50">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
                       <circle cx="12" cy="12" r="10" />
                       <path d="m15 9-6 6" />
                       <path d="m9 9 6 6" />
                     </svg>
                     Reject
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleClear} className="text-orange-600 focus:text-orange-600 focus:bg-orange-50">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
+                      <path d="M3 6h18" />
+                      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                    </svg>
+                    Clear Data
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -753,6 +770,7 @@ export default function ProcessLayout() {
               <PopoverContent align="end" className="w-72">
                 <h4 className="font-medium mb-2">Keyboard Shortcuts</h4>
                 <div className="space-y-1.5 text-sm">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Save</span> <span className="flex items-center gap-0.5"><Kbd>Ctrl</Kbd>+<Kbd>S</Kbd></span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">Approve</span> <span className="flex items-center gap-0.5"><Kbd>Ctrl</Kbd>+<Kbd>Enter</Kbd></span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">Process</span> <span className="flex items-center gap-0.5"><Kbd>Ctrl</Kbd>+<Kbd>P</Kbd></span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">Reject</span> <span className="flex items-center gap-0.5"><Kbd>Ctrl</Kbd>+<Kbd>R</Kbd></span></div>
@@ -1029,6 +1047,9 @@ export default function ProcessLayout() {
           <DocumentEditorProvider
             streamingData={streamingDocId === selectedDocId ? streamingData : null}
             isStreaming={selectedDocId ? processingDocIds.has(selectedDocId) : false}
+            registerSave={registerSave}
+            hasUnsavedChanges={hasUnsavedChanges}
+            setHasUnsavedChanges={setHasUnsavedChanges}
           >
             <Outlet />
           </DocumentEditorProvider>
