@@ -1,5 +1,5 @@
-import { Link, Outlet, useNavigate, useParams } from '@tanstack/react-router'
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { Link, Outlet, useNavigate, useParams, useSearch } from '@tanstack/react-router'
+import { useCallback, useRef, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -251,28 +251,41 @@ export default function ProcessLayout() {
   const selectedDocId = params.id as string | undefined
   const navigate = useNavigate()
 
+  // URL search params for shareable state
+  const { q: urlSearch, status: urlStatus, page: urlPage } = useSearch({
+    from: '/document-types/$slug/process',
+  })
+
+  // Local state for controlled input (syncs to URL on debounce)
+  const [searchInput, setSearchInput] = useState(urlSearch)
+  const debouncedSearch = useDebounce(searchInput, 300)
+
+  // Sync debounced search to URL
+  useEffect(() => {
+    if (debouncedSearch !== urlSearch) {
+      navigate({
+        search: (prev) => ({ ...prev, q: debouncedSearch || undefined, page: 1 }),
+        replace: true,
+      })
+    }
+  }, [debouncedSearch, urlSearch, navigate])
+
+  // Update local input when URL changes (e.g., back/forward navigation)
+  useEffect(() => {
+    setSearchInput(urlSearch)
+  }, [urlSearch])
+
   const [checkedDocIds, setCheckedDocIds] = useState<Set<string>>(new Set())
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [page, setPage] = useState(1)
   const [isUploading, setIsUploading] = useState(false)
   const [activeBatchId, setActiveBatchId] = useState<string | null>(null)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const documentRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
-  // Debounce search to avoid excessive API calls
-  const debouncedSearch = useDebounce(searchQuery, 300)
-
-  // Reset page when search changes
-  useEffect(() => {
-    setPage(1)
-  }, [debouncedSearch])
-
   const { data: docType, isLoading: typeLoading } = useDocumentType(slug)
   const { data: documentsData, refetch } = useDocuments(docType?.id || '', {
-    page,
-    status: statusFilter,
-    search: debouncedSearch || undefined,
+    page: urlPage,
+    status: urlStatus,
+    search: urlSearch || undefined,
   })
 
   const processDocument = useProcessDocument()
@@ -515,17 +528,19 @@ export default function ProcessLayout() {
             <div className="p-3 border-b space-y-2">
               <Input
                 placeholder="Search documents..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 className="h-9"
               />
               <ToggleGroup
                 type="single"
-                value={statusFilter}
+                value={urlStatus}
                 onValueChange={(value: string) => {
                   if (value) {
-                    setStatusFilter(value)
-                    setPage(1)
+                    navigate({
+                      search: (prev) => ({ ...prev, status: value, page: 1 }),
+                      replace: true,
+                    })
                   }
                 }}
                 size="sm"
@@ -696,19 +711,25 @@ export default function ProcessLayout() {
               <div className="p-3 border-t flex items-center justify-between text-sm">
                 <button
                   type="button"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
+                  onClick={() => navigate({
+                    search: (prev) => ({ ...prev, page: Math.max(1, urlPage - 1) }),
+                    replace: true,
+                  })}
+                  disabled={urlPage === 1}
                   className="px-2 py-1 rounded hover:bg-muted disabled:opacity-50"
                 >
                   ‹
                 </button>
                 <span className="text-muted-foreground">
-                  {page} / {documentsData.pagination.totalPages}
+                  {urlPage} / {documentsData.pagination.totalPages}
                 </span>
                 <button
                   type="button"
-                  onClick={() => setPage((p) => p + 1)}
-                  disabled={page === documentsData.pagination.totalPages}
+                  onClick={() => navigate({
+                    search: (prev) => ({ ...prev, page: urlPage + 1 }),
+                    replace: true,
+                  })}
+                  disabled={urlPage === documentsData.pagination.totalPages}
                   className="px-2 py-1 rounded hover:bg-muted disabled:opacity-50"
                 >
                   ›

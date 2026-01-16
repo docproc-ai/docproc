@@ -253,6 +253,11 @@ const documentTypeProcessRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/document-types/$slug/process",
   component: ProcessLayout,
+  validateSearch: (search: Record<string, unknown>) => ({
+    q: (search.q as string) || "",
+    status: (search.status as string) || "all",
+    page: Number(search.page) || 1,
+  }),
 })
 
 const documentEditorRoute = createRoute({
