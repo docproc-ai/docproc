@@ -3,6 +3,7 @@ import {
   subscribeToJob,
   subscribeToBatch,
   unsubscribeAll,
+  registerClient,
 } from './job-events'
 
 export interface WebSocketData {
@@ -76,6 +77,8 @@ export function handleWebSocketMessage(
  */
 export function handleWebSocketOpen(ws: ServerWebSocket<WebSocketData>) {
   console.log(`WebSocket connected: ${ws.data.id}`)
+  // Register client to receive all job events
+  registerClient(ws as unknown as WebSocket)
   ws.send(JSON.stringify({ type: 'connected', id: ws.data.id }))
 }
 

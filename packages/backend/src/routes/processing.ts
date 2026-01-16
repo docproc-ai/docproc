@@ -394,6 +394,7 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
  * Process batch in background
  * Updates job and batch status as processing progresses
  * Emits WebSocket events for real-time progress tracking
+ * Processes sequentially and checks for cancellation before each document
  */
 async function processBatchInBackground(
   batchId: string,
@@ -411,17 +412,32 @@ async function processBatchInBackground(
 
     let completed = 0
     let failed = 0
+    let skipped = 0
 
-    // Emit job started events
-    for (const [documentId, jobId] of jobMap) {
-      emitJobStarted(jobId, documentId, batchId)
-    }
-
-    // Process with concurrency control
+    // Process sequentially with cancellation check before each document
     await processDocumentBatch(
       documentIds,
       {},
-      3, // concurrency
+      // Check if job should be processed (not cancelled)
+      async (documentId) => {
+        const jobId = jobMap.get(documentId)
+        if (!jobId) return false
+
+        const job = await getJob(jobId)
+        if (!job || job.status === 'failed') {
+          // Job was cancelled - emit skipped event
+          skipped++
+          await updateBatchProgress(batchId, completed, failed + skipped)
+          emitBatchProgress(batchId, completed, failed + skipped, documentIds.length)
+          return false
+        }
+
+        // Job is still pending - mark as processing and emit started
+        await updateJobStatus(jobId, 'processing', { startedAt: new Date() })
+        emitJobStarted(jobId, documentId, batchId)
+        return true
+      },
+      // Progress callback
       async (completedCount, total, documentId, error) => {
         const jobId = jobMap.get(documentId)
         if (!jobId) return
@@ -442,14 +458,14 @@ async function processBatchInBackground(
         }
 
         // Update batch progress
-        await updateBatchProgress(batchId, completed, failed)
-        emitBatchProgress(batchId, completed, failed, total)
+        await updateBatchProgress(batchId, completed, failed + skipped)
+        emitBatchProgress(batchId, completed, failed + skipped, total)
       },
     )
 
     // Mark batch as complete
     await updateBatchStatus(batchId, 'completed')
-    emitBatchCompleted(batchId, completed, failed, documentIds.length)
+    emitBatchCompleted(batchId, completed, failed + skipped, documentIds.length)
 
     // Call webhook if configured
     if (webhookUrl) {

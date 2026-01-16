@@ -30,61 +30,52 @@ export interface JobEvent {
 }
 
 /**
- * WebSocket client connections mapped by subscription
+ * All connected WebSocket clients - broadcast to all for simplicity
  */
-const subscriptions = new Map<string, Set<WebSocket>>()
+const allClients = new Set<WebSocket>()
 
 /**
- * Subscribe a WebSocket client to job/batch events
+ * Register a new WebSocket client
  */
-export function subscribeToJob(ws: WebSocket, jobId: string) {
-  const key = `job:${jobId}`
-  if (!subscriptions.has(key)) {
-    subscriptions.set(key, new Set())
-  }
-  subscriptions.get(key)!.add(ws)
-}
-
-export function subscribeToBatch(ws: WebSocket, batchId: string) {
-  const key = `batch:${batchId}`
-  if (!subscriptions.has(key)) {
-    subscriptions.set(key, new Set())
-  }
-  subscriptions.get(key)!.add(ws)
+export function registerClient(ws: WebSocket) {
+  allClients.add(ws)
 }
 
 /**
- * Unsubscribe a WebSocket client from all events
+ * Subscribe a WebSocket client to job/batch events (legacy - now just registers)
+ */
+export function subscribeToJob(ws: WebSocket, _jobId: string) {
+  registerClient(ws)
+}
+
+export function subscribeToBatch(ws: WebSocket, _batchId: string) {
+  registerClient(ws)
+}
+
+/**
+ * Unsubscribe/remove a WebSocket client
  */
 export function unsubscribeAll(ws: WebSocket) {
-  for (const clients of subscriptions.values()) {
-    clients.delete(ws)
-  }
+  allClients.delete(ws)
 }
 
 /**
- * Broadcast an event to all subscribed clients
+ * Broadcast an event to ALL connected clients
  */
 export function broadcastJobEvent(event: JobEvent) {
-  const keys: string[] = []
-
-  if (event.jobId) {
-    keys.push(`job:${event.jobId}`)
-  }
-  if (event.batchId) {
-    keys.push(`batch:${event.batchId}`)
-  }
-
   const message = JSON.stringify(event)
 
-  for (const key of keys) {
-    const clients = subscriptions.get(key)
-    if (clients) {
-      for (const ws of clients) {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(message)
-        }
+  for (const ws of allClients) {
+    try {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(message)
+      } else {
+        // Clean up disconnected clients
+        allClients.delete(ws)
       }
+    } catch {
+      // Remove failed client
+      allClients.delete(ws)
     }
   }
 }
