@@ -40,7 +40,7 @@ export default function DocumentEditorPage() {
   const [pendingDocId, setPendingDocId] = useState<string | null>(null)
 
   // Get streaming state from parent context
-  const { streamingData, isStreaming } = useDocumentEditorContext()
+  const { streamingData, isStreaming, registerSave, setHasUnsavedChanges } = useDocumentEditorContext()
 
   const { data: docType } = useDocumentType(slug)
   const { data: currentDoc } = useDocument(documentId)
@@ -82,6 +82,17 @@ export default function DocumentEditorPage() {
     })
     setHasChanges(false)
   }, [currentDoc, editedData, updateDocument])
+
+  // Register save function with parent context
+  useEffect(() => {
+    registerSave(handleSave)
+    return () => registerSave(null)
+  }, [handleSave, registerSave])
+
+  // Sync hasChanges to parent context
+  useEffect(() => {
+    setHasUnsavedChanges(hasChanges)
+  }, [hasChanges, setHasUnsavedChanges])
 
   const handleRotate = useCallback(async (degrees: number) => {
     if (!currentDoc) return

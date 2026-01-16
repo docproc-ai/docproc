@@ -237,6 +237,13 @@ export default function ProcessLayout() {
   const [streamingData, setStreamingData] = useState<Record<string, unknown> | null>(null)
   const abortStreamRef = useRef<(() => void) | null>(null)
 
+  // Editor context state (lifted from child)
+  const [editorSaveFn, setEditorSaveFn] = useState<(() => Promise<void>) | null>(null)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const registerSave = useCallback((fn: (() => Promise<void>) | null) => {
+    setEditorSaveFn(() => fn)
+  }, [])
+
   const { data: session } = useSession()
   const isAdmin = session?.user?.role === 'admin'
 
@@ -503,6 +510,18 @@ export default function ProcessLayout() {
     await updateDocument.mutateAsync({
       id: currentDoc.id,
       data: { status: 'rejected' },
+    })
+  }, [currentDoc, updateDocument])
+
+  const handleSaveFromHeader = useCallback(async () => {
+    if (editorSaveFn) await editorSaveFn()
+  }, [editorSaveFn])
+
+  const handleClear = useCallback(async () => {
+    if (!currentDoc) return
+    await updateDocument.mutateAsync({
+      id: currentDoc.id,
+      data: { extractedData: {} },
     })
   }, [currentDoc, updateDocument])
 
