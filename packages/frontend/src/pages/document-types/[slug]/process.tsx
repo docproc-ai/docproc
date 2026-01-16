@@ -3,7 +3,6 @@ import { useCallback, useRef, useEffect, useState } from 'react'
 import {
   ChevronLeft,
   Settings,
-  Upload,
   Square,
   Check,
   Undo2,
@@ -37,9 +36,8 @@ import { ButtonGroup } from '@/components/ui/button-group'
 import { ModelSelector } from '@/components/model-selector'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { Kbd } from '@/components/ui/kbd'
-import { useDocumentTypeLiveUpdates, useWebSocketStatus } from '@/lib/websocket'
+import { useDocumentTypeLiveUpdates } from '@/lib/websocket'
 import { DocumentEditorProvider } from '@/lib/document-editor-context'
-import { ConnectionIndicator } from '@/components/connection-indicator'
 import { DocumentQueue, useDocumentProcessingState } from '@/components/document-queue'
 
 export default function ProcessLayout() {
@@ -80,7 +78,6 @@ export default function ProcessLayout() {
   const { isProcessing: isDocProcessing, processingDocIds } = useDocumentProcessingState(docType?.id || '')
 
   // WebSocket for live updates
-  const wsStatus = useWebSocketStatus()
   useDocumentTypeLiveUpdates(docType?.id)
 
   // ============================================
@@ -121,25 +118,6 @@ export default function ProcessLayout() {
   // ============================================
   // Document Action Handlers (Header Controls)
   // ============================================
-
-  const handleFileUpload = useCallback(
-    async (files: FileList) => {
-      if (!docType) return
-      const formData = new FormData()
-      for (const file of files) {
-        formData.append('files', file)
-      }
-      try {
-        await fetch(`/api/document-types/${docType.slug}/upload`, {
-          method: 'POST',
-          body: formData,
-        })
-      } catch (err) {
-        console.error('Upload failed:', err)
-      }
-    },
-    [docType]
-  )
 
   const handleProcess = useCallback(async () => {
     if (!currentDoc) return
@@ -259,24 +237,7 @@ export default function ProcessLayout() {
             >
               <Settings className="h-4 w-4" />
             </Link>
-            <ConnectionIndicator status={wsStatus} />
           </div>
-          {/* Upload button */}
-          <label className="cursor-pointer">
-            <input
-              type="file"
-              multiple
-              accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.tiff"
-              className="hidden"
-              onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
-            />
-            <Button variant="outline" size="sm" asChild>
-              <span className="flex items-center gap-2">
-                <Upload className="h-4 w-4" />
-                Upload
-              </span>
-            </Button>
-          </label>
         </div>
 
         {/* Right side: document-specific controls */}

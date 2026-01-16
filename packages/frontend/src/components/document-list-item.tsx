@@ -1,4 +1,4 @@
-import { Loader2, X, File, FileJson, FileCheck, FileX, type LucideIcon } from 'lucide-react'
+import { File, FileCheck, FileJson, FileX, Loader2, type LucideIcon, X } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 
 const statusConfig: Record<string, { icon: LucideIcon; className: string }> = {
@@ -42,12 +42,15 @@ export function DocumentListItem({
   return (
     <div
       ref={(el) => registerRef(doc.id, el)}
-      className={`flex items-center w-full border-b transition-colors ${
+      className={`flex items-center w-full border-b transition-colors relative ${
         isSelected
-          ? 'bg-primary/10 border-l-2 border-l-primary'
+          ? 'bg-primary/10'
           : 'hover:bg-muted/50'
       }`}
     >
+      {isSelected && (
+        <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-primary" />
+      )}
       <div className="pl-3 py-3 self-center">
         <Checkbox
           checked={isChecked}

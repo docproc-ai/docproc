@@ -11,6 +11,7 @@ import {
   MoreHorizontal,
   Settings2,
   Trash2,
+  Upload,
   X,
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -102,6 +103,7 @@ export function DocumentQueue({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [activeJobsMap, setActiveJobsMap] = useState<Map<string, { jobId: string; batchId?: string }>>(new Map())
   const documentRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+  const uploadInputRef = useRef<HTMLInputElement>(null)
 
   const processingDocIds = new Set(activeJobsMap.keys())
   const debouncedSearch = useDebounce(searchInput, 300)
@@ -391,44 +393,50 @@ export function DocumentQueue({
               </Button>
             </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            {checkedDocIds.size > 0 && (
+            {checkedDocIds.size === 0 ? (
+              // Nothing selected - show upload option only
+              <DropdownMenuItem onClick={() => uploadInputRef.current?.click()}>
+                <Upload className="mr-2 h-4 w-4" />
+                Upload Files
+              </DropdownMenuItem>
+            ) : (
+              // Documents selected - show actions
               <>
                 <div className="px-2 py-1.5 text-sm font-medium">
                   {checkedDocIds.size} selected
                 </div>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleBulkProcess}>
+                  <Settings2 className="mr-2 h-4 w-4" />
+                  Process
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => handleBulkSetStatus('pending')}>
+                  <File className="mr-2 h-4 w-4 text-muted-foreground" />
+                  Mark as Pending
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleBulkSetStatus('processed')}>
+                  <FileJson className="mr-2 h-4 w-4 text-blue-500" />
+                  Mark as Processed
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleBulkSetStatus('approved')}>
+                  <FileCheck className="mr-2 h-4 w-4 text-green-500" />
+                  Mark as Approved
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleBulkSetStatus('rejected')}>
+                  <FileX className="mr-2 h-4 w-4 text-red-500" />
+                  Mark as Rejected
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleBulkDelete}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
               </>
             )}
-            <DropdownMenuItem onClick={handleBulkProcess} disabled={checkedDocIds.size === 0}>
-              <Settings2 className="mr-2 h-4 w-4" />
-              Process
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => handleBulkSetStatus('pending')} disabled={checkedDocIds.size === 0}>
-              <File className="mr-2 h-4 w-4 text-muted-foreground" />
-              Mark as Pending
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleBulkSetStatus('processed')} disabled={checkedDocIds.size === 0}>
-              <FileJson className="mr-2 h-4 w-4 text-blue-500" />
-              Mark as Processed
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleBulkSetStatus('approved')} disabled={checkedDocIds.size === 0}>
-              <FileCheck className="mr-2 h-4 w-4 text-green-500" />
-              Mark as Approved
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleBulkSetStatus('rejected')} disabled={checkedDocIds.size === 0}>
-              <FileX className="mr-2 h-4 w-4 text-red-500" />
-              Mark as Rejected
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={handleBulkDelete}
-              disabled={checkedDocIds.size === 0}
-              className="text-destructive focus:text-destructive"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </DropdownMenuItem>
           </DropdownMenuContent>
           </DropdownMenu>
         </ButtonGroup>
@@ -507,6 +515,21 @@ export function DocumentQueue({
           <ChevronRight className="h-4 w-4" />
         </button>
       </div>
+
+      {/* Hidden file input for upload */}
+      <input
+        ref={uploadInputRef}
+        type="file"
+        multiple
+        accept="image/*,.pdf"
+        className="hidden"
+        onChange={(e) => {
+          if (e.target.files && e.target.files.length > 0) {
+            handleFileUpload(e.target.files)
+            e.target.value = '' // Reset to allow re-uploading same file
+          }
+        }}
+      />
 
       {/* Delete confirmation dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
