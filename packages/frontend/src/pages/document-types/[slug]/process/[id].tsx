@@ -264,8 +264,8 @@ export default function DocumentEditorPage() {
       {/* Document action header */}
       <div className="flex items-center justify-between px-4 py-2 border-b bg-background">
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground truncate max-w-[300px]">
-            {currentDoc.filename}
+          <span className="text-sm text-muted-foreground truncate max-w-[300px]" title={currentDoc.filename}>
+            {currentDoc.slug || currentDoc.filename}
           </span>
         </div>
 

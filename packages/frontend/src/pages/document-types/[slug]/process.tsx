@@ -133,7 +133,7 @@ function DocumentListItem({
   onCheck,
   registerRef,
 }: {
-  doc: { id: string; filename: string; status: string | null; createdAt: string | null }
+  doc: { id: string; filename: string; slug: string | null; status: string | null; createdAt: string | null }
   isSelected: boolean
   isChecked: boolean
   onSelect: () => void
@@ -164,7 +164,7 @@ function DocumentListItem({
         onClick={onSelect}
         className="flex-1 text-left py-3 pr-3 pl-2 min-w-0"
       >
-        <p className="text-sm font-medium truncate">{doc.filename}</p>
+        <p className="text-sm font-medium truncate">{doc.slug || doc.filename}</p>
         {doc.createdAt && (
           <p className="text-xs text-muted-foreground mt-0.5">
             {new Date(doc.createdAt).toLocaleDateString('en-US', {
@@ -279,8 +279,10 @@ export default function ProcessLayout() {
   const filteredDocs = useMemo(() => {
     if (!documentsData?.documents) return []
     if (!searchQuery) return documentsData.documents
+    const query = searchQuery.toLowerCase()
     return documentsData.documents.filter((d) =>
-      d.filename.toLowerCase().includes(searchQuery.toLowerCase())
+      d.filename.toLowerCase().includes(query) ||
+      (d.slug && d.slug.toLowerCase().includes(query))
     )
   }, [documentsData?.documents, searchQuery])
 
