@@ -36,6 +36,7 @@ import {
   useCreateBatch,
   useUpdateDocument,
 } from '@/lib/queries'
+import { useQueryClient } from '@tanstack/react-query'
 import { useSession } from '@/lib/auth'
 import { ButtonGroup } from '@/components/ui/button-group'
 import { ModelSelector } from '@/components/model-selector'
@@ -243,6 +244,7 @@ export default function ProcessLayout() {
     search: urlSearch || undefined,
   })
 
+  const queryClient = useQueryClient()
   const processDocument = useProcessDocument()
   const { processWithStreaming, abort: abortStreaming } = useProcessDocumentStreaming()
   const deleteDocument = useDeleteDocument()
@@ -353,10 +355,23 @@ export default function ProcessLayout() {
   const handleBulkProcess = useCallback(async () => {
     if (checkedDocIds.size === 0 || !docType?.id) return
 
+    // Optimistically mark selected documents as processing immediately
+    const idsToProcess = Array.from(checkedDocIds)
+    queryClient.setQueriesData({ queryKey: ['documents'] }, (old: unknown) => {
+      if (!old || typeof old !== 'object' || !('documents' in old)) return old
+      const data = old as { documents: Array<{ id: string; status: string | null }> }
+      return {
+        ...data,
+        documents: data.documents.map((doc) =>
+          idsToProcess.includes(doc.id) ? { ...doc, status: 'processing' } : doc
+        ),
+      }
+    })
+
     try {
       const result = await createBatch.mutateAsync({
         documentTypeId: docType.id,
-        documentIds: Array.from(checkedDocIds),
+        documentIds: idsToProcess,
       })
 
       if (result?.batchId) {
@@ -366,12 +381,14 @@ export default function ProcessLayout() {
       setCheckedDocIds(new Set())
     } catch (error) {
       console.error('Batch processing failed:', error)
+      // Revert optimistic update on error
+      queryClient.invalidateQueries({ queryKey: ['documents'] })
       for (const id of checkedDocIds) {
         await processDocument.mutateAsync({ documentId: id })
       }
       setCheckedDocIds(new Set())
     }
-  }, [checkedDocIds, docType?.id, createBatch, processDocument])
+  }, [checkedDocIds, docType?.id, createBatch, processDocument, queryClient])
 
   const handleBulkApprove = useCallback(async () => {
     if (checkedDocIds.size === 0) return
@@ -389,6 +406,18 @@ export default function ProcessLayout() {
     setIsStreaming(true)
     setStreamingData({})
     abortStreamRef.current = abortStreaming
+
+    // Optimistically mark document as processing
+    queryClient.setQueriesData({ queryKey: ['documents'] }, (old: unknown) => {
+      if (!old || typeof old !== 'object' || !('documents' in old)) return old
+      const data = old as { documents: Array<{ id: string; status: string | null }> }
+      return {
+        ...data,
+        documents: data.documents.map((doc) =>
+          doc.id === currentDoc.id ? { ...doc, status: 'processing' } : doc
+        ),
+      }
+    })
 
     try {
       await processWithStreaming(
@@ -408,7 +437,7 @@ export default function ProcessLayout() {
       setIsStreaming(false)
       abortStreamRef.current = null
     }
-  }, [currentDoc, modelOverride, processWithStreaming, abortStreaming])
+  }, [currentDoc, modelOverride, processWithStreaming, abortStreaming, queryClient])
 
   const handleStop = useCallback(() => {
     abortStreamRef.current?.()
