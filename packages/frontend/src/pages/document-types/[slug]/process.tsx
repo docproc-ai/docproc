@@ -28,18 +28,26 @@ import {
 } from '@/components/ui/resizable'
 import {
   useDocumentType,
+  useDocument,
   useDocuments,
   useProcessDocument,
+  useProcessDocumentStreaming,
   useDeleteDocument,
   useCreateBatch,
   useUpdateDocument,
 } from '@/lib/queries'
+import { useSession } from '@/lib/auth'
+import { ButtonGroup } from '@/components/ui/button-group'
+import { ModelSelector } from '@/components/model-selector'
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
+import { Kbd } from '@/components/ui/kbd'
 import {
   useDocumentTypeLiveUpdates,
   useWebSocketStatus,
   useBatchSubscription,
 } from '@/lib/websocket'
 import { useDebounce } from '@/lib/hooks'
+import { DocumentEditorProvider } from '@/lib/document-editor-context'
 
 // WebSocket connection indicator
 function ConnectionIndicator({ status }: { status: string }) {
@@ -181,70 +189,6 @@ function DocumentListItem({
   )
 }
 
-// Upload drop zone
-function UploadZone({
-  onUpload,
-  isUploading,
-}: {
-  onUpload: (files: FileList) => void
-  isUploading: boolean
-}) {
-  const [isDragOver, setIsDragOver] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault()
-      setIsDragOver(false)
-      if (e.dataTransfer.files.length > 0) {
-        onUpload(e.dataTransfer.files)
-      }
-    },
-    [onUpload]
-  )
-
-  return (
-    <div
-      className={`border-2 border-dashed rounded-lg p-4 text-center transition-all cursor-pointer ${
-        isDragOver ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
-      }`}
-      onDrop={handleDrop}
-      onDragOver={(e) => {
-        e.preventDefault()
-        setIsDragOver(true)
-      }}
-      onDragLeave={() => setIsDragOver(false)}
-      onClick={() => inputRef.current?.click()}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          inputRef.current?.click()
-        }
-      }}
-      role="button"
-      tabIndex={0}
-    >
-      <input
-        ref={inputRef}
-        type="file"
-        multiple
-        accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.tiff"
-        className="hidden"
-        onChange={(e) => e.target.files && onUpload(e.target.files)}
-      />
-      {isUploading ? (
-        <div className="flex items-center justify-center gap-2">
-          <div className="w-4 h-4 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
-          <span className="text-sm">Uploading...</span>
-        </div>
-      ) : (
-        <div className="text-sm text-muted-foreground">
-          Drop files or click to upload
-        </div>
-      )}
-    </div>
-  )
-}
-
 export default function ProcessLayout() {
   const params = useParams({ strict: false })
   const slug = params.slug as string
@@ -277,11 +221,22 @@ export default function ProcessLayout() {
 
   const [checkedDocIds, setCheckedDocIds] = useState<Set<string>>(new Set())
   const [isUploading, setIsUploading] = useState(false)
+  const [isDragOver, setIsDragOver] = useState(false)
   const [activeBatchId, setActiveBatchId] = useState<string | null>(null)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const documentRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
+  // Document action state (for header controls)
+  const [isStreaming, setIsStreaming] = useState(false)
+  const [modelOverride, setModelOverride] = useState('')
+  const [streamingData, setStreamingData] = useState<Record<string, unknown> | null>(null)
+  const abortStreamRef = useRef<(() => void) | null>(null)
+
+  const { data: session } = useSession()
+  const isAdmin = session?.user?.role === 'admin'
+
   const { data: docType, isLoading: typeLoading } = useDocumentType(slug)
+  const { data: currentDoc } = useDocument(selectedDocId || '')
   const { data: documentsData, refetch } = useDocuments(docType?.id || '', {
     page: urlPage,
     status: urlStatus,
@@ -289,6 +244,7 @@ export default function ProcessLayout() {
   })
 
   const processDocument = useProcessDocument()
+  const { processWithStreaming, abort: abortStreaming } = useProcessDocumentStreaming()
   const deleteDocument = useDeleteDocument()
   const createBatch = useCreateBatch()
   const updateDocument = useUpdateDocument()
@@ -426,6 +382,70 @@ export default function ProcessLayout() {
     setCheckedDocIds(new Set())
   }, [checkedDocIds, updateDocument])
 
+  // Document action handlers (for header controls)
+  const handleProcess = useCallback(async () => {
+    if (!currentDoc) return
+
+    setIsStreaming(true)
+    setStreamingData({})
+    abortStreamRef.current = abortStreaming
+
+    try {
+      await processWithStreaming(
+        currentDoc.id,
+        modelOverride || undefined,
+        (partialData) => {
+          setStreamingData({ ...partialData })
+        },
+        (completeData) => {
+          setStreamingData({ ...completeData })
+        },
+        (error) => {
+          console.error('Processing error:', error)
+        },
+      )
+    } finally {
+      setIsStreaming(false)
+      abortStreamRef.current = null
+    }
+  }, [currentDoc, modelOverride, processWithStreaming, abortStreaming])
+
+  const handleStop = useCallback(() => {
+    abortStreamRef.current?.()
+    setIsStreaming(false)
+    abortStreamRef.current = null
+  }, [])
+
+  const handleApprove = useCallback(async () => {
+    if (!currentDoc) return
+    await updateDocument.mutateAsync({
+      id: currentDoc.id,
+      data: { status: 'approved' },
+    })
+  }, [currentDoc, updateDocument])
+
+  const handleUnapprove = useCallback(async () => {
+    if (!currentDoc) return
+    await updateDocument.mutateAsync({
+      id: currentDoc.id,
+      data: { status: 'processed' },
+    })
+  }, [currentDoc, updateDocument])
+
+  const handleReject = useCallback(async () => {
+    if (!currentDoc) return
+    await updateDocument.mutateAsync({
+      id: currentDoc.id,
+      data: { status: 'rejected' },
+    })
+  }, [currentDoc, updateDocument])
+
+  // Clear streaming data when document changes
+  useEffect(() => {
+    setStreamingData(null)
+    setIsStreaming(false)
+  }, [selectedDocId])
+
   if (typeLoading) {
     return (
       <div className="h-screen flex items-center justify-center">
@@ -447,8 +467,9 @@ export default function ProcessLayout() {
   return (
     <div className="h-screen flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b bg-background">
-        <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between px-4 py-2 border-b bg-background gap-4">
+        {/* Left side: nav + doc type info */}
+        <div className="flex items-center gap-3 shrink-0">
           <Link
             to="/document-types"
             className="p-2 hover:bg-muted rounded-lg transition-colors"
@@ -467,54 +488,214 @@ export default function ProcessLayout() {
               <path d="m15 18-6-6 6-6" />
             </svg>
           </Link>
-          <div className="flex items-center gap-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="font-semibold">{docType.name}</h1>
-                <Link
-                  to="/document-types/$slug/settings"
-                  params={{ slug: docType.slug }}
-                  className="p-1 hover:bg-muted rounded transition-colors text-muted-foreground hover:text-foreground"
-                  title="Settings"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
-                </Link>
-                <ConnectionIndicator status={wsStatus} />
-              </div>
-            </div>
-            {/* Batch progress indicator */}
-            {activeBatchId && batchProgress && (
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                <div className="w-3 h-3 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
-                <span className="text-xs font-medium text-purple-700 dark:text-purple-300">
-                  Processing {batchProgress.completed}/{batchProgress.total}
-                </span>
-                {batchProgress.completed === batchProgress.total && (
-                  <button
-                    type="button"
-                    onClick={() => setActiveBatchId(null)}
-                    className="ml-1 text-purple-500 hover:text-purple-700"
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
-            )}
+          <div className="flex items-center gap-2">
+            <h1 className="font-semibold">{docType.name}</h1>
+            <Link
+              to="/document-types/$slug/settings"
+              params={{ slug: docType.slug }}
+              className="p-1 hover:bg-muted rounded transition-colors text-muted-foreground hover:text-foreground"
+              title="Settings"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            </Link>
+            <ConnectionIndicator status={wsStatus} />
           </div>
+          {/* Upload button */}
+          <label className="cursor-pointer">
+            <input
+              type="file"
+              multiple
+              accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.tiff"
+              className="hidden"
+              onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
+            />
+            <Button variant="outline" size="sm" asChild>
+              <span className="flex items-center gap-2">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" x2="12" y1="3" y2="15" />
+                </svg>
+                Upload
+              </span>
+            </Button>
+          </label>
+          {/* Batch progress indicator */}
+          {activeBatchId && batchProgress && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+              <div className="w-3 h-3 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
+              <span className="text-xs font-medium text-purple-700 dark:text-purple-300">
+                Processing {batchProgress.completed}/{batchProgress.total}
+              </span>
+              {batchProgress.completed === batchProgress.total && (
+                <button
+                  type="button"
+                  onClick={() => setActiveBatchId(null)}
+                  className="ml-1 text-purple-500 hover:text-purple-700"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          )}
         </div>
+
+        {/* Right side: document-specific controls */}
+        {currentDoc && (
+          <div className="flex items-center gap-2">
+            {/* Model selector - admin only */}
+            {isAdmin && (
+              <ModelSelector
+                value={modelOverride || docType?.modelName || ''}
+                onChange={setModelOverride}
+                placeholder={docType?.modelName || 'Default model'}
+              />
+            )}
+
+            {/* Process/Stop ButtonGroup */}
+            {isStreaming ? (
+              <Button variant="outline" size="sm" onClick={handleStop}>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="mr-1"
+                >
+                  <rect x="6" y="6" width="12" height="12" />
+                </svg>
+                Stop
+              </Button>
+            ) : (
+              <ButtonGroup>
+                <Button variant="outline" size="sm" onClick={handleProcess} disabled={!currentDoc}>
+                  Process
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="icon" className="h-8 w-8" disabled={!currentDoc}>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="m6 9 6 6 6-6" />
+                      </svg>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={handleProcess}>
+                      Force Process
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </ButtonGroup>
+            )}
+
+            {/* Approve/Unapprove ButtonGroup */}
+            <ButtonGroup>
+              {currentDoc.status === 'approved' ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleUnapprove}
+                  disabled={updateDocument.isPending}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
+                    <path d="M3 7v6h6" />
+                    <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+                  </svg>
+                  Unapprove
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  onClick={handleApprove}
+                  disabled={updateDocument.isPending || isStreaming}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  Approve
+                </Button>
+              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="icon"
+                    className={`h-8 w-8 ${currentDoc.status === 'approved' ? '' : 'bg-green-600 hover:bg-green-700 text-white'}`}
+                    disabled={updateDocument.isPending}
+                    variant={currentDoc.status === 'approved' ? 'secondary' : 'default'}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m6 9 6 6 6-6" />
+                    </svg>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleReject}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="m15 9-6 6" />
+                      <path d="m9 9 6 6" />
+                    </svg>
+                    Reject
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </ButtonGroup>
+
+            {/* Keyboard Help Popover */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8" title="Keyboard shortcuts">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M10 8h.01" />
+                    <path d="M12 12h.01" />
+                    <path d="M14 8h.01" />
+                    <path d="M16 12h.01" />
+                    <path d="M18 8h.01" />
+                    <path d="M6 8h.01" />
+                    <path d="M7 16h10" />
+                    <path d="M8 12h.01" />
+                    <rect width="20" height="16" x="2" y="4" rx="2" />
+                  </svg>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-72">
+                <h4 className="font-medium mb-2">Keyboard Shortcuts</h4>
+                <div className="space-y-1.5 text-sm">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Approve</span> <span className="flex items-center gap-0.5"><Kbd>Ctrl</Kbd>+<Kbd>Enter</Kbd></span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Process</span> <span className="flex items-center gap-0.5"><Kbd>Ctrl</Kbd>+<Kbd>P</Kbd></span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Reject</span> <span className="flex items-center gap-0.5"><Kbd>Ctrl</Kbd>+<Kbd>R</Kbd></span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Next doc</span> <span className="flex items-center gap-0.5"><Kbd>Ctrl</Kbd>+<Kbd>↓</Kbd></span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Prev doc</span> <span className="flex items-center gap-0.5"><Kbd>Ctrl</Kbd>+<Kbd>↑</Kbd></span></div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        )}
       </div>
 
       {/* 3-pane layout */}
@@ -676,11 +857,38 @@ export default function ProcessLayout() {
               </DropdownMenu>
             </div>
 
-            {/* Document list */}
-            <div className="flex-1 overflow-y-auto">
+            {/* Document list (dropzone) */}
+            <div
+              className={`flex-1 overflow-y-auto relative transition-colors ${
+                isDragOver ? 'bg-primary/5' : ''
+              }`}
+              onDrop={(e) => {
+                e.preventDefault()
+                setIsDragOver(false)
+                if (e.dataTransfer.files.length > 0) {
+                  handleFileUpload(e.dataTransfer.files)
+                }
+              }}
+              onDragOver={(e) => {
+                e.preventDefault()
+                setIsDragOver(true)
+              }}
+              onDragLeave={(e) => {
+                // Only set false if leaving the container (not entering a child)
+                if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                  setIsDragOver(false)
+                }
+              }}
+            >
+              {/* Drag overlay */}
+              {isDragOver && (
+                <div className="absolute inset-0 flex items-center justify-center bg-primary/10 border-2 border-dashed border-primary rounded-lg m-2 pointer-events-none z-10">
+                  <span className="text-sm font-medium text-primary">Drop files to upload</span>
+                </div>
+              )}
               {documents.length === 0 ? (
                 <div className="p-4 text-center text-sm text-muted-foreground">
-                  No documents
+                  {isUploading ? 'Uploading...' : 'No documents - drag files here to upload'}
                 </div>
               ) : (
                 documents.map((doc) => (
@@ -703,41 +911,34 @@ export default function ProcessLayout() {
               )}
             </div>
 
-            {/* Upload zone */}
-            <div className="p-3 border-t">
-              <UploadZone onUpload={handleFileUpload} isUploading={isUploading} />
-            </div>
-
             {/* Pagination */}
-            {documentsData?.pagination && documentsData.pagination.totalPages > 1 && (
-              <div className="p-3 border-t flex items-center justify-between text-sm">
-                <button
-                  type="button"
-                  onClick={() => navigate({
-                    search: (prev) => ({ ...prev, page: Math.max(1, urlPage - 1) }),
-                    replace: true,
-                  })}
-                  disabled={urlPage === 1}
-                  className="px-2 py-1 rounded hover:bg-muted disabled:opacity-50"
-                >
-                  ‹
-                </button>
-                <span className="text-muted-foreground">
-                  {urlPage} / {documentsData.pagination.totalPages}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => navigate({
-                    search: (prev) => ({ ...prev, page: urlPage + 1 }),
-                    replace: true,
-                  })}
-                  disabled={urlPage === documentsData.pagination.totalPages}
-                  className="px-2 py-1 rounded hover:bg-muted disabled:opacity-50"
-                >
-                  ›
-                </button>
-              </div>
-            )}
+            <div className="px-3 py-2 border-t flex items-center justify-between text-sm">
+              <button
+                type="button"
+                onClick={() => navigate({
+                  search: (prev) => ({ ...prev, page: Math.max(1, urlPage - 1) }),
+                  replace: true,
+                })}
+                disabled={urlPage <= 1}
+                className="px-2 py-1 rounded hover:bg-muted disabled:opacity-50"
+              >
+                ‹
+              </button>
+              <span className="text-muted-foreground">
+                {urlPage} / {documentsData?.pagination?.totalPages || 1}
+              </span>
+              <button
+                type="button"
+                onClick={() => navigate({
+                  search: (prev) => ({ ...prev, page: urlPage + 1 }),
+                  replace: true,
+                })}
+                disabled={!documentsData?.pagination || urlPage >= documentsData.pagination.totalPages}
+                className="px-2 py-1 rounded hover:bg-muted disabled:opacity-50"
+              >
+                ›
+              </button>
+            </div>
           </div>
         </ResizablePanel>
 
@@ -745,7 +946,9 @@ export default function ProcessLayout() {
 
         {/* Middle + Right: Child route (editor + preview) */}
         <ResizablePanel defaultSize={80} minSize={50}>
-          <Outlet />
+          <DocumentEditorProvider streamingData={streamingData} isStreaming={isStreaming}>
+            <Outlet />
+          </DocumentEditorProvider>
         </ResizablePanel>
       </ResizablePanelGroup>
 

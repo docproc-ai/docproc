@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Check, ChevronsUpDown, Plus } from 'lucide-react'
+import { ChevronsUpDown, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -83,17 +83,16 @@ export function ModelSelector({ value, onChange, placeholder = 'Select model...'
       <PopoverTrigger asChild>
         <Button
           variant="outline"
+          size="sm"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between font-mono text-sm"
+          className="justify-between font-mono text-sm"
         >
-          <span className="truncate">
-            {value ? (selectedModel?.id || value) : placeholder}
-          </span>
+          {value ? (selectedModel?.id || value) : placeholder}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[400px] p-0" align="start">
+      <PopoverContent className="p-0" align="end" style={{ width: 'var(--radix-popover-trigger-width)' }}>
         <Command shouldFilter={false}>
           <CommandInput
             placeholder="Search models..."
@@ -134,22 +133,12 @@ export function ModelSelector({ value, onChange, placeholder = 'Select model...'
                       key={model.id}
                       value={model.id}
                       onSelect={() => handleSelect(model.id)}
-                      className="cursor-pointer"
+                      className={cn(
+                        'cursor-pointer',
+                        value === model.id && 'bg-primary/10 text-primary'
+                      )}
                     >
-                      <Check
-                        className={cn(
-                          'mr-2 h-4 w-4',
-                          value === model.id ? 'opacity-100' : 'opacity-0'
-                        )}
-                      />
-                      <div className="flex flex-col">
-                        <span className="font-mono text-sm">{model.id}</span>
-                        {model.contextLength && (
-                          <span className="text-xs text-muted-foreground">
-                            {(model.contextLength / 1000).toFixed(0)}k context
-                          </span>
-                        )}
-                      </div>
+                      <span className="font-mono text-sm">{model.id}</span>
                     </CommandItem>
                   ))}
                 </CommandGroup>
