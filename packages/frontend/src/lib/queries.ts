@@ -422,10 +422,10 @@ export function useRotateDocument() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ documentId, degrees }: { documentId: string; degrees: number }) => {
+    mutationFn: async ({ documentId, degrees, pageNumber }: { documentId: string; degrees: number; pageNumber?: number }) => {
       const res = await api.api.documents[':id'].rotate.$post({
         param: { id: documentId },
-        json: { degrees },
+        json: { degrees, pageNumber },
       })
       if (!res.ok) throw new Error('Failed to rotate document')
       return res.json()

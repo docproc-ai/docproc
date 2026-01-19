@@ -120,11 +120,14 @@ export const documentsRoutes = new Hono()
     requireAuth,
     requirePermission('document', 'update'),
     zValidator('param', z.object({ id: z.string().min(1) })),
-    zValidator('json', z.object({ degrees: z.number().multipleOf(90) })),
+    zValidator('json', z.object({
+      degrees: z.number().multipleOf(90),
+      pageNumber: z.number().int().positive().optional(), // Optional: for single-page PDF rotation
+    })),
     async (c) => {
       try {
         const { id } = c.req.valid('param')
-        const { degrees: rotationDegrees } = c.req.valid('json')
+        const { degrees: rotationDegrees, pageNumber } = c.req.valid('json')
 
         const doc = await getDocumentBySlugOrId(id)
         if (!doc) {
@@ -142,10 +145,20 @@ export const documentsRoutes = new Hono()
           const pdfDoc = await PDFDocument.load(fileBuffer)
           const pages = pdfDoc.getPages()
 
-          // Apply relative rotation to all pages
-          for (const page of pages) {
+          if (pageNumber !== undefined) {
+            // Single page rotation
+            if (pageNumber < 1 || pageNumber > pages.length) {
+              return c.json({ error: 'Invalid page number' }, 400)
+            }
+            const page = pages[pageNumber - 1] // 1-indexed to 0-indexed
             const currentRotation = page.getRotation().angle || 0
             page.setRotation(degrees(currentRotation + rotationDegrees))
+          } else {
+            // Apply relative rotation to all pages
+            for (const page of pages) {
+              const currentRotation = page.getRotation().angle || 0
+              page.setRotation(degrees(currentRotation + rotationDegrees))
+            }
           }
 
           rotatedBuffer = Buffer.from(await pdfDoc.save())
@@ -282,7 +295,7 @@ export const documentsRoutes = new Hono()
           headers: {
             'Content-Type': mimeType,
             'Content-Disposition': `inline; filename="${doc.filename}"`,
-            'Cache-Control': 'private, max-age=3600',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
           },
         })
       } catch (error) {

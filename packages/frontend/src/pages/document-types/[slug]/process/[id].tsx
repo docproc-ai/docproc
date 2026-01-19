@@ -94,11 +94,12 @@ export default function DocumentEditorPage() {
     setHasUnsavedChanges(hasChanges)
   }, [hasChanges, setHasUnsavedChanges])
 
-  const handleRotate = useCallback(async (degrees: number) => {
+  const handleRotate = useCallback(async (degrees: number, pageNumber?: number) => {
     if (!currentDoc) return
     await rotateDocument.mutateAsync({
       documentId: currentDoc.id,
       degrees,
+      pageNumber,
     })
   }, [currentDoc, rotateDocument])
 
