@@ -27,6 +27,36 @@ import LoginPage from "./pages/login"
 
 import "./styles.css"
 import reportWebVitals from "./reportWebVitals.ts"
+import { useEffect } from "react"
+
+// Auth guard - redirects to login if not authenticated
+function AuthGuard({ children }: { children: React.ReactNode }) {
+  const { data: session, isPending } = useSession()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (!isPending && !session?.user) {
+      navigate({ to: "/login" })
+    }
+  }, [isPending, session, navigate])
+
+  if (isPending) {
+    return (
+      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!session?.user) {
+    return null
+  }
+
+  return <>{children}</>
+}
 
 // Decorative logo mark
 function LogoMark() {
@@ -209,9 +239,9 @@ function RootLayout() {
   const routerState = useRouterState()
   const pathname = routerState.location.pathname
 
-  // Hide main header on pages with their own headers (process, settings)
+  // Hide main header on login and pages with their own headers (process, settings)
   const hideHeader =
-    pathname.includes("/process") || pathname.includes("/settings")
+    pathname === "/login" || pathname.includes("/process") || pathname.includes("/settings")
 
   return (
     <div className="min-h-screen bg-background relative">
@@ -249,25 +279,41 @@ const loginRoute = createRoute({
 const documentTypesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/document-types",
-  component: DocumentTypesPage,
+  component: () => (
+    <AuthGuard>
+      <DocumentTypesPage />
+    </AuthGuard>
+  ),
 })
 
 const usersRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/users",
-  component: UsersPage,
+  component: () => (
+    <AuthGuard>
+      <UsersPage />
+    </AuthGuard>
+  ),
 })
 
 const newDocumentTypeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/document-types/new",
-  component: NewDocumentTypePage,
+  component: () => (
+    <AuthGuard>
+      <NewDocumentTypePage />
+    </AuthGuard>
+  ),
 })
 
 const documentTypeProcessRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/document-types/$slug/process",
-  component: ProcessLayout,
+  component: () => (
+    <AuthGuard>
+      <ProcessLayout />
+    </AuthGuard>
+  ),
   validateSearch: (search: Record<string, unknown>) => ({
     q: (search.q as string) || "",
     status: (search.status as string) || "all",
@@ -284,7 +330,11 @@ const documentEditorRoute = createRoute({
 const documentTypeSettingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/document-types/$slug/settings",
-  component: DocumentTypeSettingsPage,
+  component: () => (
+    <AuthGuard>
+      <DocumentTypeSettingsPage />
+    </AuthGuard>
+  ),
 })
 
 // Build route tree

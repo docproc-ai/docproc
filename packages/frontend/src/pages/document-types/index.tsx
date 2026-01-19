@@ -1,10 +1,12 @@
 import { Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { useDocumentTypes } from '@/lib/queries'
+import { useSession } from '@/lib/auth'
 
 // Document type card with distinctive styling
 function DocumentTypeCard({
   docType,
+  isAdmin,
 }: {
   docType: {
     id: string
@@ -14,6 +16,7 @@ function DocumentTypeCard({
     modelName: string | null
     createdAt: string
   }
+  isAdmin: boolean
 }) {
   // Generate a subtle accent color based on the slug
   const hue = docType.slug.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360
@@ -64,26 +67,28 @@ function DocumentTypeCard({
       </p>
 
       <div className="flex items-center justify-end gap-2 pt-4 border-t border-border/50">
-        <Button variant="ghost" size="sm" asChild>
-          <Link to="/document-types/$slug/settings" params={{ slug: docType.slug }}>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="mr-1.5"
-            >
-              <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-              <path d="m15 5 4 4" />
-            </svg>
-            Edit
-          </Link>
-        </Button>
+        {isAdmin && (
+          <Button variant="ghost" size="sm" asChild>
+            <Link to="/document-types/$slug/settings" params={{ slug: docType.slug }}>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="mr-1.5"
+              >
+                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                <path d="m15 5 4 4" />
+              </svg>
+              Edit
+            </Link>
+          </Button>
+        )}
         <Button size="sm" asChild>
           <Link to="/document-types/$slug/process" params={{ slug: docType.slug }}>
             Process
@@ -160,6 +165,8 @@ function LoadingSkeleton() {
 
 export default function DocumentTypesPage() {
   const { data: documentTypes, isLoading, error } = useDocumentTypes()
+  const { data: session } = useSession()
+  const isAdmin = (session?.user as { role?: string } | undefined)?.role === 'admin'
 
   return (
     <div className="container mx-auto px-6 py-8">
@@ -167,28 +174,27 @@ export default function DocumentTypesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-sans font-semibold tracking-tight">Document Types</h1>
-          <p className="text-muted-foreground mt-1">
-            Define schemas for extracting structured data from documents
-          </p>
         </div>
-        <Button asChild className="self-start">
-          <Link to="/document-types/new" className="gap-2">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-            New Document Type
-          </Link>
-        </Button>
+        {isAdmin && (
+          <Button asChild className="self-start">
+            <Link to="/document-types/new" className="gap-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              New Document Type
+            </Link>
+          </Button>
+        )}
       </div>
 
       {/* Content */}
@@ -203,8 +209,8 @@ export default function DocumentTypesPage() {
         <EmptyState />
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {documentTypes?.map((docType, index) => (
-            <DocumentTypeCard key={docType.id} docType={docType} index={index} />
+          {documentTypes?.map((docType) => (
+            <DocumentTypeCard key={docType.id} docType={docType} isAdmin={isAdmin} />
           ))}
         </div>
       )}

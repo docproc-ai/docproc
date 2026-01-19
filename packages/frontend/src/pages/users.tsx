@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { useUsers, useUpdateUserRole, useDeleteUser } from '@/lib/queries'
+import { useUsers, useDeleteUser, useCreateUser, useUpdateUser } from '@/lib/queries'
 import { useSession } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Table,
   TableBody,
@@ -29,6 +30,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 
 type Role = 'admin' | 'user' | 'none'
 
@@ -42,6 +52,277 @@ const roleBadgeStyles: Record<Role, string> = {
   admin: 'bg-primary/10 text-primary',
   user: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
   none: 'bg-muted text-muted-foreground',
+}
+
+function CreateUserDialog() {
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [role, setRole] = useState<Role>('user')
+  const createUser = useCreateUser()
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    createUser.mutate(
+      { name, email, password, role },
+      {
+        onSuccess: () => {
+          setOpen(false)
+          setName('')
+          setEmail('')
+          setPassword('')
+          setRole('user')
+        },
+      },
+    )
+  }
+
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen)
+    if (!newOpen) {
+      // Reset form and error state when closing
+      createUser.reset()
+      setName('')
+      setEmail('')
+      setPassword('')
+      setRole('user')
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild>
+        <Button>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="mr-2"
+          >
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <line x1="19" x2="19" y1="8" y2="14" />
+            <line x1="22" x2="16" y1="11" y2="11" />
+          </svg>
+          Add User
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Create New User</DialogTitle>
+            <DialogDescription>
+              Add a new user to the system. They will receive an account with the specified role.
+            </DialogDescription>
+          </DialogHeader>
+          {createUser.isError && (
+            <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-md p-3 mt-4">
+              {createUser.error.message}
+            </div>
+          )}
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="John Doe"
+                required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="john@example.com"
+                required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Minimum 8 characters"
+                minLength={8}
+                required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="role">Role</Label>
+              <Select value={role} onValueChange={(v) => setRole(v as Role)}>
+                <SelectTrigger id="role">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="user">User</SelectItem>
+                  <SelectItem value="none">No Access</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={createUser.isPending}>
+              {createUser.isPending ? 'Creating...' : 'Create User'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function EditUserDialog({
+  user,
+  isCurrentUser,
+}: {
+  user: {
+    id: string
+    name: string
+    email: string
+    role: string
+  }
+  isCurrentUser: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState(user.name)
+  const [email, setEmail] = useState(user.email)
+  const [role, setRole] = useState<Role>(user.role as Role)
+  const updateUser = useUpdateUser()
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const updates: { name?: string; email?: string; role?: Role } = {}
+    if (name !== user.name) updates.name = name
+    if (email !== user.email) updates.email = email
+    if (role !== user.role && !isCurrentUser) updates.role = role
+
+    if (Object.keys(updates).length === 0) {
+      setOpen(false)
+      return
+    }
+
+    updateUser.mutate(
+      { userId: user.id, data: updates },
+      {
+        onSuccess: () => {
+          setOpen(false)
+        },
+      },
+    )
+  }
+
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen)
+    if (newOpen) {
+      // Reset to current values when opening
+      setName(user.name)
+      setEmail(user.email)
+      setRole(user.role as Role)
+    }
+    if (!newOpen) {
+      updateUser.reset()
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="sm">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+            <path d="m15 5 4 4" />
+          </svg>
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Edit User</DialogTitle>
+            <DialogDescription>
+              Update user details for {user.name}.
+            </DialogDescription>
+          </DialogHeader>
+          {updateUser.isError && (
+            <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-md p-3 mt-4">
+              {updateUser.error.message}
+            </div>
+          )}
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-name">Name</Label>
+              <Input
+                id="edit-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-email">Email</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            {!isCurrentUser && (
+              <div className="grid gap-2">
+                <Label htmlFor="edit-role">Role</Label>
+                <Select value={role} onValueChange={(v) => setRole(v as Role)}>
+                  <SelectTrigger id="edit-role">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="user">User</SelectItem>
+                    <SelectItem value="none">No Access</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={updateUser.isPending}>
+              {updateUser.isPending ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
 }
 
 function UserRow({
@@ -58,14 +339,9 @@ function UserRow({
   }
   currentUserId: string | undefined
 }) {
-  const updateRole = useUpdateUserRole()
   const deleteUser = useDeleteUser()
   const isCurrentUser = user.id === currentUserId
   const role = user.role as Role
-
-  const handleRoleChange = (newRole: string) => {
-    updateRole.mutate({ userId: user.id, role: newRole as Role })
-  }
 
   const handleDelete = () => {
     deleteUser.mutate(user.id)
@@ -95,26 +371,9 @@ function UserRow({
         </div>
       </TableCell>
       <TableCell>
-        {isCurrentUser ? (
-          <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${roleBadgeStyles[role]}`}>
-            {roleLabels[role]}
-          </span>
-        ) : (
-          <Select
-            value={role}
-            onValueChange={handleRoleChange}
-            disabled={updateRole.isPending}
-          >
-            <SelectTrigger className="w-32" size="sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="admin">Admin</SelectItem>
-              <SelectItem value="user">User</SelectItem>
-              <SelectItem value="none">No Access</SelectItem>
-            </SelectContent>
-          </Select>
-        )}
+        <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${roleBadgeStyles[role]}`}>
+          {roleLabels[role]}
+        </span>
       </TableCell>
       <TableCell className="text-muted-foreground">
         {new Date(user.createdAt).toLocaleDateString('en-US', {
@@ -124,48 +383,51 @@ function UserRow({
         })}
       </TableCell>
       <TableCell>
-        {!isCurrentUser && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M3 6h18" />
-                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                  <line x1="10" x2="10" y1="11" y2="17" />
-                  <line x1="14" x2="14" y1="11" y2="17" />
-                </svg>
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete User</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Are you sure you want to delete {user.name}? This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleDelete}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  Delete
+        <div className="flex items-center gap-1">
+          <EditUserDialog user={user} isCurrentUser={isCurrentUser} />
+          {!isCurrentUser && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M3 6h18" />
+                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                    <line x1="10" x2="10" y1="11" y2="17" />
+                    <line x1="14" x2="14" y1="11" y2="17" />
+                  </svg>
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete User</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete {user.name}? This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Delete
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-        )}
+          )}
+        </div>
       </TableCell>
     </TableRow>
   )
@@ -220,11 +482,33 @@ function EmptyState({ search }: { search: string }) {
 export default function UsersPage() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
-  const { data: session } = useSession()
+  const { data: session, isPending: sessionPending } = useSession()
   const { data, isLoading, error } = useUsers({ page, search: search || undefined })
 
   const users = data?.users ?? []
   const pagination = data?.pagination
+  const isAdmin = (session?.user as { role?: string } | undefined)?.role === 'admin'
+
+  // Show loading while checking session
+  if (sessionPending) {
+    return <LoadingSkeleton />
+  }
+
+  // Admin-only access
+  if (!isAdmin) {
+    return (
+      <div className="container mx-auto px-6 py-8">
+        <div className="bg-card border border-destructive/30 rounded-xl shadow-sm shadow-black/5 p-8">
+          <div className="flex flex-col items-center justify-center py-12">
+            <h3 className="font-sans text-xl font-semibold mb-2">Access Denied</h3>
+            <p className="text-muted-foreground text-center max-w-sm">
+              You don't have permission to view this page. Only administrators can manage users.
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="container mx-auto px-6 py-8">
@@ -236,6 +520,7 @@ export default function UsersPage() {
             Manage user accounts and permissions
           </p>
         </div>
+        <CreateUserDialog />
       </div>
 
       {/* Search */}

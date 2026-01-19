@@ -1,8 +1,8 @@
+import type { RootRoute } from '@tanstack/react-router'
 import { createRoute, Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useDocumentTypes } from '@/lib/queries'
-import type { RootRoute } from '@tanstack/react-router'
 
 function DocumentTypesPage() {
   const { data: documentTypes, isLoading, error } = useDocumentTypes()
@@ -37,7 +37,6 @@ function DocumentTypesPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">Document Types</h1>
-          <p className="text-muted-foreground">Manage your document extraction schemas</p>
         </div>
         <Button asChild>
           <Link to="/document-types/new">Create New</Link>

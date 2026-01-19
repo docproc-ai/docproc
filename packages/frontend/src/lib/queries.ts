@@ -382,6 +382,29 @@ export function useUsers(options?: { page?: number; search?: string }) {
   })
 }
 
+export function useCreateUser() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (data: {
+      name: string
+      email: string
+      password: string
+      role?: 'admin' | 'user' | 'none'
+    }) => {
+      const res = await api.api.users.$post({ json: data })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error((error as { error?: string }).error || 'Failed to create user')
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+    },
+  })
+}
+
 export function useUpdateUserRole() {
   const queryClient = useQueryClient()
 
@@ -392,6 +415,37 @@ export function useUpdateUserRole() {
         json: { role },
       })
       if (!res.ok) throw new Error('Failed to update user role')
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+    },
+  })
+}
+
+export function useUpdateUser() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      userId,
+      data,
+    }: {
+      userId: string
+      data: {
+        name?: string
+        email?: string
+        role?: 'admin' | 'user' | 'none'
+      }
+    }) => {
+      const res = await api.api.users[':id'].$patch({
+        param: { id: userId },
+        json: data,
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error((error as { error?: string }).error || 'Failed to update user')
+      }
       return res.json()
     },
     onSuccess: () => {

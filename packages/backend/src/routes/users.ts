@@ -5,9 +5,23 @@ import { db } from '../db'
 import { user } from '../db/schema/auth'
 import { eq, desc, ilike, or, sql } from 'drizzle-orm'
 import { requireAuth, requirePermission } from '../middleware/auth'
+import { auth } from '../lib/auth'
+
+const createUserSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  role: z.enum(['admin', 'user', 'none']).optional().default('user'),
+})
 
 const updateUserRoleSchema = z.object({
   role: z.enum(['admin', 'user', 'none']),
+})
+
+const updateUserSchema = z.object({
+  name: z.string().min(1, 'Name is required').optional(),
+  email: z.string().email('Invalid email address').optional(),
+  role: z.enum(['admin', 'user', 'none']).optional(),
 })
 
 const getUsersQuerySchema = z.object({
@@ -72,6 +86,66 @@ export const usersRoutes = new Hono()
       } catch (error) {
         console.error('Failed to get users:', error)
         return c.json({ error: 'Failed to get users' }, 500)
+      }
+    },
+  )
+
+  // POST /api/users - Create a new user
+  .post(
+    '/',
+    requireAuth,
+    requirePermission('user', 'create'),
+    zValidator('json', createUserSchema),
+    async (c) => {
+      try {
+        const { name, email, password, role } = c.req.valid('json')
+
+        // Check if user already exists
+        const [existingUser] = await db
+          .select({ id: user.id })
+          .from(user)
+          .where(eq(user.email, email))
+          .limit(1)
+
+        if (existingUser) {
+          return c.json({ error: 'A user with this email already exists' }, 400)
+        }
+
+        // Create user via better-auth signUpEmail
+        const result = await auth.api.signUpEmail({
+          body: { email, password, name },
+        })
+
+        if (!result) {
+          return c.json({ error: 'Failed to create user' }, 500)
+        }
+
+        // Update role if not default 'user'
+        if (role && role !== 'user') {
+          await db
+            .update(user)
+            .set({ role, updatedAt: new Date() })
+            .where(eq(user.email, email))
+        }
+
+        // Fetch the created user to return
+        const [createdUser] = await db
+          .select({
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            image: user.image,
+            role: user.role,
+            createdAt: user.createdAt,
+          })
+          .from(user)
+          .where(eq(user.email, email))
+          .limit(1)
+
+        return c.json(createdUser, 201)
+      } catch (error) {
+        console.error('Failed to create user:', error)
+        return c.json({ error: 'Failed to create user' }, 500)
       }
     },
   )
@@ -150,6 +224,62 @@ export const usersRoutes = new Hono()
       } catch (error) {
         console.error('Failed to update user role:', error)
         return c.json({ error: 'Failed to update user role' }, 500)
+      }
+    },
+  )
+
+  // PATCH /api/users/:id - Update user details
+  .patch(
+    '/:id',
+    requireAuth,
+    requirePermission('user', 'update'),
+    zValidator('param', z.object({ id: z.string().uuid() })),
+    zValidator('json', updateUserSchema),
+    async (c) => {
+      try {
+        const { id } = c.req.valid('param')
+        const updates = c.req.valid('json')
+        const currentUser = c.get('user')
+
+        // Prevent users from changing their own role
+        if (currentUser?.id === id && updates.role) {
+          return c.json({ error: 'Cannot change your own role' }, 400)
+        }
+
+        // Check for email uniqueness if changing email
+        if (updates.email) {
+          const [existingUser] = await db
+            .select({ id: user.id })
+            .from(user)
+            .where(eq(user.email, updates.email))
+            .limit(1)
+
+          if (existingUser && existingUser.id !== id) {
+            return c.json({ error: 'A user with this email already exists' }, 400)
+          }
+        }
+
+        const [updated] = await db
+          .update(user)
+          .set({ ...updates, updatedAt: new Date() })
+          .where(eq(user.id, id))
+          .returning({
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            image: user.image,
+            role: user.role,
+            createdAt: user.createdAt,
+          })
+
+        if (!updated) {
+          return c.json({ error: 'User not found' }, 404)
+        }
+
+        return c.json(updated, 200)
+      } catch (error) {
+        console.error('Failed to update user:', error)
+        return c.json({ error: 'Failed to update user' }, 500)
       }
     },
   )
