@@ -1,5 +1,5 @@
 import { Link, Outlet, useNavigate, useParams, useSearch } from '@tanstack/react-router'
-import { useCallback, useRef, useEffect, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import {
   ChevronLeft,
   Settings,
@@ -75,7 +75,7 @@ export default function ProcessLayout() {
   const updateDocument = useUpdateDocument()
 
   // Track processing state for the selected document
-  const { isProcessing: isDocProcessing, processingDocIds } = useDocumentProcessingState(docType?.id || '')
+  const { isProcessing: isDocProcessing } = useDocumentProcessingState(docType?.id || '')
 
   // WebSocket for live updates
   useDocumentTypeLiveUpdates(docType?.id)
@@ -185,12 +185,6 @@ export default function ProcessLayout() {
     })
   }, [currentDoc, updateDocument])
 
-  // Clear streaming data when document changes
-  useEffect(() => {
-    setStreamingData(null)
-    setIsStreaming(false)
-  }, [selectedDocId])
-
   // ============================================
   // Render
   // ============================================
@@ -213,7 +207,9 @@ export default function ProcessLayout() {
     )
   }
 
-  const isSelectedDocProcessing = selectedDocId ? (isStreaming || isDocProcessing(selectedDocId)) : false
+  // Check if current document is processing (either streaming or batch job)
+  const isCurrentDocStreaming = isStreaming && streamingDocId === selectedDocId
+  const isSelectedDocProcessing = selectedDocId ? (isCurrentDocStreaming || isDocProcessing(selectedDocId)) : false
 
   return (
     <div className="h-screen flex flex-col">

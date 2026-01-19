@@ -211,7 +211,8 @@ export function useDocumentTypeLiveUpdates(documentTypeId: string | undefined) {
           if (event.type === 'job:completed') {
             // Invalidate queries to refetch fresh data
             queryClient.invalidateQueries({ queryKey: ['document', event.documentId] })
-            queryClient.invalidateQueries({ queryKey: ['documents'] })
+            queryClient.invalidateQueries({ queryKey: ['documents'], exact: false })
+            queryClient.invalidateQueries({ queryKey: ['activeJobs'], exact: false })
           } else if (event.type === 'job:progress' && event.data.partialData) {
             // Optimistically update with partial data
             queryClient.setQueryData(['document', event.documentId], (old: unknown) => {
@@ -224,7 +225,8 @@ export function useDocumentTypeLiveUpdates(documentTypeId: string | undefined) {
             })
           } else if (event.type === 'job:failed') {
             queryClient.invalidateQueries({ queryKey: ['document', event.documentId] })
-            queryClient.invalidateQueries({ queryKey: ['documents'] })
+            queryClient.invalidateQueries({ queryKey: ['documents'], exact: false })
+            queryClient.invalidateQueries({ queryKey: ['activeJobs'], exact: false })
           } else if (event.type === 'job:started') {
             // Optimistically mark document as processing in individual cache
             queryClient.setQueryData(['document', event.documentId], (old: unknown) => {
@@ -235,7 +237,7 @@ export function useDocumentTypeLiveUpdates(documentTypeId: string | undefined) {
               }
             })
             // Also update documents list cache to show processing status
-            queryClient.setQueriesData({ queryKey: ['documents'] }, (old: unknown) => {
+            queryClient.setQueriesData({ queryKey: ['documents'], exact: false }, (old: unknown) => {
               if (!old || typeof old !== 'object' || !('documents' in old)) return old
               const data = old as { documents: Array<{ id: string; status: string | null }> }
               return {
@@ -250,7 +252,8 @@ export function useDocumentTypeLiveUpdates(documentTypeId: string | undefined) {
 
         // Handle batch events
         if (event.type === 'batch:completed' || event.type === 'batch:failed') {
-          queryClient.invalidateQueries({ queryKey: ['documents'] })
+          queryClient.invalidateQueries({ queryKey: ['documents'], exact: false })
+          queryClient.invalidateQueries({ queryKey: ['activeJobs'], exact: false })
         }
       },
       [queryClient]
@@ -291,7 +294,8 @@ export function useJobSubscription(jobId: string | undefined) {
         if (event.documentId) {
           if (event.type === 'job:completed' || event.type === 'job:failed') {
             queryClient.invalidateQueries({ queryKey: ['document', event.documentId] })
-            queryClient.invalidateQueries({ queryKey: ['documents'] })
+            queryClient.invalidateQueries({ queryKey: ['documents'], exact: false })
+            queryClient.invalidateQueries({ queryKey: ['activeJobs'], exact: false })
           }
         }
       },
@@ -334,13 +338,15 @@ export function useBatchSubscription(batchId: string | undefined) {
         }
 
         if (event.type === 'batch:completed' || event.type === 'batch:failed') {
-          queryClient.invalidateQueries({ queryKey: ['documents'] })
+          queryClient.invalidateQueries({ queryKey: ['documents'], exact: false })
+          queryClient.invalidateQueries({ queryKey: ['activeJobs'], exact: false })
         }
 
         // Also handle individual job completions within batch
         if (event.documentId && (event.type === 'job:completed' || event.type === 'job:failed')) {
           queryClient.invalidateQueries({ queryKey: ['document', event.documentId] })
-          queryClient.invalidateQueries({ queryKey: ['documents'] })
+          queryClient.invalidateQueries({ queryKey: ['documents'], exact: false })
+          queryClient.invalidateQueries({ queryKey: ['activeJobs'], exact: false })
         }
       },
       [batchId, queryClient]

@@ -157,7 +157,7 @@ export function useUpdateDocument() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['document', variables.id] })
-      queryClient.invalidateQueries({ queryKey: ['documents'] })
+      queryClient.invalidateQueries({ queryKey: ['documents'], exact: false })
     },
   })
 }
@@ -174,7 +174,7 @@ export function useDeleteDocument() {
       return res.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['documents'] })
+      queryClient.invalidateQueries({ queryKey: ['documents'], exact: false })
     },
   })
 }
@@ -194,7 +194,7 @@ export function useProcessDocument() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['document', variables.documentId] })
-      queryClient.invalidateQueries({ queryKey: ['documents'] })
+      queryClient.invalidateQueries({ queryKey: ['documents'], exact: false })
     },
   })
 }
@@ -268,7 +268,7 @@ export function useProcessDocumentStreaming() {
                     onError(data)
                   } else if (eventType === 'done') {
                     queryClient.invalidateQueries({ queryKey: ['document', documentId] })
-                    queryClient.invalidateQueries({ queryKey: ['documents'] })
+                    queryClient.invalidateQueries({ queryKey: ['documents'], exact: false })
                     resolve()
                     return
                   }
@@ -320,7 +320,8 @@ export function useCreateBatch() {
       return res.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['documents'] })
+      queryClient.invalidateQueries({ queryKey: ['documents'], exact: false })
+      queryClient.invalidateQueries({ queryKey: ['activeJobs'], exact: false })
     },
   })
 }
@@ -358,8 +359,9 @@ export function useCancelBatch() {
       return res.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['documents'] })
-      queryClient.invalidateQueries({ queryKey: ['batch'] })
+      queryClient.invalidateQueries({ queryKey: ['documents'], exact: false })
+      queryClient.invalidateQueries({ queryKey: ['batch'], exact: false })
+      queryClient.invalidateQueries({ queryKey: ['activeJobs'], exact: false })
     },
   })
 }
@@ -522,8 +524,8 @@ export function useCancelJob() {
       return res.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['documents'] })
-      queryClient.invalidateQueries({ queryKey: ['activeJobs'] })
+      queryClient.invalidateQueries({ queryKey: ['documents'], exact: false })
+      queryClient.invalidateQueries({ queryKey: ['activeJobs'], exact: false })
     },
   })
 }

@@ -226,6 +226,9 @@ function SpreadsheetCellInput({
 
   // Handle keyboard navigation between cells
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Skip if Ctrl is pressed - let global handler handle document navigation
+    if (e.ctrlKey) return
+
     const isVerticalNav = e.key === 'Enter' || e.key === 'ArrowUp' || e.key === 'ArrowDown'
     if (!isVerticalNav) return
 

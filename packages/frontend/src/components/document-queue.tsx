@@ -142,18 +142,16 @@ export function DocumentQueue({
     setSearchInput(urlSearch)
   }, [urlSearch])
 
-  // Initialize activeJobsMap from server on page load
+  // Sync activeJobsMap with server state
   useEffect(() => {
     if (activeJobsData?.jobs) {
-      setActiveJobsMap((prev) => {
-        const next = new Map(prev)
-        for (const job of activeJobsData.jobs as Array<{ id: string; documentId: string; batchId?: string }>) {
-          if (!next.has(job.documentId)) {
-            next.set(job.documentId, { jobId: job.id, batchId: job.batchId })
-          }
-        }
-        return next.size !== prev.size ? next : prev
-      })
+      const serverJobs = activeJobsData.jobs as Array<{ id: string; documentId: string; batchId?: string }>
+      // Build new map from server data - this removes completed jobs automatically
+      const newMap = new Map<string, { jobId: string; batchId?: string }>()
+      for (const job of serverJobs) {
+        newMap.set(job.documentId, { jobId: job.id, batchId: job.batchId })
+      }
+      setActiveJobsMap(newMap)
     }
   }, [activeJobsData])
 
@@ -560,18 +558,16 @@ export function useDocumentProcessingState(documentTypeId: string) {
   const [activeJobsMap, setActiveJobsMap] = useState<Map<string, { jobId: string; batchId?: string }>>(new Map())
   const { data: activeJobsData } = useActiveJobs(documentTypeId)
 
-  // Initialize from server
+  // Sync with server state
   useEffect(() => {
     if (activeJobsData?.jobs) {
-      setActiveJobsMap((prev) => {
-        const next = new Map(prev)
-        for (const job of activeJobsData.jobs as Array<{ id: string; documentId: string; batchId?: string }>) {
-          if (!next.has(job.documentId)) {
-            next.set(job.documentId, { jobId: job.id, batchId: job.batchId })
-          }
-        }
-        return next.size !== prev.size ? next : prev
-      })
+      const serverJobs = activeJobsData.jobs as Array<{ id: string; documentId: string; batchId?: string }>
+      // Build new map from server data - this removes completed jobs automatically
+      const newMap = new Map<string, { jobId: string; batchId?: string }>()
+      for (const job of serverJobs) {
+        newMap.set(job.documentId, { jobId: job.id, batchId: job.batchId })
+      }
+      setActiveJobsMap(newMap)
     }
   }, [activeJobsData])
 
