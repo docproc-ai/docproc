@@ -79,20 +79,20 @@ export function closeBrackets(json: string): string {
   // Track open brackets/braces
   const stack: string[] = []
   let inString = false
-  let escape = false
+  let isEscaped = false
 
   for (const char of json) {
-    if (escape) {
-      escape = false
+    if (isEscaped) {
+      isEscaped = false
       continue
     }
 
     if (char === '\\' && inString) {
-      escape = true
+      isEscaped = true
       continue
     }
 
-    if (char === '"' && !escape) {
+    if (char === '"' && !isEscaped) {
       inString = !inString
       continue
     }

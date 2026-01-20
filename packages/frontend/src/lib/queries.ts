@@ -234,7 +234,7 @@ export function useProcessDocumentStreaming() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ documentId, model }),
         credentials: 'include',
-        signal: abortControllerRef.current!.signal,
+        signal: abortControllerRef.current?.signal,
       })
         .then(async (response) => {
           if (!response.ok) {
@@ -268,7 +268,7 @@ export function useProcessDocumentStreaming() {
                   if (eventType === 'partial') {
                     try {
                       onPartial(JSON.parse(data))
-                    } catch (e) {
+                    } catch (_e) {
                       // Ignore parse errors for partial data
                     }
                   } else if (eventType === 'complete') {

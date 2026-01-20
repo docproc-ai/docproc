@@ -5,8 +5,8 @@ export interface JsonSchema {
   properties?: Record<string, JsonSchema>
   items?: JsonSchema
   required?: string[]
-  enum?: any[]
-  default?: any
+  enum?: (string | number | boolean | null)[]
+  default?: string | number | boolean | null
   minimum?: number
   maximum?: number
   minLength?: number

@@ -31,7 +31,7 @@ export function ObjectFieldBuilder({
     if (!propertyIdMap.current.has(key)) {
       propertyIdMap.current.set(key, `prop-${crypto.randomUUID()}`)
     }
-    return propertyIdMap.current.get(key)!
+    return propertyIdMap.current.get(key) ?? `prop-${key}`
   }
 
   useEffect(() => {
@@ -102,9 +102,9 @@ export function ObjectFieldBuilder({
     const newRequired = required.map((key) => (key === oldKey ? newKey : key))
 
     if (propertyIdMap.current.has(oldKey)) {
-      const id = propertyIdMap.current.get(oldKey)!
+      const id = propertyIdMap.current.get(oldKey)
       propertyIdMap.current.delete(oldKey)
-      propertyIdMap.current.set(newKey, id)
+      if (id) propertyIdMap.current.set(newKey, id)
     }
 
     onChange({

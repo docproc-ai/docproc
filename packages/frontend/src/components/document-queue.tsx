@@ -171,13 +171,14 @@ export function DocumentQueue({
   // Track processing state from WebSocket events
   useJobEvents(
     useCallback((event) => {
-      if (!event.documentId) return
+      const documentId = event.documentId
+      if (!documentId) return
 
       if (event.type === 'job:started' && event.jobId) {
         setActiveJobsMap((prev) => {
           const next = new Map(prev)
-          next.set(event.documentId!, {
-            jobId: event.jobId!,
+          next.set(documentId, {
+            jobId: event.jobId ?? '',
             batchId: event.batchId,
           })
           return next
@@ -188,7 +189,7 @@ export function DocumentQueue({
       ) {
         setActiveJobsMap((prev) => {
           const next = new Map(prev)
-          next.delete(event.documentId!)
+          next.delete(documentId)
           return next
         })
       }
@@ -206,7 +207,7 @@ export function DocumentQueue({
         }, 100)
       }
     }
-  }, [selectedDocId, documents])
+  }, [selectedDocId])
 
   // Auto-select first document if none selected
   useEffect(() => {
@@ -657,13 +658,14 @@ export function useDocumentProcessingState(documentTypeId: string) {
   // Track from WebSocket
   useJobEvents(
     useCallback((event) => {
-      if (!event.documentId) return
+      const documentId = event.documentId
+      if (!documentId) return
 
       if (event.type === 'job:started' && event.jobId) {
         setActiveJobsMap((prev) => {
           const next = new Map(prev)
-          next.set(event.documentId!, {
-            jobId: event.jobId!,
+          next.set(documentId, {
+            jobId: event.jobId ?? '',
             batchId: event.batchId,
           })
           return next
@@ -674,7 +676,7 @@ export function useDocumentProcessingState(documentTypeId: string) {
       ) {
         setActiveJobsMap((prev) => {
           const next = new Map(prev)
-          next.delete(event.documentId!)
+          next.delete(documentId)
           return next
         })
       }

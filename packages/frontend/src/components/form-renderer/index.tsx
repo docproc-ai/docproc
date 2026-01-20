@@ -57,7 +57,7 @@ function FormField({
   isArrayItem = false,
   isStreaming = false,
 }: FormFieldProps) {
-  const handleChange = (newValue: any) => {
+  const handleChange = (newValue: unknown) => {
     onChange(newValue)
   }
 

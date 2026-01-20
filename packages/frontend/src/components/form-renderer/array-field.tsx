@@ -50,8 +50,8 @@ function FormField({
 }: {
   name: string
   schema: JsonSchema
-  value: any
-  onChange: (value: any) => void
+  value: unknown
+  onChange: (value: unknown) => void
   required?: boolean
   isArrayItem?: boolean
   isStreaming?: boolean
@@ -156,8 +156,8 @@ function FormField({
 function formatDateForDisplay(isoValue: string | undefined | null): string {
   if (!isoValue) return ''
   try {
-    const date = new Date(isoValue + 'T00:00:00')
-    if (!isNaN(date.getTime())) {
+    const date = new Date(`${isoValue}T00:00:00`)
+    if (!Number.isNaN(date.getTime())) {
       return date.toLocaleDateString()
     }
     return isoValue
@@ -171,7 +171,7 @@ function parseDateToISO(input: string): string | null {
   if (!input) return null
   try {
     const date = new Date(input)
-    if (!isNaN(date.getTime())) {
+    if (!Number.isNaN(date.getTime())) {
       return date.toISOString().split('T')[0]
     }
   } catch {
@@ -234,8 +234,8 @@ function SpreadsheetCellInput({
   disabled = false,
 }: {
   schema: JsonSchema
-  value: any
-  onChange: (value: any) => void
+  value: unknown
+  onChange: (value: unknown) => void
   disabled?: boolean
 }) {
   const fieldType = Array.isArray(schema.type) ? schema.type[0] : schema.type
@@ -290,7 +290,7 @@ function SpreadsheetCellInput({
             }
             const parsed =
               fieldType === 'integer'
-                ? Number.parseInt(raw)
+                ? Number.parseInt(raw, 10)
                 : Number.parseFloat(raw)
             if (!Number.isNaN(parsed)) {
               onChange(parsed)
@@ -361,8 +361,8 @@ function ArrayTableField({
 }: {
   name: string
   schema: JsonSchema
-  value: any[]
-  onChange: (value: any[]) => void
+  value: unknown[]
+  onChange: (value: unknown[]) => void
   required?: boolean
   isStreaming?: boolean
 }) {
@@ -371,7 +371,7 @@ function ArrayTableField({
 
   const handleAddRecord = () => {
     const itemsSchema = schema.items || {}
-    let newItem: any
+    let newItem: unknown
     if (itemsSchema.type === 'object') {
       newItem = Object.entries(itemsSchema.properties || {}).reduce(
         (acc, [key, propSchema]) => {
@@ -381,7 +381,7 @@ function ArrayTableField({
               : undefined
           return acc
         },
-        {} as Record<string, any>,
+        {} as Record<string, unknown>,
       )
     } else {
       newItem = itemsSchema.default !== undefined ? itemsSchema.default : ''
@@ -397,7 +397,7 @@ function ArrayTableField({
   const handleCellChange = (
     recordIndex: number,
     fieldKey: string | null,
-    newValue: any,
+    newValue: unknown,
   ) => {
     const newArray = [...arrayValue]
     if (fieldKey) {
@@ -671,14 +671,14 @@ export function ArrayField({
 
   const arrayValue = value || []
 
-  const allExpanded = arrayValue.every((_: any, index: number) => {
+  const allExpanded = arrayValue.every((_: unknown, index: number) => {
     const itemKey = `${name}-${index}`
     return expandedArrayItems[itemKey] !== false
   })
 
   const toggleAll = () => {
     const newState: Record<string, boolean> = {}
-    arrayValue.forEach((_: any, index: number) => {
+    arrayValue.forEach((_: unknown, index: number) => {
       const itemKey = `${name}-${index}`
       newState[itemKey] = !allExpanded
     })
@@ -720,7 +720,7 @@ export function ArrayField({
         </div>
       </div>
       <ItemGroup>
-        {arrayValue.map((item: any, index: number) => {
+        {arrayValue.map((item: unknown, index: number) => {
           const itemKey = `${name}-${index}`
           const isExpanded = expandedArrayItems[itemKey] !== false
 
@@ -785,7 +785,7 @@ export function ArrayField({
                         onClick={(e) => {
                           e.stopPropagation()
                           const newArray = arrayValue.filter(
-                            (_: any, i: number) => i !== index,
+                            (_: unknown, i: number) => i !== index,
                           )
                           onChange(newArray)
                         }}
@@ -800,7 +800,7 @@ export function ArrayField({
                     name={`${name}[${index}]`}
                     schema={schema.items || { type: 'string' }}
                     value={item}
-                    onChange={(newValue: any) => {
+                    onChange={(newValue: unknown) => {
                       const newArray = [...arrayValue]
                       newArray[index] = newValue
                       onChange(newArray)

@@ -8,7 +8,6 @@ import { processDocumentRequest, createBatchRequest } from '../schemas'
 import {
   processAndSaveDocument,
   prepareDocumentForStreaming,
-  closeBrackets,
   safeParseJson,
 } from '../lib/processing'
 
@@ -18,7 +17,6 @@ const openrouterProvider = createOpenRouter({
 })
 import { processDocumentBatch } from '../lib/processing/batch-processor'
 import { getDocument } from '../lib/db/document-operations'
-import { getDocumentType } from '../lib/db/document-type-operations'
 import {
   createBatch,
   getBatch,
@@ -234,9 +232,9 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
         }
 
         // All documents must be same document type
-        const documentTypeId = documents[0]!.documentTypeId
+        const documentTypeId = documents[0]?.documentTypeId
         const differentTypes = documents.filter(
-          (d) => d!.documentTypeId !== documentTypeId,
+          (d) => d?.documentTypeId !== documentTypeId,
         )
         if (differentTypes.length > 0) {
           return c.json(
@@ -297,9 +295,9 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
           {
             id: result.batch.id,
             status: result.batch.status,
-            total: parseInt(result.batch.total),
-            completed: parseInt(result.batch.completed || '0'),
-            failed: parseInt(result.batch.failed || '0'),
+            total: parseInt(result.batch.total, 10),
+            completed: parseInt(result.batch.completed || '0', 10),
+            failed: parseInt(result.batch.failed || '0', 10),
             webhookUrl: result.batch.webhookUrl,
             createdAt: result.batch.createdAt,
             completedAt: result.batch.completedAt,
@@ -419,11 +417,11 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
           documentTypeId = batch?.documentTypeId
         }
 
-        // Emit WebSocket event for job cancellation (only if we have documentTypeId)
-        if (documentTypeId) {
+        // Emit WebSocket event for job cancellation (only if we have documentTypeId and documentId)
+        if (documentTypeId && cancelled.documentId) {
           emitJobFailed(
             cancelled.id,
-            cancelled.documentId!,
+            cancelled.documentId,
             documentTypeId,
             'Job cancelled',
             cancelled.batchId,
@@ -467,7 +465,9 @@ async function processBatchInBackground(
 
     // Get jobs for this batch
     const jobs = await getJobsByBatchId(batchId)
-    const jobMap = new Map(jobs.map((j) => [j.documentId!, j.id]))
+    const jobMap = new Map(
+      jobs.filter((j) => j.documentId).map((j) => [j.documentId, j.id]),
+    )
 
     let completed = 0
     let failed = 0
@@ -503,7 +503,7 @@ async function processBatchInBackground(
         return true
       },
       // Progress callback
-      async (completedCount, total, documentId, error) => {
+      async (_completedCount, total, documentId, error) => {
         const jobId = jobMap.get(documentId)
         if (!jobId) return
 
@@ -562,9 +562,9 @@ async function processBatchInBackground(
               event: 'batch.completed',
               batchId,
               status: batchResult.batch.status,
-              total: parseInt(batchResult.batch.total),
-              completed: parseInt(batchResult.batch.completed || '0'),
-              failed: parseInt(batchResult.batch.failed || '0'),
+              total: parseInt(batchResult.batch.total, 10),
+              completed: parseInt(batchResult.batch.completed || '0', 10),
+              failed: parseInt(batchResult.batch.failed || '0', 10),
             }),
           })
         } catch (webhookError) {

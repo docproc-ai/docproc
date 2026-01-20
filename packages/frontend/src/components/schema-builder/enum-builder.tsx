@@ -3,8 +3,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
 interface EnumBuilderProps {
-  value: any[]
-  onChange: (newValue: any[]) => void
+  value: (string | number | boolean | null)[]
+  onChange: (newValue: (string | number | boolean | null)[]) => void
 }
 
 export function EnumBuilder({ value, onChange }: EnumBuilderProps) {
@@ -28,7 +28,10 @@ export function EnumBuilder({ value, onChange }: EnumBuilderProps) {
         The form will show a dropdown with these options.
       </p>
       {value.map((option, index) => (
-        <div key={index} className="flex items-center gap-2">
+        <div
+          key={`enum-${index}-${String(option)}`}
+          className="flex items-center gap-2"
+        >
           <Input
             value={option}
             onChange={(e) => handleOptionChange(index, e.target.value)}

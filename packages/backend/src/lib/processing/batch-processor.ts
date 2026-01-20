@@ -1,9 +1,12 @@
 import { processAndSaveDocument } from './processor'
 import type { ProcessingOptions } from './shared'
 
-export interface BatchProgressCallback {
-  (completed: number, total: number, documentId: string, error?: Error): void
-}
+export type BatchProgressCallback = (
+  completed: number,
+  total: number,
+  documentId: string,
+  error?: Error,
+) => void
 
 export interface BatchResult {
   completed: string[]

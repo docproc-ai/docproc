@@ -1,5 +1,5 @@
-import { readFile, writeFile, unlink, access, mkdir } from 'fs/promises'
-import { join, extname } from 'path'
+import { readFile, writeFile, unlink, access, mkdir } from 'node:fs/promises'
+import { join, extname } from 'node:path'
 import { lookup } from 'mime-types'
 import type { StorageProvider } from './types'
 

@@ -56,7 +56,7 @@ export function subscribeToDocumentType(ws: WebSocket, documentTypeId: string) {
   if (!documentTypeSubscriptions.has(documentTypeId)) {
     documentTypeSubscriptions.set(documentTypeId, new Set())
   }
-  documentTypeSubscriptions.get(documentTypeId)!.add(ws)
+  documentTypeSubscriptions.get(documentTypeId)?.add(ws)
 }
 
 /**

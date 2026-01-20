@@ -106,7 +106,7 @@ export function handleWebSocketMessage(
           JSON.stringify({ type: 'error', message: 'Unknown message type' }),
         )
     }
-  } catch (error) {
+  } catch (_error) {
     ws.send(
       JSON.stringify({ type: 'error', message: 'Invalid message format' }),
     )

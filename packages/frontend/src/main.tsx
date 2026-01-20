@@ -18,17 +18,17 @@ import * as TanStackQueryProvider from './integrations/tanstack-query/root-provi
 import { signOut, useSession } from './lib/auth'
 import { ThemeProvider, useTheme } from './lib/theme'
 import DocumentTypesPage from './pages/document-types'
-import DocumentTypeSettingsPage from './pages/document-types/[slug]/settings'
 import ProcessLayout from './pages/document-types/[slug]/process'
 import DocumentEditorPage from './pages/document-types/[slug]/process/[id]'
+import DocumentTypeSettingsPage from './pages/document-types/[slug]/settings'
 import NewDocumentTypePage from './pages/document-types/new'
-import UsersPage from './pages/users'
 // Page components
 import LoginPage from './pages/login'
+import UsersPage from './pages/users'
 
 import './styles.css'
-import reportWebVitals from './reportWebVitals.ts'
 import { useEffect } from 'react'
+import reportWebVitals from './reportWebVitals.ts'
 
 // Auth guard - redirects to login if not authenticated
 function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -97,9 +97,9 @@ function ThemeToggle() {
       aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
     >
       {theme === 'dark' ? (
-        <Sun className="size-[18px]" />
+        <Sun className="size-18px" />
       ) : (
-        <Moon className="size-[18px]" />
+        <Moon className="size-18px" />
       )}
     </Button>
   )

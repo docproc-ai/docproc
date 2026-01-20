@@ -21,17 +21,17 @@ export function SchemaBuilder({
   path = '',
 }: SchemaBuilderProps) {
   const updateSchema = (updates: Partial<JsonSchema>) => {
-    const newSchema = { ...schema }
+    const newSchema = { ...schema } as Record<string, unknown>
 
     for (const [key, value] of Object.entries(updates)) {
       if (value === undefined) {
-        delete newSchema[key as keyof JsonSchema]
+        delete newSchema[key]
       } else {
-        ;(newSchema as any)[key] = value
+        newSchema[key] = value
       }
     }
 
-    onChange(newSchema)
+    onChange(newSchema as JsonSchema)
   }
 
   return (
@@ -112,15 +112,17 @@ export function SchemaBuilder({
             <StringFieldBuilder
               schema={propertySchema}
               onChange={(updates) => {
-                const updatedProperty = { ...propertySchema }
+                const updatedProperty = {
+                  ...propertySchema,
+                } as Record<string, unknown>
 
                 for (const [updateKey, updateValue] of Object.entries(
                   updates,
                 )) {
                   if (updateValue === undefined) {
-                    delete updatedProperty[updateKey as keyof JsonSchema]
+                    delete updatedProperty[updateKey]
                   } else {
-                    ;(updatedProperty as any)[updateKey] = updateValue
+                    updatedProperty[updateKey] = updateValue
                   }
                 }
 
@@ -136,15 +138,17 @@ export function SchemaBuilder({
             <NumberFieldBuilder
               schema={propertySchema}
               onChange={(updates) => {
-                const updatedProperty = { ...propertySchema }
+                const updatedProperty = {
+                  ...propertySchema,
+                } as Record<string, unknown>
 
                 for (const [updateKey, updateValue] of Object.entries(
                   updates,
                 )) {
                   if (updateValue === undefined) {
-                    delete updatedProperty[updateKey as keyof JsonSchema]
+                    delete updatedProperty[updateKey]
                   } else {
-                    ;(updatedProperty as any)[updateKey] = updateValue
+                    updatedProperty[updateKey] = updateValue
                   }
                 }
 
@@ -352,18 +356,17 @@ export function SchemaBuilder({
                         <StringFieldBuilder
                           schema={propSchema}
                           onChange={(updates) => {
-                            const updatedProperty = { ...propSchema }
+                            const updatedProperty = {
+                              ...propSchema,
+                            } as Record<string, unknown>
                             for (const [
                               updateKey,
                               updateValue,
                             ] of Object.entries(updates)) {
                               if (updateValue === undefined) {
-                                delete updatedProperty[
-                                  updateKey as keyof JsonSchema
-                                ]
+                                delete updatedProperty[updateKey]
                               } else {
-                                ;(updatedProperty as any)[updateKey] =
-                                  updateValue
+                                updatedProperty[updateKey] = updateValue
                               }
                             }
                             const newItemProperties = {
@@ -387,18 +390,17 @@ export function SchemaBuilder({
                         <NumberFieldBuilder
                           schema={propSchema}
                           onChange={(updates) => {
-                            const updatedProperty = { ...propSchema }
+                            const updatedProperty = {
+                              ...propSchema,
+                            } as Record<string, unknown>
                             for (const [
                               updateKey,
                               updateValue,
                             ] of Object.entries(updates)) {
                               if (updateValue === undefined) {
-                                delete updatedProperty[
-                                  updateKey as keyof JsonSchema
-                                ]
+                                delete updatedProperty[updateKey]
                               } else {
-                                ;(updatedProperty as any)[updateKey] =
-                                  updateValue
+                                updatedProperty[updateKey] = updateValue
                               }
                             }
                             const newItemProperties = {

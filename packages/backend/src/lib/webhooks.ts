@@ -4,9 +4,9 @@
  */
 
 import { getDocumentType } from './db/document-type-operations'
-import {
-  type DocumentWebhookConfig,
-  type DocumentWebhookEventName,
+import type {
+  DocumentWebhookConfig,
+  DocumentWebhookEventName,
 } from './webhook-encryption'
 
 export type { DocumentWebhookEventName }

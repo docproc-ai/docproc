@@ -138,14 +138,21 @@ export default function DocumentEditorPage() {
         })
       }
     },
-    [filteredDocs, currentDoc?.id, hasChanges, docType?.slug, navigate],
+    [
+      filteredDocs,
+      currentDoc?.id,
+      hasChanges,
+      docType?.slug,
+      navigate,
+      currentDoc,
+    ],
   )
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement
-      const isInput =
+      const _isInput =
         target.tagName === 'INPUT' ||
         target.tagName === 'TEXTAREA' ||
         target.isContentEditable

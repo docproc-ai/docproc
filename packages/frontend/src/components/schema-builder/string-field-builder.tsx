@@ -33,7 +33,10 @@ export function StringFieldBuilder({
               value={schema.format || 'none'}
               onValueChange={(format) =>
                 onChange({
-                  format: format === 'none' ? undefined : (format as any),
+                  format:
+                    format === 'none'
+                      ? undefined
+                      : (format as JsonSchema['format']),
                 })
               }
             >
@@ -56,7 +59,9 @@ export function StringFieldBuilder({
               onValueChange={(widget) =>
                 onChange({
                   'ui:widget':
-                    widget === 'default' ? undefined : (widget as any),
+                    widget === 'default'
+                      ? undefined
+                      : (widget as JsonSchema['ui:widget']),
                 })
               }
             >

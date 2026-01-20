@@ -11,8 +11,6 @@ export function NumberField({
   required,
   isStreaming,
 }: FormFieldProps) {
-  if (schema.type !== 'number' && schema.type !== 'integer') return null
-
   const fieldType = schema.type
 
   // Track the raw input string to allow intermediate states like "12." or "12.0"
@@ -29,6 +27,8 @@ export function NumberField({
       )
     }
   }, [value, isFocused])
+
+  if (schema.type !== 'number' && schema.type !== 'integer') return null
 
   return (
     <Field>
@@ -65,7 +65,7 @@ export function NumberField({
           if (!raw.endsWith('.') && !raw.endsWith('-')) {
             const parsed =
               fieldType === 'integer'
-                ? Number.parseInt(raw)
+                ? Number.parseInt(raw, 10)
                 : Number.parseFloat(raw)
             if (!Number.isNaN(parsed)) {
               onChange(parsed)

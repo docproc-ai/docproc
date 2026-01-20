@@ -62,21 +62,21 @@ export async function getDocuments(
     if (statuses.length === 1) {
       conditions.push(eq(document.status, statuses[0] as DocumentStatus))
     } else if (statuses.length > 1) {
-      conditions.push(
-        or(...statuses.map((s) => eq(document.status, s as DocumentStatus)))!,
+      const statusCondition = or(
+        ...statuses.map((s) => eq(document.status, s as DocumentStatus)),
       )
+      if (statusCondition) conditions.push(statusCondition)
     }
   }
 
   // Handle search filtering (search by filename or slug)
-  if (search && search.trim()) {
+  if (search?.trim()) {
     const searchPattern = `%${search.trim()}%`
-    conditions.push(
-      or(
-        like(document.filename, searchPattern),
-        like(document.slug, searchPattern),
-      )!,
+    const searchCondition = or(
+      like(document.filename, searchPattern),
+      like(document.slug, searchPattern),
     )
+    if (searchCondition) conditions.push(searchCondition)
   }
 
   // Get total count for pagination
@@ -251,14 +251,17 @@ export async function bulkUpdateDocumentStatus(
 ): Promise<number> {
   if (documentIds.length === 0) return 0
 
-  const result = await db
+  const whereCondition = or(...documentIds.map((id) => eq(document.id, id)))
+  if (!whereCondition) return 0
+
+  await db
     .update(document)
     .set({
       status,
       updatedAt: new Date(),
       updatedBy: updatedBy || null,
     })
-    .where(or(...documentIds.map((id) => eq(document.id, id)))!)
+    .where(whereCondition)
 
   return documentIds.length
 }
@@ -278,9 +281,10 @@ export async function bulkDeleteDocuments(
 ): Promise<number> {
   if (documentIds.length === 0) return 0
 
-  await db
-    .delete(document)
-    .where(or(...documentIds.map((id) => eq(document.id, id)))!)
+  const whereCondition = or(...documentIds.map((id) => eq(document.id, id)))
+  if (!whereCondition) return 0
+
+  await db.delete(document).where(whereCondition)
 
   return documentIds.length
 }

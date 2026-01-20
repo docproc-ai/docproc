@@ -73,7 +73,7 @@ export function DocumentTypeForm({
   const schema: JsonSchema = useMemo(() => {
     try {
       return JSON.parse(schemaText)
-    } catch (e) {
+    } catch (_e) {
       return { type: 'object', properties: {} }
     }
   }, [schemaText])

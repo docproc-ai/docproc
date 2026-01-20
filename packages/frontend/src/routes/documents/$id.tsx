@@ -200,7 +200,9 @@ function DocumentDetailPage() {
           <div className="flex items-center gap-2 mt-1">
             <StatusBadge status={document.status || 'pending'} />
             <span className="text-sm text-muted-foreground">
-              {new Date(document.createdAt!).toLocaleDateString()}
+              {document.createdAt
+                ? new Date(document.createdAt).toLocaleDateString()
+                : ''}
             </span>
           </div>
         </div>

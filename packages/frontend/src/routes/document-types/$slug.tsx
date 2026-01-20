@@ -1,13 +1,7 @@
 import { createRoute, Link, useParams } from '@tanstack/react-router'
 import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   useDocumentType,
   useDocuments,
@@ -207,7 +201,9 @@ function DocumentTypeDetailPage() {
                       {doc.filename}
                     </Link>
                     <p className="text-sm text-muted-foreground">
-                      {new Date(doc.createdAt!).toLocaleDateString()}
+                      {doc.createdAt
+                        ? new Date(doc.createdAt).toLocaleDateString()
+                        : ''}
                     </p>
                   </div>
                 </div>

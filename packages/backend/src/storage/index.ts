@@ -17,7 +17,6 @@ export function createStorage(): StorageProvider {
     case 'database':
       // TODO: Implement DatabaseStorageProvider when needed
       throw new Error('Database storage not yet implemented')
-    case 'local':
     default:
       return new LocalStorageProvider()
   }

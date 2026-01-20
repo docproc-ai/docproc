@@ -3,7 +3,7 @@
  * Uses AES-256-GCM for authenticated encryption of sensitive webhook headers
  */
 
-import { createCipheriv, createDecipheriv, randomBytes } from 'crypto'
+import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
 
 const ALGORITHM = 'aes-256-gcm'
 const IV_LENGTH = 16

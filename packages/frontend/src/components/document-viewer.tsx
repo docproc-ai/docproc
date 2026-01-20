@@ -67,7 +67,7 @@ function DocumentViewerComponent({
     skipNextRenderRef.current = false
     setFileVersion(0)
     setImageTimestamp(Date.now())
-  }, [documentId])
+  }, [])
 
   const onDocumentLoadSuccess = useCallback((pdf: pdfjs.PDFDocumentProxy) => {
     pdfRef.current = pdf
@@ -82,7 +82,7 @@ function DocumentViewerComponent({
     const renderPage = async () => {
       setIsRendering(true)
       try {
-        const page = await pdfRef.current!.getPage(currentPage)
+        const page = await pdfRef.current?.getPage(currentPage)
         const scale = 2
         const viewport = page.getViewport({ scale })
 
@@ -125,7 +125,7 @@ function DocumentViewerComponent({
     return () => {
       isMounted = false
     }
-  }, [currentPage, numPages, fileVersion])
+  }, [currentPage, numPages])
 
   // Center view when content changes
   useEffect(() => {
@@ -133,7 +133,7 @@ function DocumentViewerComponent({
       transformWrapperRef.current?.centerView()
     }, 50)
     return () => clearTimeout(timer)
-  }, [pageImage, fileUrl])
+  }, [])
 
   // Delay showing spinner to avoid flash on quick loads
   useEffect(() => {

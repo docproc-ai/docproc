@@ -59,7 +59,7 @@ export function generateSlugFromPattern(
   documentId: string,
 ): string | null {
   try {
-    const result = pattern.replace(FIELD_PATTERN, (match, field: string) => {
+    const result = pattern.replace(FIELD_PATTERN, (_match, field: string) => {
       // Handle special functions
       if (field === 'id()') {
         // Generate short unique ID (same pattern as existing generateSlug)
