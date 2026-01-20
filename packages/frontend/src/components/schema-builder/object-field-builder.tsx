@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { FieldBuilder } from './field-builder'
@@ -213,21 +214,7 @@ export function ObjectFieldBuilder({ schema, onChange, children }: ObjectFieldBu
       <div className="flex items-center justify-between">
         <Label className="text-base font-semibold">Properties</Label>
         <Button variant="outline" size="sm" onClick={addProperty}>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-4 w-4"
-          >
-            <path d="M5 12h14" />
-            <path d="M12 5v14" />
-          </svg>
+          <Plus className="size-4" />
           Add Property
         </Button>
       </div>

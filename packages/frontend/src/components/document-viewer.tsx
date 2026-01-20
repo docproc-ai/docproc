@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback, memo, useTransition } from 'react'
 import { Document, pdfjs } from 'react-pdf'
 import { TransformWrapper, TransformComponent, type ReactZoomPanPinchRef } from 'react-zoom-pan-pinch'
+import { ChevronLeft, ChevronRight, RotateCcw, RotateCw, File } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 // Configure pdfjs worker
@@ -193,9 +194,7 @@ function DocumentViewerComponent({ documentId, filename, onRotate }: DocumentVie
       {/* Page navigation for PDFs */}
       {showPageNav && numPages && numPages > 1 && (
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goToPrevPage} disabled={currentPage <= 1}>
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="m15 18-6-6 6-6"/>
-          </svg>
+          <ChevronLeft className="size-4" />
         </Button>
       )}
 
@@ -210,10 +209,7 @@ function DocumentViewerComponent({ documentId, filename, onRotate }: DocumentVie
             disabled={isPending}
             title="Rotate counterclockwise"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-              <path d="M3 3v5h5"/>
-            </svg>
+            <RotateCcw className="size-4" />
           </Button>
           <Button
             variant="ghost"
@@ -223,10 +219,7 @@ function DocumentViewerComponent({ documentId, filename, onRotate }: DocumentVie
             disabled={isPending}
             title="Rotate clockwise"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
-              <path d="M21 3v5h-5"/>
-            </svg>
+            <RotateCw className="size-4" />
           </Button>
         </>
       )}
@@ -239,9 +232,7 @@ function DocumentViewerComponent({ documentId, filename, onRotate }: DocumentVie
       {/* Page navigation for PDFs */}
       {showPageNav && numPages && numPages > 1 && (
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goToNextPage} disabled={currentPage >= numPages}>
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="m9 18 6-6-6-6"/>
-          </svg>
+          <ChevronRight className="size-4" />
         </Button>
       )}
     </div>
@@ -320,10 +311,7 @@ function DocumentViewerComponent({ documentId, filename, onRotate }: DocumentVie
   // Unsupported file type
   const renderUnsupported = () => (
     <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
-      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/>
-        <path d="M14 2v4a2 2 0 0 0 2 2h4"/>
-      </svg>
+      <File className="size-12" />
       <p className="mt-4 text-sm">Preview not available for this file type</p>
       <p className="text-xs mt-1">{filename}</p>
     </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { ChevronDown, ChevronRight, GripVertical, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -129,57 +130,11 @@ export function FieldBuilder({
         <CollapsibleTrigger asChild>
           <div className="flex cursor-pointer items-center justify-between gap-4">
             <div className="flex flex-1 items-center gap-2">
-              {/* Grip icon */}
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="text-muted-foreground h-4 w-4 cursor-grab active:cursor-grabbing"
-              >
-                <circle cx="9" cy="12" r="1" />
-                <circle cx="9" cy="5" r="1" />
-                <circle cx="9" cy="19" r="1" />
-                <circle cx="15" cy="12" r="1" />
-                <circle cx="15" cy="5" r="1" />
-                <circle cx="15" cy="19" r="1" />
-              </svg>
-              {/* Chevron */}
+              <GripVertical className="text-muted-foreground size-4 cursor-grab active:cursor-grabbing" />
               {isExpanded ? (
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-4 w-4"
-                >
-                  <path d="m6 9 6 6 6-6" />
-                </svg>
+                <ChevronDown className="size-4" />
               ) : (
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-4 w-4"
-                >
-                  <path d="m9 18 6-6-6-6" />
-                </svg>
+                <ChevronRight className="size-4" />
               )}
               <div className="relative flex-1" onClick={(e) => e.stopPropagation()}>
                 <Field data-invalid={hasError}>
@@ -246,22 +201,7 @@ export function FieldBuilder({
                   onRemove(propertyKey)
                 }}
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-4 w-4"
-                >
-                  <path d="M3 6h18" />
-                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                </svg>
+                <Trash2 className="size-4" />
               </Button>
             </div>
           </div>

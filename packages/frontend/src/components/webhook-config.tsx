@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ChevronDown, Eye, EyeOff, Pencil, Plus, Trash2, Webhook } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -129,11 +130,7 @@ export function WebhookConfigComponent({ config, onChange }: WebhookConfigCompon
       <CollapsibleTrigger asChild>
         <Button variant="ghost" className="w-full justify-between p-0 h-auto">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M18 16.98h-5.99c-1.1 0-1.95.94-2.48 1.9A4 4 0 0 1 2 17c.01-.7.2-1.4.57-2"/>
-              <path d="m6 17 3.13-5.78c.53-.97.1-2.18-.5-3.1a4 4 0 1 1 6.89-4.06"/>
-              <path d="m12 6 3.13 5.73C15.66 12.7 16.9 13 18 13a4 4 0 0 1 0 8"/>
-            </svg>
+            <Webhook className="size-4" />
             <span>Webhook Configuration</span>
             {enabledCount > 0 && (
               <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
@@ -141,20 +138,7 @@ export function WebhookConfigComponent({ config, onChange }: WebhookConfigCompon
               </span>
             )}
           </div>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={`transition-transform ${isOpen ? 'rotate-180' : ''}`}
-          >
-            <path d="m6 9 6 6 6-6"/>
-          </svg>
+          <ChevronDown className={`size-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         </Button>
       </CollapsibleTrigger>
       <CollapsibleContent className="space-y-4 pt-4">
@@ -229,9 +213,7 @@ export function WebhookConfigComponent({ config, onChange }: WebhookConfigCompon
                     <CollapsibleTrigger asChild>
                       <Button variant="ghost" className="w-full justify-between p-0 h-auto text-xs">
                         <span className="font-medium">Headers ({eventConfig.headers.length})</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="m6 9 6 6 6-6"/>
-                        </svg>
+                        <ChevronDown className="size-3.5" />
                       </Button>
                     </CollapsibleTrigger>
                     <CollapsibleContent className="space-y-3 pt-3">
@@ -251,9 +233,7 @@ export function WebhookConfigComponent({ config, onChange }: WebhookConfigCompon
                             </SelectContent>
                           </Select>
                           <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => addHeader(eventName)}>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
-                              <path d="M5 12h14"/><path d="M12 5v14"/>
-                            </svg>
+                            <Plus className="size-3 mr-1" />
                             Custom
                           </Button>
                         </div>
@@ -321,10 +301,7 @@ function HeaderRow({ header, onChange, onRemove }: HeaderRowProps) {
                 className="h-8 px-2"
                 title="Edit encrypted value"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
-                  <path d="m15 5 4 4"/>
-                </svg>
+                <Pencil className="size-3" />
               </Button>
             </div>
           ) : (
@@ -344,17 +321,9 @@ function HeaderRow({ header, onChange, onRemove }: HeaderRowProps) {
                   onClick={() => setShowValue(!showValue)}
                 >
                   {showValue ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/>
-                      <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/>
-                      <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/>
-                      <line x1="2" x2="22" y1="2" y2="22"/>
-                    </svg>
+                    <EyeOff className="size-3" />
                   ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
-                      <circle cx="12" cy="12" r="3"/>
-                    </svg>
+                    <Eye className="size-3" />
                   )}
                 </Button>
               )}
@@ -372,10 +341,7 @@ function HeaderRow({ header, onChange, onRemove }: HeaderRowProps) {
         </div>
       </div>
       <Button variant="outline" size="sm" onClick={onRemove} className="h-8 w-8 p-0 shrink-0">
-        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
-          <line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>
-        </svg>
+        <Trash2 className="size-3" />
       </Button>
     </div>
   )

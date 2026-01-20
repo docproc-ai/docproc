@@ -5,7 +5,7 @@
 
 import { db } from '../../db'
 import { documentType, document } from '../../db/schema/app'
-import { eq, desc, count } from 'drizzle-orm'
+import { eq, desc, count, and } from 'drizzle-orm'
 import { generateSlug } from '../generate-slug'
 import {
   encryptWebhookConfig,
@@ -40,6 +40,12 @@ export interface UpdateDocumentTypeData {
 
 export interface DocumentTypeWithCount extends DocumentTypeSelect {
   documentCount: number
+  statusCounts: {
+    pending: number
+    processed: number
+    approved: number
+    rejected: number
+  }
 }
 
 /**
@@ -59,6 +65,14 @@ export async function getDocumentTypes(): Promise<DocumentTypeWithCount[]> {
         .from(document)
         .where(eq(document.documentTypeId, type.id))
 
+      // Get counts by status
+      const statusCountsRaw = await Promise.all([
+        db.select({ count: count() }).from(document).where(and(eq(document.documentTypeId, type.id), eq(document.status, 'pending'))),
+        db.select({ count: count() }).from(document).where(and(eq(document.documentTypeId, type.id), eq(document.status, 'processed'))),
+        db.select({ count: count() }).from(document).where(and(eq(document.documentTypeId, type.id), eq(document.status, 'approved'))),
+        db.select({ count: count() }).from(document).where(and(eq(document.documentTypeId, type.id), eq(document.status, 'rejected'))),
+      ])
+
       // Return with safe webhook config (sensitive values masked)
       const safeWebhookConfig = type.webhookConfig
         ? createSafeWebhookConfig(type.webhookConfig as DocumentWebhookConfig)
@@ -68,6 +82,12 @@ export async function getDocumentTypes(): Promise<DocumentTypeWithCount[]> {
         ...type,
         webhookConfig: safeWebhookConfig,
         documentCount: countResult?.count ?? 0,
+        statusCounts: {
+          pending: statusCountsRaw[0][0]?.count ?? 0,
+          processed: statusCountsRaw[1][0]?.count ?? 0,
+          approved: statusCountsRaw[2][0]?.count ?? 0,
+          rejected: statusCountsRaw[3][0]?.count ?? 0,
+        },
       }
     }),
   )

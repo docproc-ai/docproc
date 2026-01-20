@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Pencil, Trash2, UserPlus, Users } from 'lucide-react'
 import { useUsers, useDeleteUser, useCreateUser, useUpdateUser } from '@/lib/queries'
 import { useSession } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
@@ -94,23 +95,7 @@ function CreateUserDialog() {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="mr-2"
-          >
-            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-            <circle cx="9" cy="7" r="4" />
-            <line x1="19" x2="19" y1="8" y2="14" />
-            <line x1="22" x2="16" y1="11" y2="11" />
-          </svg>
+          <UserPlus className="size-4 mr-2" />
           Add User
         </Button>
       </DialogTrigger>
@@ -246,20 +231,7 @@ function EditUserDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button variant="ghost" size="sm">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-            <path d="m15 5 4 4" />
-          </svg>
+          <Pencil className="size-4" />
         </Button>
       </DialogTrigger>
       <DialogContent>
@@ -389,23 +361,7 @@ function UserRow({
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M3 6h18" />
-                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                    <line x1="10" x2="10" y1="11" y2="17" />
-                    <line x1="14" x2="14" y1="11" y2="17" />
-                  </svg>
+                  <Trash2 className="size-4" />
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
@@ -456,15 +412,8 @@ function EmptyState({ search }: { search: string }) {
   return (
     <div className="bg-card border rounded-xl shadow-sm shadow-black/5 p-8">
       <div className="flex flex-col items-center justify-center py-12">
-        <div className="w-24 h-24 mb-6 relative">
-          <svg viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="48" cy="36" r="16" className="fill-muted stroke-border" strokeWidth="2" />
-            <path
-              d="M24 72C24 58.7452 34.7452 48 48 48C61.2548 48 72 58.7452 72 72V80H24V72Z"
-              className="fill-muted stroke-border"
-              strokeWidth="2"
-            />
-          </svg>
+        <div className="w-24 h-24 mb-6 flex items-center justify-center">
+          <Users className="size-16 text-muted-foreground" />
         </div>
         <h3 className="font-sans text-xl font-semibold mb-2">
           {search ? 'No users found' : 'No users yet'}
