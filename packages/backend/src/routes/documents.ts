@@ -33,6 +33,7 @@ export const documentsRoutes = new Hono()
   .get(
     '/',
     requireApiKeyOrAuth,
+    requirePermission('document', 'list'),
     zValidator('query', getDocumentsQuery),
     async (c) => {
       try {
@@ -203,6 +204,7 @@ export const documentsRoutes = new Hono()
   .get(
     '/:id',
     requireApiKeyOrAuth,
+    requirePermission('document', 'list'),
     zValidator('param', z.object({ id: z.string().min(1) })),
     async (c) => {
       try {
@@ -301,6 +303,7 @@ export const documentsRoutes = new Hono()
   .get(
     '/:id/file',
     requireApiKeyOrAuth,
+    requirePermission('document', 'list'),
     zValidator('param', z.object({ id: z.string().min(1) })),
     async (c) => {
       try {

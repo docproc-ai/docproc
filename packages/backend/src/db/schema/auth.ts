@@ -11,6 +11,9 @@ export const user = pgTable('user', {
   role: text('role')
     .$defaultFn(() => 'none')
     .notNull(),
+  banned: boolean('banned').$defaultFn(() => false),
+  banReason: text('ban_reason'),
+  banExpires: timestamp('ban_expires'),
   createdAt: timestamp('created_at')
     .$defaultFn(() => new Date())
     .notNull(),

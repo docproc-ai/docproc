@@ -2,13 +2,32 @@ import { useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from './api'
 
+// Custom error class for permission errors
+export class PermissionError extends Error {
+  constructor(message = 'You do not have permission to perform this action') {
+    super(message)
+    this.name = 'PermissionError'
+  }
+}
+
+// Helper to handle API errors
+async function handleApiError(res: Response, defaultMessage: string) {
+  if (res.status === 403) {
+    throw new PermissionError()
+  }
+  if (res.status === 401) {
+    throw new Error('Please sign in to continue')
+  }
+  throw new Error(defaultMessage)
+}
+
 // Document Types
 export function useDocumentTypes() {
   return useQuery({
     queryKey: ['documentTypes'],
     queryFn: async () => {
       const res = await api.api['document-types'].$get()
-      if (!res.ok) throw new Error('Failed to fetch document types')
+      if (!res.ok) await handleApiError(res, 'Failed to fetch document types')
       return res.json()
     },
   })

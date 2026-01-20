@@ -11,13 +11,14 @@ import {
   Plus,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useDocumentTypes } from '@/lib/queries'
-import { useSession } from '@/lib/auth'
+import { useDocumentTypes, PermissionError } from '@/lib/queries'
+import { authClient, useSession } from '@/lib/auth'
 
 // Document type card with distinctive styling
 function DocumentTypeCard({
   docType,
-  isAdmin,
+  canEdit,
+  canProcess,
 }: {
   docType: {
     id: string
@@ -30,7 +31,8 @@ function DocumentTypeCard({
       rejected: number
     }
   }
-  isAdmin: boolean
+  canEdit: boolean
+  canProcess: boolean
 }) {
   // Generate a subtle accent color based on the slug
   const hue =
@@ -87,7 +89,7 @@ function DocumentTypeCard({
       </div>
 
       <div className="flex items-center justify-end gap-2 pt-4 border-t border-border/50">
-        {isAdmin && (
+        {canEdit && (
           <Button variant="ghost" size="sm" asChild>
             <Link
               to="/document-types/$slug/settings"
@@ -98,15 +100,17 @@ function DocumentTypeCard({
             </Link>
           </Button>
         )}
-        <Button size="sm" asChild>
-          <Link
-            to="/document-types/$slug/process"
-            params={{ slug: docType.slug }}
-          >
-            Process
-            <ArrowRight className="size-3.5 ml-1.5" />
-          </Link>
-        </Button>
+        {canProcess && (
+          <Button size="sm" asChild>
+            <Link
+              to="/document-types/$slug/process"
+              params={{ slug: docType.slug }}
+            >
+              Process
+              <ArrowRight className="size-3.5 ml-1.5" />
+            </Link>
+          </Button>
+        )}
       </div>
     </div>
   )
@@ -149,8 +153,23 @@ function LoadingSkeleton() {
 export default function DocumentTypesPage() {
   const { data: documentTypes, isLoading, error } = useDocumentTypes()
   const { data: session } = useSession()
-  const isAdmin =
-    (session?.user as { role?: string } | undefined)?.role === 'admin'
+  const userRole =
+    (session?.user as { role?: string } | undefined)?.role || 'none'
+
+  const canCreateDocumentTypes = authClient.admin.checkRolePermission({
+    permissions: { documentType: ['create'] },
+    role: userRole as 'admin' | 'user' | 'none',
+  })
+
+  const canUpdateDocumentTypes = authClient.admin.checkRolePermission({
+    permissions: { documentType: ['update'] },
+    role: userRole as 'admin' | 'user' | 'none',
+  })
+
+  const canListDocuments = authClient.admin.checkRolePermission({
+    permissions: { document: ['list'] },
+    role: userRole as 'admin' | 'user' | 'none',
+  })
 
   return (
     <div className="container mx-auto px-6 py-8">
@@ -161,7 +180,7 @@ export default function DocumentTypesPage() {
             Document Types
           </h1>
         </div>
-        {isAdmin && (
+        {canCreateDocumentTypes && (
           <Button asChild className="self-start">
             <Link to="/document-types/new" className="gap-2">
               <Plus className="size-4" />
@@ -174,6 +193,18 @@ export default function DocumentTypesPage() {
       {/* Content */}
       {isLoading ? (
         <LoadingSkeleton />
+      ) : error instanceof PermissionError ? (
+        <div className="flex flex-col items-center justify-center py-20">
+          <div className="w-24 h-24 mb-6 flex items-center justify-center rounded-full bg-muted">
+            <FileText className="size-12 text-muted-foreground" />
+          </div>
+          <h3 className="font-sans text-xl font-semibold mb-2">
+            No Access
+          </h3>
+          <p className="text-muted-foreground text-center max-w-sm">
+            You don't have permission to view document types. Contact an administrator to request access.
+          </p>
+        </div>
       ) : error ? (
         <div className="bg-destructive/10 text-destructive rounded-lg p-6">
           <h3 className="font-medium mb-1">Failed to load document types</h3>
@@ -187,7 +218,8 @@ export default function DocumentTypesPage() {
             <DocumentTypeCard
               key={docType.id}
               docType={docType}
-              isAdmin={isAdmin}
+              canEdit={canUpdateDocumentTypes}
+              canProcess={canListDocuments}
             />
           ))}
         </div>

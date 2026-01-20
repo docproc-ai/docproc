@@ -31,7 +31,7 @@ export const documentTypesRoutes = new Hono()
   .basePath('/api/document-types')
 
   // GET /api/document-types - List all
-  .get('/', requireApiKeyOrAuth, async (c) => {
+  .get('/', requireApiKeyOrAuth, requirePermission('documentType', 'list'), async (c) => {
     try {
       const types = await getDocumentTypes()
       return c.json(types, 200)
@@ -76,6 +76,7 @@ export const documentTypesRoutes = new Hono()
   .get(
     '/:slugOrId',
     requireApiKeyOrAuth,
+    requirePermission('documentType', 'list'),
     zValidator('param', slugOrIdParam),
     async (c) => {
       try {

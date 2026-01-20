@@ -9,13 +9,13 @@ import {
   useRouterState,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-import { Moon, Sun } from 'lucide-react'
+import { Moon, ShieldX, Sun } from 'lucide-react'
 import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 
 import { Button } from './components/ui/button'
 import * as TanStackQueryProvider from './integrations/tanstack-query/root-provider.tsx'
-import { signOut, useSession } from './lib/auth'
+import { authClient, signOut, useSession } from './lib/auth'
 import { ThemeProvider, useTheme } from './lib/theme'
 import DocumentTypesPage from './pages/document-types'
 import ProcessLayout from './pages/document-types/[slug]/process'
@@ -30,10 +30,42 @@ import './styles.css'
 import { useEffect } from 'react'
 import reportWebVitals from './reportWebVitals.ts'
 
-// Auth guard - redirects to login if not authenticated
+// No access page for users without permissions
+function NoAccessPage() {
+  return (
+    <div className="container mx-auto px-6 py-8">
+      <div className="flex flex-col items-center justify-center py-20">
+        <div className="w-24 h-24 mb-6 flex items-center justify-center rounded-full bg-muted">
+          <ShieldX className="size-12 text-muted-foreground" />
+        </div>
+        <h1 className="font-sans text-2xl font-semibold mb-2">No Access</h1>
+        <p className="text-muted-foreground text-center max-w-md mb-6">
+          Your account doesn't have permission to access this application.
+          Please contact an administrator to request access.
+        </p>
+      </div>
+    </div>
+  )
+}
+
+// Auth guard - redirects to login if not authenticated, shows no access for users without permissions
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { data: session, isPending } = useSession()
   const navigate = useNavigate()
+
+  const userRole =
+    (session?.user as { role?: string } | undefined)?.role || 'none'
+
+  // Check if user has any meaningful permissions
+  const hasAnyAccess =
+    authClient.admin.checkRolePermission({
+      permissions: { documentType: ['list'] },
+      role: userRole as 'admin' | 'user' | 'none',
+    }) ||
+    authClient.admin.checkRolePermission({
+      permissions: { document: ['list'] },
+      role: userRole as 'admin' | 'user' | 'none',
+    })
 
   useEffect(() => {
     if (!isPending && !session?.user) {
@@ -54,6 +86,11 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
   if (!session?.user) {
     return null
+  }
+
+  // Show no access page for users without permissions
+  if (!hasAnyAccess) {
+    return <NoAccessPage />
   }
 
   return <>{children}</>
@@ -151,11 +188,19 @@ function AppHeader() {
           ) : session?.user ? (
             <div className="flex items-center gap-3">
               <div className="hidden sm:flex items-center gap-2 text-sm">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                  <span className="text-primary font-medium text-xs">
-                    {session.user.email?.charAt(0).toUpperCase()}
-                  </span>
-                </div>
+                {session.user.image ? (
+                  <img
+                    src={session.user.image}
+                    alt={session.user.name || session.user.email || 'User'}
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span className="text-primary font-medium text-xs">
+                      {session.user.email?.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                )}
                 <span className="text-muted-foreground max-w-[150px] truncate">
                   {session.user.email}
                 </span>
@@ -204,12 +249,30 @@ function HomePage() {
 function RootLayout() {
   const routerState = useRouterState()
   const pathname = routerState.location.pathname
+  const { data: session } = useSession()
+
+  const userRole =
+    (session?.user as { role?: string } | undefined)?.role || 'none'
+
+  // Check if user has any meaningful permissions
+  const hasAnyAccess =
+    !session?.user ||
+    authClient.admin.checkRolePermission({
+      permissions: { documentType: ['list'] },
+      role: userRole as 'admin' | 'user' | 'none',
+    }) ||
+    authClient.admin.checkRolePermission({
+      permissions: { document: ['list'] },
+      role: userRole as 'admin' | 'user' | 'none',
+    })
 
   // Hide main header on login and pages with their own headers (process, settings)
+  // But always show header if user has no access (so they can log out)
   const hideHeader =
-    pathname === '/login' ||
-    pathname.includes('/process') ||
-    pathname.includes('/settings')
+    hasAnyAccess &&
+    (pathname === '/login' ||
+      pathname.includes('/process') ||
+      pathname.includes('/settings'))
 
   return (
     <div className="min-h-screen bg-background relative">

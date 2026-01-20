@@ -1,6 +1,5 @@
 import { createMiddleware } from 'hono/factory'
 import { auth, type Session, type User } from '../lib/auth'
-import { hasPermission, type Resource, type Action } from '../lib/permissions'
 
 // Extend Hono's context variables
 declare module 'hono' {
@@ -64,13 +63,16 @@ export const requireApiKeyOrAuth = createMiddleware(async (c, next) => {
 })
 
 /**
- * Middleware factory that checks for a specific permission
+ * Middleware factory that checks for a specific permission using better-auth's access control
  * Must be used after requireAuth or requireApiKeyOrAuth
  *
  * @param resource - The resource type (e.g., 'documentType', 'document')
  * @param action - The action to check (e.g., 'create', 'list', 'update', 'delete')
  */
-export const requirePermission = (resource: Resource, action: Action) => {
+export const requirePermission = (
+  resource: string,
+  action: string | string[],
+) => {
   return createMiddleware(async (c, next) => {
     // API key has all permissions
     if (c.get('isApiKey')) {
@@ -84,12 +86,25 @@ export const requirePermission = (resource: Resource, action: Action) => {
       return c.json({ error: 'Unauthorized' }, 401)
     }
 
-    // Check permission based on user role
-    if (!hasPermission(user.role, resource, action)) {
-      return c.json({ error: 'Forbidden' }, 403)
-    }
+    try {
+      // Use better-auth's built-in permission checking
+      const actions = Array.isArray(action) ? action : [action]
+      const permissionResult = await auth.api.userHasPermission({
+        body: {
+          userId: user.id,
+          permissions: { [resource]: actions },
+        },
+      })
 
-    await next()
+      if (!permissionResult || !permissionResult.success) {
+        return c.json({ error: 'Forbidden' }, 403)
+      }
+
+      await next()
+    } catch (error) {
+      console.error('Permission check failed:', error)
+      return c.json({ error: 'Permission check failed' }, 500)
+    }
   })
 }
 
