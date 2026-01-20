@@ -3,6 +3,7 @@ import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import { serveStatic } from 'hono/bun'
 import { nanoid } from 'nanoid'
+import { resolve } from 'node:path'
 
 import { runMigrations } from './db/migrate'
 import { initDefaultUser } from './lib/init-default-user'
@@ -31,7 +32,26 @@ export type AppType = typeof app
 
 // In production, serve static frontend files
 if (process.env.NODE_ENV === 'production') {
-  app.use('/*', serveStatic({ root: './dist/frontend' }))
+  const staticRoot = resolve(process.cwd(), 'dist/frontend')
+
+  // Serve static assets
+  app.use('/assets/*', serveStatic({ root: staticRoot }))
+
+  // SPA fallback - serve index.html for non-API routes
+  app.get('*', async (c) => {
+    const path = c.req.path
+    // Skip API routes
+    if (path.startsWith('/api') || path.startsWith('/ws')) {
+      return c.notFound()
+    }
+    // Try to serve the exact file first
+    const file = Bun.file(resolve(staticRoot, path.slice(1)))
+    if (await file.exists()) {
+      return new Response(file)
+    }
+    // Fall back to index.html for SPA routing
+    return new Response(Bun.file(resolve(staticRoot, 'index.html')))
+  })
 }
 
 // Startup routine

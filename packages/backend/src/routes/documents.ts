@@ -181,7 +181,7 @@ export const documentsRoutes = new Hono()
             fileExtension || '',
           )
         ) {
-          // Handle image rotation using Sharp
+          // Handle image rotation using Sharp (WASM build for bun compile)
           rotatedBuffer = await sharp(fileBuffer)
             .rotate(rotationDegrees)
             .toBuffer()

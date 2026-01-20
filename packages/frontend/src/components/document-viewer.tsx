@@ -1,11 +1,4 @@
-import {
-  useState,
-  useRef,
-  useEffect,
-  useCallback,
-  memo,
-  useTransition,
-} from 'react'
+import { useState, useRef, useEffect, useCallback, memo } from 'react'
 import { Document, pdfjs } from 'react-pdf'
 import {
   TransformWrapper,
@@ -40,16 +33,17 @@ function DocumentViewerComponent({
   const [pageImage, setPageImage] = useState<string | null>(null)
   const [isRendering, setIsRendering] = useState(false)
   const [fileVersion, setFileVersion] = useState(0)
-  const [imageTimestamp, setImageTimestamp] = useState(() => Date.now())
-  const [isPending, startTransition] = useTransition()
   const [showSpinner, setShowSpinner] = useState(false)
+  // For images: optimistic rotated data URL
+  const [rotatedImageSrc, setRotatedImageSrc] = useState<string | null>(null)
 
   const pdfRef = useRef<pdfjs.PDFDocumentProxy | null>(null)
   const transformWrapperRef = useRef<ReactZoomPanPinchRef | null>(null)
   const skipNextRenderRef = useRef(false)
+  const imageRef = useRef<HTMLImageElement | null>(null)
 
-  // Build file URL with cache busting - always use timestamp for images
-  const fileUrl = `/api/documents/${documentId}/file?v=${fileVersion}&t=${imageTimestamp}`
+  // Build file URL with cache busting
+  const fileUrl = `/api/documents/${documentId}/file?v=${fileVersion}`
 
   // Determine file type from filename extension
   const fileExtension = filename.toLowerCase().split('.').pop()
@@ -66,8 +60,8 @@ function DocumentViewerComponent({
     pdfRef.current = null
     skipNextRenderRef.current = false
     setFileVersion(0)
-    setImageTimestamp(Date.now())
-  }, [])
+    setRotatedImageSrc(null)
+  }, [documentId])
 
   const onDocumentLoadSuccess = useCallback((pdf: pdfjs.PDFDocumentProxy) => {
     pdfRef.current = pdf
@@ -101,7 +95,6 @@ function DocumentViewerComponent({
         } as Parameters<typeof page.render>[0]).promise
 
         if (isMounted) {
-          // Skip updating pageImage if we just rotated (we already have the correct preview)
           if (skipNextRenderRef.current) {
             skipNextRenderRef.current = false
           } else {
@@ -133,93 +126,99 @@ function DocumentViewerComponent({
       transformWrapperRef.current?.centerView()
     }, 50)
     return () => clearTimeout(timer)
-  }, [])
+  }, [pageImage, rotatedImageSrc])
 
   // Delay showing spinner to avoid flash on quick loads
   useEffect(() => {
-    const shouldShowSpinner = (isRendering || !pageImage) && !isPending
+    const shouldShowSpinner = isRendering || !pageImage
     if (shouldShowSpinner) {
       const timer = setTimeout(() => setShowSpinner(true), 500)
       return () => clearTimeout(timer)
     } else {
       setShowSpinner(false)
     }
-  }, [isRendering, pageImage, isPending])
+  }, [isRendering, pageImage])
 
   const goToPrevPage = () => setCurrentPage((prev) => Math.max(prev - 1, 1))
   const goToNextPage = () =>
     setCurrentPage((prev) => Math.min(prev + 1, numPages || 1))
 
-  // Rotate an image on canvas and return data URL
-  const rotateImageData = useCallback(
-    (src: string, degrees: number): Promise<string> => {
-      return new Promise((resolve, reject) => {
-        const img = new Image()
-        img.onload = () => {
-          const canvas = document.createElement('canvas')
-          const normalizedDegrees = ((degrees % 360) + 360) % 360
-          const isRightAngle =
-            normalizedDegrees === 90 || normalizedDegrees === 270
+  // Rotate image using canvas - handles dimension swap
+  const rotateWithCanvas = (
+    img: HTMLImageElement,
+    degrees: number,
+  ): string => {
+    const canvas = document.createElement('canvas')
+    const normalizedDegrees = ((degrees % 360) + 360) % 360
+    const isRightAngle = normalizedDegrees === 90 || normalizedDegrees === 270
 
-          canvas.width = isRightAngle ? img.height : img.width
-          canvas.height = isRightAngle ? img.width : img.height
+    // Swap dimensions for 90/270 degree rotations
+    canvas.width = isRightAngle ? img.naturalHeight : img.naturalWidth
+    canvas.height = isRightAngle ? img.naturalWidth : img.naturalHeight
 
-          const ctx = canvas.getContext('2d')
-          if (!ctx) {
-            reject(new Error('Could not get canvas context'))
-            return
-          }
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('Could not get canvas context')
 
-          ctx.translate(canvas.width / 2, canvas.height / 2)
-          ctx.rotate((normalizedDegrees * Math.PI) / 180)
-          ctx.drawImage(img, -img.width / 2, -img.height / 2)
+    ctx.translate(canvas.width / 2, canvas.height / 2)
+    ctx.rotate((normalizedDegrees * Math.PI) / 180)
+    ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2)
 
-          resolve(canvas.toDataURL('image/png'))
-        }
-        img.onerror = reject
-        img.src = src
-      })
-    },
-    [],
-  )
+    return canvas.toDataURL('image/png')
+  }
 
-  const handleRotate = async (degrees: number) => {
-    if (!onRotate || isPending) return
+  // Cumulative rotation tracking for canvas operations
+  const cumulativeRotationRef = useRef(0)
 
-    // For PDFs with pageImage, rotate the image data directly for instant feedback
+  const handleRotate = (degrees: number) => {
+    if (!onRotate) return
+
+    // Update cumulative rotation
+    cumulativeRotationRef.current = (cumulativeRotationRef.current + degrees) % 360
+
+    // For PDFs: rotate the pageImage
     if (isPdf && pageImage) {
-      try {
-        const rotatedImage = await rotateImageData(pageImage, degrees)
-        setPageImage(rotatedImage)
-      } catch (e) {
-        console.error('Failed to rotate image preview:', e)
+      const img = new Image()
+      img.onload = () => {
+        try {
+          const rotated = rotateWithCanvas(img, degrees)
+          setPageImage(rotated)
+        } catch (e) {
+          console.error('Failed to rotate PDF page:', e)
+        }
+      }
+      img.src = pageImage
+    }
+
+    // For images: rotate using the displayed image
+    if (isImage) {
+      const sourceImg = rotatedImageSrc
+        ? (() => {
+            // Create image from current rotated state
+            const img = new Image()
+            img.src = rotatedImageSrc
+            return img
+          })()
+        : imageRef.current
+
+      if (sourceImg && sourceImg.complete && sourceImg.naturalWidth > 0) {
+        try {
+          const rotated = rotateWithCanvas(sourceImg, degrees)
+          setRotatedImageSrc(rotated)
+        } catch (e) {
+          console.error('Failed to rotate image:', e)
+        }
       }
     }
 
-    startTransition(async () => {
-      try {
-        await onRotate(degrees, isPdf ? currentPage : undefined)
-
-        if (isPdf) {
-          // Skip the next render since we already have the rotated preview
-          skipNextRenderRef.current = true
-          pdfRef.current = null
-          setNumPages(null)
-          setFileVersion((v) => v + 1)
-        } else {
-          // For images, just update timestamp to reload from server
-          setImageTimestamp(Date.now())
-        }
-      } catch (error) {
-        console.error('Failed to rotate:', error)
-      }
+    // Fire and forget - backend processes in background
+    onRotate(degrees, isPdf ? currentPage : undefined).catch((error) => {
+      console.error('Failed to rotate on backend:', error)
     })
   }
 
   // Render controls bar
   const renderControls = (showPageNav: boolean) => (
     <div className="flex items-center justify-center gap-2 px-3 py-2 border-t bg-background/80 backdrop-blur-sm">
-      {/* Page navigation for PDFs */}
       {showPageNav && numPages && numPages > 1 && (
         <Button
           variant="ghost"
@@ -232,7 +231,6 @@ function DocumentViewerComponent({
         </Button>
       )}
 
-      {/* Rotation buttons */}
       {onRotate && (
         <>
           <Button
@@ -240,7 +238,6 @@ function DocumentViewerComponent({
             size="icon"
             className="h-8 w-8"
             onClick={() => handleRotate(-90)}
-            disabled={isPending}
             title="Rotate counterclockwise"
           >
             <RotateCcw className="size-4" />
@@ -250,7 +247,6 @@ function DocumentViewerComponent({
             size="icon"
             className="h-8 w-8"
             onClick={() => handleRotate(90)}
-            disabled={isPending}
             title="Rotate clockwise"
           >
             <RotateCw className="size-4" />
@@ -258,7 +254,6 @@ function DocumentViewerComponent({
         </>
       )}
 
-      {/* Page info */}
       <span className="text-xs text-muted-foreground px-2">
         {showPageNav && numPages
           ? `Page ${currentPage} of ${numPages}`
@@ -267,7 +262,6 @@ function DocumentViewerComponent({
             : 'Image'}
       </span>
 
-      {/* Page navigation for PDFs */}
       {showPageNav && numPages && numPages > 1 && (
         <Button
           variant="ghost"
@@ -286,7 +280,6 @@ function DocumentViewerComponent({
   const renderPdf = () => (
     <div className="flex h-full w-full flex-col">
       <div className="relative grow overflow-hidden bg-muted/30">
-        {/* Hidden react-pdf document for loading */}
         <div style={{ display: 'none' }}>
           <Document
             key={fileUrl}
@@ -295,14 +288,12 @@ function DocumentViewerComponent({
           />
         </div>
 
-        {/* Loading spinner - delayed to avoid flash on quick loads */}
         {showSpinner && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/50">
             <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
           </div>
         )}
 
-        {/* Rendered page with pan/zoom */}
         {pageImage && (
           <TransformWrapper ref={transformWrapperRef} limitToBounds={false}>
             <TransformComponent
@@ -344,8 +335,9 @@ function DocumentViewerComponent({
             }}
           >
             <img
-              key={fileUrl}
-              src={fileUrl}
+              ref={rotatedImageSrc ? undefined : imageRef}
+              key={rotatedImageSrc || fileUrl}
+              src={rotatedImageSrc || fileUrl}
               alt={filename}
               className="max-w-full max-h-full object-contain"
             />

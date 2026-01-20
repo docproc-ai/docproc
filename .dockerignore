@@ -1,0 +1,30 @@
+# Dependencies
+node_modules
+.bun
+
+# Build outputs
+dist
+packages/frontend/dist
+*.tsbuildinfo
+
+# Development
+.git
+.gitignore
+.env*
+!.env.example
+*.md
+.vscode
+.idea
+
+# Legacy
+_legacy
+
+# Testing
+coverage
+*.test.*
+*.spec.*
+
+# Misc
+.DS_Store
+*.log
+.playwright-mcp

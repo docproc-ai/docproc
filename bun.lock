@@ -23,6 +23,7 @@
       "version": "0.0.1",
       "dependencies": {
         "@hono/zod-validator": "^0.7.6",
+        "@img/sharp-wasm32": "^0.34.5",
         "@openrouter/ai-sdk-provider": "^1.5.4",
         "@openrouter/sdk": "^0.1.0",
         "ai": "^6.0.23",
