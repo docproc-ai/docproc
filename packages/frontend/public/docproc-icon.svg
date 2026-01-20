@@ -1,21 +1,15 @@
-<svg
-  xmlns="http://www.w3.org/2000/svg"
-  width="32"
-  height="32"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="#16a34a"
-  stroke-width="2"
-  stroke-linecap="round"
-  stroke-linejoin="round"
->
-  <!-- file part -->
-  <path d="M20 13V7l-5-5H6a2 2 0 0 0-2 2v9" />
-  <path d="M14 2v4a2 2 0 0 0 2 2h4" />
-  <path d="M2 13h20" />
-
-  <!-- binary part -->
-  <rect x="6" y="17" width="4" height="6" rx="2" />
-  <path d="M14 23h4" />
-  <path d="M14 17h2v6" />
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24">
+  <!-- Slightly rounded background box -->
+  <rect x="0" y="0" width="24" height="24" rx="4" ry="4" fill="oklch(0.98 0.005 260)"/>
+  <!-- DocProc logo mark in primary green -->
+  <g stroke="oklch(0.45 0.20 145)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- file part -->
+    <path d="M20 13V7l-5-5H6a2 2 0 0 0-2 2v9" />
+    <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+    <path d="M2 13h20" />
+    <!-- binary part (DP) -->
+    <rect x="6" y="17" width="4" height="6" rx="2" />
+    <path d="M14 23h4" />
+    <path d="M14 17h2v6" />
+  </g>
 </svg>
