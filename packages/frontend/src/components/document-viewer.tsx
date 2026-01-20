@@ -1,17 +1,17 @@
-import { useState, useRef, useEffect, useCallback, memo } from 'react'
-import { Document, pdfjs } from 'react-pdf'
-import {
-  TransformWrapper,
-  TransformComponent,
-  type ReactZoomPanPinchRef,
-} from 'react-zoom-pan-pinch'
 import {
   ChevronLeft,
   ChevronRight,
+  File,
   RotateCcw,
   RotateCw,
-  File,
 } from 'lucide-react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { Document, pdfjs } from 'react-pdf'
+import {
+  type ReactZoomPanPinchRef,
+  TransformComponent,
+  TransformWrapper,
+} from 'react-zoom-pan-pinch'
 import { Button } from '@/components/ui/button'
 
 // Configure pdfjs worker
@@ -144,10 +144,7 @@ function DocumentViewerComponent({
     setCurrentPage((prev) => Math.min(prev + 1, numPages || 1))
 
   // Rotate image using canvas - handles dimension swap
-  const rotateWithCanvas = (
-    img: HTMLImageElement,
-    degrees: number,
-  ): string => {
+  const rotateWithCanvas = (img: HTMLImageElement, degrees: number): string => {
     const canvas = document.createElement('canvas')
     const normalizedDegrees = ((degrees % 360) + 360) % 360
     const isRightAngle = normalizedDegrees === 90 || normalizedDegrees === 270
@@ -173,7 +170,8 @@ function DocumentViewerComponent({
     if (!onRotate) return
 
     // Update cumulative rotation
-    cumulativeRotationRef.current = (cumulativeRotationRef.current + degrees) % 360
+    cumulativeRotationRef.current =
+      (cumulativeRotationRef.current + degrees) % 360
 
     // For PDFs: rotate the pageImage
     if (isPdf && pageImage) {
@@ -295,7 +293,11 @@ function DocumentViewerComponent({
         )}
 
         {pageImage && (
-          <TransformWrapper ref={transformWrapperRef} limitToBounds={false}>
+          <TransformWrapper
+            ref={transformWrapperRef}
+            limitToBounds={false}
+            panning={{ velocityDisabled: true }}
+          >
             <TransformComponent
               wrapperStyle={{ width: '100%', height: '100%' }}
               contentStyle={{
@@ -323,7 +325,11 @@ function DocumentViewerComponent({
   const renderImage = () => (
     <div className="flex h-full w-full flex-col">
       <div className="relative grow overflow-hidden bg-muted/30">
-        <TransformWrapper ref={transformWrapperRef} limitToBounds={false}>
+        <TransformWrapper
+          ref={transformWrapperRef}
+          limitToBounds={false}
+          panning={{ velocityDisabled: true }}
+        >
           <TransformComponent
             wrapperStyle={{ width: '100%', height: '100%' }}
             contentStyle={{
