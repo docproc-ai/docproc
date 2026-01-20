@@ -1,5 +1,15 @@
 import { Link } from '@tanstack/react-router'
-import { ArrowRight, File, FileCheck, FileClock, FileText, FileX, FolderPlus, Pencil, Plus } from 'lucide-react'
+import {
+  ArrowRight,
+  File,
+  FileCheck,
+  FileClock,
+  FileText,
+  FileX,
+  FolderPlus,
+  Pencil,
+  Plus,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useDocumentTypes } from '@/lib/queries'
 import { useSession } from '@/lib/auth'
@@ -23,7 +33,9 @@ function DocumentTypeCard({
   isAdmin: boolean
 }) {
   // Generate a subtle accent color based on the slug
-  const hue = docType.slug.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360
+  const hue =
+    docType.slug.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) %
+    360
 
   return (
     <div className="group relative bg-card border rounded-xl p-6 hover:border-primary/30 transition-colors">
@@ -47,15 +59,24 @@ function DocumentTypeCard({
 
       {/* Status chips */}
       <div className="flex items-center justify-between py-4">
-        <div className="flex items-center gap-1 text-muted-foreground" title="Pending">
+        <div
+          className="flex items-center gap-1 text-muted-foreground"
+          title="Pending"
+        >
           <File className="size-4" />
           <span className="text-sm">{docType.statusCounts.pending}</span>
         </div>
-        <div className="flex items-center gap-1 text-blue-500" title="Ready for review">
+        <div
+          className="flex items-center gap-1 text-blue-500"
+          title="Ready for review"
+        >
           <FileClock className="size-4" />
           <span className="text-sm">{docType.statusCounts.processed}</span>
         </div>
-        <div className="flex items-center gap-1 text-green-500" title="Approved">
+        <div
+          className="flex items-center gap-1 text-green-500"
+          title="Approved"
+        >
           <FileCheck className="size-4" />
           <span className="text-sm">{docType.statusCounts.approved}</span>
         </div>
@@ -68,14 +89,20 @@ function DocumentTypeCard({
       <div className="flex items-center justify-end gap-2 pt-4 border-t border-border/50">
         {isAdmin && (
           <Button variant="ghost" size="sm" asChild>
-            <Link to="/document-types/$slug/settings" params={{ slug: docType.slug }}>
+            <Link
+              to="/document-types/$slug/settings"
+              params={{ slug: docType.slug }}
+            >
               <Pencil className="size-3.5 mr-1.5" />
               Edit
             </Link>
           </Button>
         )}
         <Button size="sm" asChild>
-          <Link to="/document-types/$slug/process" params={{ slug: docType.slug }}>
+          <Link
+            to="/document-types/$slug/process"
+            params={{ slug: docType.slug }}
+          >
             Process
             <ArrowRight className="size-3.5 ml-1.5" />
           </Link>
@@ -92,9 +119,12 @@ function EmptyState() {
       <div className="w-24 h-24 mb-6 flex items-center justify-center">
         <FolderPlus className="size-16 text-muted-foreground" />
       </div>
-      <h3 className="font-sans text-xl font-semibold mb-2">No document types yet</h3>
+      <h3 className="font-sans text-xl font-semibold mb-2">
+        No document types yet
+      </h3>
       <p className="text-muted-foreground text-center max-w-sm mb-6">
-        Create your first document type to start extracting structured data from your documents.
+        Create your first document type to start extracting structured data from
+        your documents.
       </p>
       <Button asChild>
         <Link to="/document-types/new">Create Document Type</Link>
@@ -119,14 +149,17 @@ function LoadingSkeleton() {
 export default function DocumentTypesPage() {
   const { data: documentTypes, isLoading, error } = useDocumentTypes()
   const { data: session } = useSession()
-  const isAdmin = (session?.user as { role?: string } | undefined)?.role === 'admin'
+  const isAdmin =
+    (session?.user as { role?: string } | undefined)?.role === 'admin'
 
   return (
     <div className="container mx-auto px-6 py-8">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-sans font-semibold tracking-tight">Document Types</h1>
+          <h1 className="text-3xl font-sans font-semibold tracking-tight">
+            Document Types
+          </h1>
         </div>
         {isAdmin && (
           <Button asChild className="self-start">
@@ -151,7 +184,11 @@ export default function DocumentTypesPage() {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {documentTypes?.map((docType) => (
-            <DocumentTypeCard key={docType.id} docType={docType} isAdmin={isAdmin} />
+            <DocumentTypeCard
+              key={docType.id}
+              docType={docType}
+              isAdmin={isAdmin}
+            />
           ))}
         </div>
       )}

@@ -25,7 +25,9 @@ export function BooleanField({
           {schema.title || name}
           {required && <span className="ml-1 text-red-500">*</span>}
         </FieldLabel>
-        {schema.description && <FieldDescription>{schema.description}</FieldDescription>}
+        {schema.description && (
+          <FieldDescription>{schema.description}</FieldDescription>
+        )}
       </div>
     </Field>
   )

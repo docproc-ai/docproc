@@ -43,14 +43,23 @@ export const updateDocumentTypeRequest = z.object({
   webhookConfig: z.record(z.string(), z.unknown()).nullable().optional(),
 })
 
-export type CreateDocumentTypeRequest = z.infer<typeof createDocumentTypeRequest>
-export type UpdateDocumentTypeRequest = z.infer<typeof updateDocumentTypeRequest>
+export type CreateDocumentTypeRequest = z.infer<
+  typeof createDocumentTypeRequest
+>
+export type UpdateDocumentTypeRequest = z.infer<
+  typeof updateDocumentTypeRequest
+>
 
 // ============================================
 // Document API Schemas
 // ============================================
 
-export const documentStatusEnum = z.enum(['pending', 'processed', 'approved', 'rejected'])
+export const documentStatusEnum = z.enum([
+  'pending',
+  'processed',
+  'approved',
+  'rejected',
+])
 export type DocumentStatus = z.infer<typeof documentStatusEnum>
 
 export const getDocumentsQuery = z.object({

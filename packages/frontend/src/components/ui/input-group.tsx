@@ -20,7 +20,12 @@ interface InputGroupProps extends React.HTMLAttributes<HTMLDivElement> {
   disabled?: boolean
 }
 
-function InputGroup({ className, disabled, children, ...props }: InputGroupProps) {
+function InputGroup({
+  className,
+  disabled,
+  children,
+  ...props
+}: InputGroupProps) {
   return (
     <InputGroupContext.Provider value={{ disabled }}>
       <div
@@ -30,7 +35,7 @@ function InputGroup({ className, disabled, children, ...props }: InputGroupProps
           'flex items-center rounded-lg border border-input bg-background shadow-sm shadow-black/5',
           'focus-within:ring-2 focus-within:ring-ring/20 focus-within:border-ring',
           'data-[disabled=true]:opacity-50 data-[disabled=true]:cursor-not-allowed',
-          className
+          className,
         )}
         {...props}
       >
@@ -64,7 +69,7 @@ function InputGroupInput({
         'placeholder:text-muted-foreground',
         'focus:outline-none',
         'disabled:cursor-not-allowed disabled:opacity-50',
-        className
+        className,
       )}
       {...props}
     />
@@ -84,7 +89,7 @@ const inputGroupAddonVariants = cva(
     defaultVariants: {
       align: 'inline-start',
     },
-  }
+  },
 )
 
 interface InputGroupAddonProps
@@ -139,7 +144,7 @@ function InputGroupButton({
         buttonVariants({ variant, size }),
         'rounded-none border-0 shadow-none',
         'first:rounded-l-lg last:rounded-r-lg',
-        className
+        className,
       )}
       {...props}
     />

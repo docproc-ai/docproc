@@ -52,10 +52,16 @@ export async function processDocumentBatch(
       completedCount++
       onProgress?.(completedCount, documentIds.length, documentId)
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error'
       results.failed.push({ documentId, error: errorMessage })
       completedCount++
-      onProgress?.(completedCount, documentIds.length, documentId, error as Error)
+      onProgress?.(
+        completedCount,
+        documentIds.length,
+        documentId,
+        error as Error,
+      )
     }
   }
 

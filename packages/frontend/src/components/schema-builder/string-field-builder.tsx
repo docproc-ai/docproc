@@ -16,7 +16,11 @@ interface StringFieldBuilderProps {
   fieldId: string
 }
 
-export function StringFieldBuilder({ schema, onChange, fieldId }: StringFieldBuilderProps) {
+export function StringFieldBuilder({
+  schema,
+  onChange,
+  fieldId,
+}: StringFieldBuilderProps) {
   if (schema.type !== 'string') return null
 
   return (
@@ -28,7 +32,9 @@ export function StringFieldBuilder({ schema, onChange, fieldId }: StringFieldBui
             <Select
               value={schema.format || 'none'}
               onValueChange={(format) =>
-                onChange({ format: format === 'none' ? undefined : (format as any) })
+                onChange({
+                  format: format === 'none' ? undefined : (format as any),
+                })
               }
             >
               <SelectTrigger id={`format-${fieldId}`} className="w-full">
@@ -49,7 +55,8 @@ export function StringFieldBuilder({ schema, onChange, fieldId }: StringFieldBui
               value={schema['ui:widget'] || 'default'}
               onValueChange={(widget) =>
                 onChange({
-                  'ui:widget': widget === 'default' ? undefined : (widget as any),
+                  'ui:widget':
+                    widget === 'default' ? undefined : (widget as any),
                 })
               }
             >
@@ -83,7 +90,9 @@ export function StringFieldBuilder({ schema, onChange, fieldId }: StringFieldBui
             }
           }}
         />
-        <FieldLabel htmlFor={`use-enum-${fieldId}`}>Use predefined options (enum)</FieldLabel>
+        <FieldLabel htmlFor={`use-enum-${fieldId}`}>
+          Use predefined options (enum)
+        </FieldLabel>
       </Field>
 
       {Array.isArray(schema.enum) && (

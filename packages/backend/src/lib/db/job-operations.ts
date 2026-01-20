@@ -1,7 +1,12 @@
 import { nanoid } from 'nanoid'
 
 export type JobStatus = 'pending' | 'processing' | 'completed' | 'failed'
-export type BatchStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled'
+export type BatchStatus =
+  | 'pending'
+  | 'processing'
+  | 'completed'
+  | 'failed'
+  | 'cancelled'
 
 export interface JobProgress {
   percent: number
@@ -44,7 +49,12 @@ const BATCH_TTL = 60 * 60 * 1000
 function scheduleCleanup(batchId: string) {
   setTimeout(() => {
     const batch = batches.get(batchId)
-    if (batch && (batch.status === 'completed' || batch.status === 'failed' || batch.status === 'cancelled')) {
+    if (
+      batch &&
+      (batch.status === 'completed' ||
+        batch.status === 'failed' ||
+        batch.status === 'cancelled')
+    ) {
       // Delete batch and its jobs
       for (const [jobId, job] of jobs) {
         if (job.batchId === batchId) {
@@ -81,7 +91,9 @@ export async function getJob(id: string): Promise<Job | undefined> {
   return jobs.get(id)
 }
 
-export async function getJobByDocumentId(documentId: string): Promise<Job | undefined> {
+export async function getJobByDocumentId(
+  documentId: string,
+): Promise<Job | undefined> {
   for (const job of jobs.values()) {
     if (job.documentId === documentId) {
       return job
@@ -122,7 +134,10 @@ export async function updateJobStatus(
   return job
 }
 
-export async function updateJobProgress(id: string, progress: JobProgress): Promise<Job | undefined> {
+export async function updateJobProgress(
+  id: string,
+  progress: JobProgress,
+): Promise<Job | undefined> {
   const job = jobs.get(id)
   if (!job) return undefined
 
@@ -152,8 +167,8 @@ export async function cancelJob(id: string): Promise<Job | undefined> {
     const batch = batches.get(job.batchId)
     if (batch) {
       const batchJobs = await getJobsByBatchId(job.batchId)
-      const completed = batchJobs.filter(j => j.status === 'completed').length
-      const failed = batchJobs.filter(j => j.status === 'failed').length
+      const completed = batchJobs.filter((j) => j.status === 'completed').length
+      const failed = batchJobs.filter((j) => j.status === 'failed').length
       await updateBatchProgress(job.batchId, completed, failed)
     }
   }
@@ -202,7 +217,9 @@ export async function getBatch(id: string): Promise<Batch | undefined> {
   return batches.get(id)
 }
 
-export async function getBatchWithJobs(id: string): Promise<{ batch: Batch; jobs: Job[] } | null> {
+export async function getBatchWithJobs(
+  id: string,
+): Promise<{ batch: Batch; jobs: Job[] } | null> {
   const batch = batches.get(id)
   if (!batch) return null
 
@@ -210,7 +227,10 @@ export async function getBatchWithJobs(id: string): Promise<{ batch: Batch; jobs
   return { batch, jobs: batchJobs }
 }
 
-export async function updateBatchStatus(id: string, status: BatchStatus): Promise<Batch | undefined> {
+export async function updateBatchStatus(
+  id: string,
+  status: BatchStatus,
+): Promise<Batch | undefined> {
   const batch = batches.get(id)
   if (!batch) return undefined
 
@@ -255,7 +275,9 @@ export async function deleteBatch(id: string): Promise<void> {
   batches.delete(id)
 }
 
-export async function cancelBatch(id: string): Promise<{ batch: Batch; cancelledJobs: Job[] } | undefined> {
+export async function cancelBatch(
+  id: string,
+): Promise<{ batch: Batch; cancelledJobs: Job[] } | undefined> {
   const batch = batches.get(id)
   if (!batch) return undefined
 
@@ -265,7 +287,10 @@ export async function cancelBatch(id: string): Promise<{ batch: Batch; cancelled
   // Update pending/processing jobs to failed and collect them
   const cancelledJobs: Job[] = []
   for (const job of jobs.values()) {
-    if (job.batchId === id && (job.status === 'pending' || job.status === 'processing')) {
+    if (
+      job.batchId === id &&
+      (job.status === 'pending' || job.status === 'processing')
+    ) {
       job.status = 'failed'
       job.error = 'Batch cancelled'
       job.completedAt = new Date()
@@ -312,11 +337,16 @@ export async function getActiveJobs(): Promise<Job[]> {
   return active
 }
 
-export async function getActiveJobsForDocumentType(documentTypeId: string): Promise<Job[]> {
+export async function getActiveJobsForDocumentType(
+  documentTypeId: string,
+): Promise<Job[]> {
   // Get active batches for this document type
   const activeBatchIds = new Set<string>()
   for (const batch of batches.values()) {
-    if (batch.documentTypeId === documentTypeId && (batch.status === 'pending' || batch.status === 'processing')) {
+    if (
+      batch.documentTypeId === documentTypeId &&
+      (batch.status === 'pending' || batch.status === 'processing')
+    ) {
       activeBatchIds.add(batch.id)
     }
   }
@@ -324,7 +354,11 @@ export async function getActiveJobsForDocumentType(documentTypeId: string): Prom
   // Get jobs from those batches
   const active: Job[] = []
   for (const job of jobs.values()) {
-    if (job.batchId && activeBatchIds.has(job.batchId) && (job.status === 'pending' || job.status === 'processing')) {
+    if (
+      job.batchId &&
+      activeBatchIds.has(job.batchId) &&
+      (job.status === 'pending' || job.status === 'processing')
+    ) {
       active.push(job)
     }
   }

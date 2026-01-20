@@ -8,7 +8,11 @@ interface NumberFieldBuilderProps {
   fieldId: string
 }
 
-export function NumberFieldBuilder({ schema, onChange, fieldId }: NumberFieldBuilderProps) {
+export function NumberFieldBuilder({
+  schema,
+  onChange,
+  fieldId,
+}: NumberFieldBuilderProps) {
   if (schema.type !== 'number' && schema.type !== 'integer') return null
 
   return (
@@ -21,7 +25,8 @@ export function NumberFieldBuilder({ schema, onChange, fieldId }: NumberFieldBui
           value={schema.minimum ?? ''}
           onChange={(e) =>
             onChange({
-              minimum: e.target.value === '' ? undefined : Number(e.target.value),
+              minimum:
+                e.target.value === '' ? undefined : Number(e.target.value),
             })
           }
           onKeyDown={(e) => {
@@ -40,7 +45,8 @@ export function NumberFieldBuilder({ schema, onChange, fieldId }: NumberFieldBui
           value={schema.maximum ?? ''}
           onChange={(e) =>
             onChange({
-              maximum: e.target.value === '' ? undefined : Number(e.target.value),
+              maximum:
+                e.target.value === '' ? undefined : Number(e.target.value),
             })
           }
           onKeyDown={(e) => {

@@ -40,28 +40,35 @@ export default function DocumentEditorPage() {
   const [pendingDocId, setPendingDocId] = useState<string | null>(null)
 
   // Get streaming state from parent context
-  const { streamingData, isStreaming, registerSave, setHasUnsavedChanges } = useDocumentEditorContext()
+  const { streamingData, isStreaming, registerSave, setHasUnsavedChanges } =
+    useDocumentEditorContext()
 
   const { data: docType } = useDocumentType(slug)
   const { data: currentDoc } = useDocument(documentId)
-  const { data: documentsData } = useDocuments(docType?.id || '', { status: 'all' })
+  const { data: documentsData } = useDocuments(docType?.id || '', {
+    status: 'all',
+  })
   const updateDocument = useUpdateDocument()
   const rotateDocument = useRotateDocument()
 
   const filteredDocs = documentsData?.documents || []
 
   // Get schema for form rendering
-  const schema = (currentDoc?.schemaSnapshot || docType?.schema || {}) as JsonSchema
+  const schema = (currentDoc?.schemaSnapshot ||
+    docType?.schema ||
+    {}) as JsonSchema
 
   // Use streaming data when available, otherwise use document's extracted data
-  const displayData = isStreaming && streamingData
-    ? streamingData
-    : (currentDoc?.extractedData as Record<string, unknown> | null) || {}
+  const displayData =
+    isStreaming && streamingData
+      ? streamingData
+      : (currentDoc?.extractedData as Record<string, unknown> | null) || {}
 
   // Update edited data when document changes or streaming completes
   useEffect(() => {
     if (!isStreaming) {
-      const docData = (currentDoc?.extractedData as Record<string, unknown> | null) || {}
+      const docData =
+        (currentDoc?.extractedData as Record<string, unknown> | null) || {}
       setEditedData(docData)
       setHasChanges(false)
     }
@@ -94,44 +101,54 @@ export default function DocumentEditorPage() {
     setHasUnsavedChanges(hasChanges)
   }, [hasChanges, setHasUnsavedChanges])
 
-  const handleRotate = useCallback(async (degrees: number, pageNumber?: number) => {
-    if (!currentDoc) return
-    await rotateDocument.mutateAsync({
-      documentId: currentDoc.id,
-      degrees,
-      pageNumber,
-    })
-  }, [currentDoc, rotateDocument])
+  const handleRotate = useCallback(
+    async (degrees: number, pageNumber?: number) => {
+      if (!currentDoc) return
+      await rotateDocument.mutateAsync({
+        documentId: currentDoc.id,
+        degrees,
+        pageNumber,
+      })
+    },
+    [currentDoc, rotateDocument],
+  )
 
   // Navigation between documents
-  const navigateDocument = useCallback((direction: 'prev' | 'next') => {
-    if (!currentDoc || filteredDocs.length === 0) return
+  const navigateDocument = useCallback(
+    (direction: 'prev' | 'next') => {
+      if (!currentDoc || filteredDocs.length === 0) return
 
-    const currentIdx = filteredDocs.findIndex(d => d.id === currentDoc.id)
-    if (currentIdx === -1) return
+      const currentIdx = filteredDocs.findIndex((d) => d.id === currentDoc.id)
+      if (currentIdx === -1) return
 
-    const nextIdx = direction === 'next'
-      ? (currentIdx + 1) % filteredDocs.length
-      : (currentIdx - 1 + filteredDocs.length) % filteredDocs.length
-    const nextDocId = filteredDocs[nextIdx].id
+      const nextIdx =
+        direction === 'next'
+          ? (currentIdx + 1) % filteredDocs.length
+          : (currentIdx - 1 + filteredDocs.length) % filteredDocs.length
+      const nextDocId = filteredDocs[nextIdx].id
 
-    if (hasChanges) {
-      setPendingDocId(nextDocId)
-      setShowUnsavedDialog(true)
-    } else if (docType?.slug) {
-      navigate({
-        to: '/document-types/$slug/process/$id',
-        params: { slug: docType.slug, id: nextDocId },
-        search: (prev) => prev,
-      })
-    }
-  }, [filteredDocs, currentDoc?.id, hasChanges, docType?.slug, navigate])
+      if (hasChanges) {
+        setPendingDocId(nextDocId)
+        setShowUnsavedDialog(true)
+      } else if (docType?.slug) {
+        navigate({
+          to: '/document-types/$slug/process/$id',
+          params: { slug: docType.slug, id: nextDocId },
+          search: (prev) => prev,
+        })
+      }
+    },
+    [filteredDocs, currentDoc?.id, hasChanges, docType?.slug, navigate],
+  )
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement
-      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
+      const isInput =
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable
 
       // Ctrl+S - Save (works in inputs)
       if (e.ctrlKey && e.key === 's') {
@@ -197,8 +214,14 @@ export default function DocumentEditorPage() {
             {/* Save bar - fixed at bottom */}
             {hasChanges && !isStreaming && (
               <div className="shrink-0 py-2 px-3 bg-muted/80 border-t flex items-center justify-between gap-2">
-                <span className="text-sm text-muted-foreground">Unsaved changes</span>
-                <Button size="sm" onClick={handleSave} disabled={updateDocument.isPending}>
+                <span className="text-sm text-muted-foreground">
+                  Unsaved changes
+                </span>
+                <Button
+                  size="sm"
+                  onClick={handleSave}
+                  disabled={updateDocument.isPending}
+                >
                   {updateDocument.isPending ? 'Saving...' : 'Save'}
                 </Button>
               </div>
@@ -231,18 +254,20 @@ export default function DocumentEditorPage() {
             <AlertDialogCancel onClick={() => setPendingDocId(null)}>
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction onClick={() => {
-              if (pendingDocId && docType?.slug) {
-                setHasChanges(false)
-                navigate({
-                  to: '/document-types/$slug/process/$id',
-                  params: { slug: docType.slug, id: pendingDocId },
-                  search: (prev) => prev,
-                })
-              }
-              setPendingDocId(null)
-              setShowUnsavedDialog(false)
-            }}>
+            <AlertDialogAction
+              onClick={() => {
+                if (pendingDocId && docType?.slug) {
+                  setHasChanges(false)
+                  navigate({
+                    to: '/document-types/$slug/process/$id',
+                    params: { slug: docType.slug, id: pendingDocId },
+                    search: (prev) => prev,
+                  })
+                }
+                setPendingDocId(null)
+                setShowUnsavedDialog(false)
+              }}
+            >
               Discard
             </AlertDialogAction>
           </AlertDialogFooter>

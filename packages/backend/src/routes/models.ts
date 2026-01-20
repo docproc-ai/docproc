@@ -71,7 +71,7 @@ app.get('/', async (c) => {
 
   // Filter to only models that support image input (for document processing)
   const visionModels = models.filter((model) =>
-    model.architecture?.input_modalities?.includes('image')
+    model.architecture?.input_modalities?.includes('image'),
   )
 
   // Return simplified model list
@@ -98,7 +98,7 @@ app.get(
 
     // Filter to vision models
     let visionModels = models.filter((model) =>
-      model.architecture?.input_modalities?.includes('image')
+      model.architecture?.input_modalities?.includes('image'),
     )
 
     // Apply search filter if query provided
@@ -107,7 +107,7 @@ app.get(
       visionModels = visionModels.filter(
         (model) =>
           model.id.toLowerCase().includes(query) ||
-          model.name.toLowerCase().includes(query)
+          model.name.toLowerCase().includes(query),
       )
     }
 
@@ -118,7 +118,7 @@ app.get(
     }))
 
     return c.json(result)
-  }
+  },
 )
 
 export default app

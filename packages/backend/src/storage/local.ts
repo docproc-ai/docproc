@@ -7,7 +7,8 @@ export class LocalStorageProvider implements StorageProvider {
   private baseDir: string
 
   constructor(baseDir?: string) {
-    this.baseDir = baseDir || process.env.STORAGE_LOCAL_DIR || './data/documents'
+    this.baseDir =
+      baseDir || process.env.STORAGE_LOCAL_DIR || './data/documents'
     // Resolve relative paths
     if (!this.baseDir.startsWith('/')) {
       this.baseDir = join(process.cwd(), this.baseDir)
@@ -22,7 +23,11 @@ export class LocalStorageProvider implements StorageProvider {
     }
   }
 
-  async upload(buffer: Buffer, filename: string, mimeType: string): Promise<string> {
+  async upload(
+    buffer: Buffer,
+    filename: string,
+    mimeType: string,
+  ): Promise<string> {
     await this.ensureDir()
 
     const ext = extname(filename) || this.getExtensionFromMimeType(mimeType)

@@ -11,7 +11,11 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
 import { Field, FieldError } from '@/components/ui/field'
 import type { JsonSchema } from './types'
 
@@ -136,7 +140,10 @@ export function FieldBuilder({
               ) : (
                 <ChevronRight className="size-4" />
               )}
-              <div className="relative flex-1" onClick={(e) => e.stopPropagation()}>
+              <div
+                className="relative flex-1"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <Field data-invalid={hasError}>
                   <Input
                     value={editingKey}
@@ -166,7 +173,10 @@ export function FieldBuilder({
                 }
                 onValueChange={(type) => onTypeChange(propertyKey, type)}
               >
-                <SelectTrigger className="h-8 w-24" onClick={(e) => e.stopPropagation()}>
+                <SelectTrigger
+                  className="h-8 w-24"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -182,7 +192,9 @@ export function FieldBuilder({
                 <Checkbox
                   id={`required-${propertyId}`}
                   checked={isRequired}
-                  onCheckedChange={(checked) => onRequiredChange(propertyKey, !!checked)}
+                  onCheckedChange={(checked) =>
+                    onRequiredChange(propertyKey, !!checked)
+                  }
                   onClick={(e) => e.stopPropagation()}
                 />
                 <Label
@@ -223,18 +235,24 @@ export function FieldBuilder({
                 <Input
                   id={`description-${propertyId}`}
                   value={propertySchema.description ?? ''}
-                  onChange={(e) => onDescriptionChange(propertyKey, e.target.value)}
+                  onChange={(e) =>
+                    onDescriptionChange(propertyKey, e.target.value)
+                  }
                   placeholder="Field description"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor={`ai-instructions-${propertyId}`}>AI Instructions</Label>
+              <Label htmlFor={`ai-instructions-${propertyId}`}>
+                AI Instructions
+              </Label>
               <Input
                 id={`ai-instructions-${propertyId}`}
                 value={propertySchema.ai?.instructions ?? ''}
-                onChange={(e) => onAiInstructionsChange(propertyKey, e.target.value)}
+                onChange={(e) =>
+                  onAiInstructionsChange(propertyKey, e.target.value)
+                }
                 placeholder="e.g., 'Look for the largest number at the bottom'"
               />
             </div>

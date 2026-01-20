@@ -1,4 +1,9 @@
-import { createRoute, Link, useParams, useNavigate } from '@tanstack/react-router'
+import {
+  createRoute,
+  Link,
+  useParams,
+  useNavigate,
+} from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -15,14 +20,19 @@ import type { RootRoute } from '@tanstack/react-router'
 
 function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
-    pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-    processed: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-    approved: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+    pending:
+      'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+    processed:
+      'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+    approved:
+      'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
     rejected: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
   }
 
   return (
-    <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[status] || 'bg-gray-100'}`}>
+    <span
+      className={`px-2 py-1 rounded-full text-xs font-medium ${colors[status] || 'bg-gray-100'}`}
+    >
       {status}
     </span>
   )
@@ -38,7 +48,11 @@ function JsonForm({
   data: Record<string, unknown>
   onChange: (data: Record<string, unknown>) => void
 }) {
-  const properties = (schema.properties as Record<string, { type?: string; description?: string }>) || {}
+  const properties =
+    (schema.properties as Record<
+      string,
+      { type?: string; description?: string }
+    >) || {}
 
   return (
     <div className="space-y-4">
@@ -57,7 +71,8 @@ function JsonForm({
             type={prop.type === 'number' ? 'number' : 'text'}
             value={String(data[key] ?? '')}
             onChange={(e) => {
-              const value = prop.type === 'number' ? Number(e.target.value) : e.target.value
+              const value =
+                prop.type === 'number' ? Number(e.target.value) : e.target.value
               onChange({ ...data, [key]: value })
             }}
           />
@@ -145,12 +160,17 @@ function DocumentDetailPage() {
   if (!document) {
     return (
       <div className="container mx-auto p-6">
-        <div className="bg-destructive/10 text-destructive rounded-md p-4">Document not found</div>
+        <div className="bg-destructive/10 text-destructive rounded-md p-4">
+          Document not found
+        </div>
       </div>
     )
   }
 
-  const schema = (document.schemaSnapshot || docType?.schema || {}) as Record<string, unknown>
+  const schema = (document.schemaSnapshot || docType?.schema || {}) as Record<
+    string,
+    unknown
+  >
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -222,8 +242,13 @@ function DocumentDetailPage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Extracted Data</CardTitle>
             {document.status === 'pending' && (
-              <Button onClick={handleProcess} disabled={processDocument.isPending}>
-                {processDocument.isPending ? 'Processing...' : 'Process Document'}
+              <Button
+                onClick={handleProcess}
+                disabled={processDocument.isPending}
+              >
+                {processDocument.isPending
+                  ? 'Processing...'
+                  : 'Process Document'}
               </Button>
             )}
           </CardHeader>
@@ -231,25 +256,38 @@ function DocumentDetailPage() {
             {document.status === 'pending' && !document.extractedData ? (
               <div className="text-center py-12 text-muted-foreground">
                 <p>Document has not been processed yet</p>
-                <Button className="mt-4" onClick={handleProcess} disabled={processDocument.isPending}>
+                <Button
+                  className="mt-4"
+                  onClick={handleProcess}
+                  disabled={processDocument.isPending}
+                >
                   Process Now
                 </Button>
               </div>
             ) : (
               <>
-                <JsonForm schema={schema} data={editedData} onChange={handleDataChange} />
+                <JsonForm
+                  schema={schema}
+                  data={editedData}
+                  onChange={handleDataChange}
+                />
 
                 {document.rejectionReason && (
                   <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-                    <strong>Rejection reason:</strong> {document.rejectionReason}
+                    <strong>Rejection reason:</strong>{' '}
+                    {document.rejectionReason}
                   </div>
                 )}
 
                 <div className="flex gap-2 pt-4 border-t">
-                  <Button onClick={handleSave} disabled={!hasChanges || updateDocument.isPending}>
+                  <Button
+                    onClick={handleSave}
+                    disabled={!hasChanges || updateDocument.isPending}
+                  >
                     Save Changes
                   </Button>
-                  {(document.status === 'processed' || document.status === 'pending') && (
+                  {(document.status === 'processed' ||
+                    document.status === 'pending') && (
                     <>
                       <Button
                         variant="outline"

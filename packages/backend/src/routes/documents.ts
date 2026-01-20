@@ -36,7 +36,8 @@ export const documentsRoutes = new Hono()
     zValidator('query', getDocumentsQuery),
     async (c) => {
       try {
-        const { documentTypeId, page, pageSize, status, search } = c.req.valid('query')
+        const { documentTypeId, page, pageSize, status, search } =
+          c.req.valid('query')
 
         const result = await getDocuments(documentTypeId, {
           page,
@@ -45,15 +46,18 @@ export const documentsRoutes = new Hono()
           search,
         })
 
-        return c.json({
-          documents: result.documents,
-          pagination: {
-            page: result.page,
-            pageSize: result.pageSize,
-            total: result.total,
-            totalPages: result.totalPages,
+        return c.json(
+          {
+            documents: result.documents,
+            pagination: {
+              page: result.page,
+              pageSize: result.pageSize,
+              total: result.total,
+              totalPages: result.totalPages,
+            },
           },
-        }, 200)
+          200,
+        )
       } catch (error) {
         console.error('Failed to get documents:', error)
         return c.json({ error: 'Failed to get documents' }, 500)
@@ -72,7 +76,11 @@ export const documentsRoutes = new Hono()
         const { documentIds, status } = c.req.valid('json')
         const user = c.get('user')
 
-        const count = await bulkUpdateDocumentStatus(documentIds, status, user?.id)
+        const count = await bulkUpdateDocumentStatus(
+          documentIds,
+          status,
+          user?.id,
+        )
 
         return c.json({ success: true, updated: count }, 200)
       } catch (error) {
@@ -120,10 +128,13 @@ export const documentsRoutes = new Hono()
     requireAuth,
     requirePermission('document', 'update'),
     zValidator('param', z.object({ id: z.string().min(1) })),
-    zValidator('json', z.object({
-      degrees: z.number().multipleOf(90),
-      pageNumber: z.number().int().positive().optional(), // Optional: for single-page PDF rotation
-    })),
+    zValidator(
+      'json',
+      z.object({
+        degrees: z.number().multipleOf(90),
+        pageNumber: z.number().int().positive().optional(), // Optional: for single-page PDF rotation
+      }),
+    ),
     async (c) => {
       try {
         const { id } = c.req.valid('param')
@@ -135,7 +146,9 @@ export const documentsRoutes = new Hono()
         }
 
         // Download the current file
-        const { buffer: fileBuffer, mimeType } = await storage.download(doc.storagePath)
+        const { buffer: fileBuffer, mimeType } = await storage.download(
+          doc.storagePath,
+        )
 
         let rotatedBuffer: Buffer
         const fileExtension = doc.filename.toLowerCase().split('.').pop()
@@ -162,9 +175,15 @@ export const documentsRoutes = new Hono()
           }
 
           rotatedBuffer = Buffer.from(await pdfDoc.save())
-        } else if (['jpg', 'jpeg', 'png', 'webp', 'tiff', 'bmp', 'gif'].includes(fileExtension || '')) {
+        } else if (
+          ['jpg', 'jpeg', 'png', 'webp', 'tiff', 'bmp', 'gif'].includes(
+            fileExtension || '',
+          )
+        ) {
           // Handle image rotation using Sharp
-          rotatedBuffer = await sharp(fileBuffer).rotate(rotationDegrees).toBuffer()
+          rotatedBuffer = await sharp(fileBuffer)
+            .rotate(rotationDegrees)
+            .toBuffer()
         } else {
           return c.json({ error: 'Unsupported file type for rotation' }, 400)
         }
@@ -222,8 +241,12 @@ export const documentsRoutes = new Hono()
         }
 
         const result = await updateDocument(doc.id, {
-          extractedData: data.extractedData as Record<string, unknown> | undefined,
-          schemaSnapshot: data.schemaSnapshot as Record<string, unknown> | undefined,
+          extractedData: data.extractedData as
+            | Record<string, unknown>
+            | undefined,
+          schemaSnapshot: data.schemaSnapshot as
+            | Record<string, unknown>
+            | undefined,
           status: data.status,
           rejectionReason: data.rejectionReason,
           updatedBy: user?.id,

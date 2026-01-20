@@ -1,4 +1,12 @@
-import { pgTable, text, json, timestamp, index, pgEnum, uuid } from 'drizzle-orm/pg-core'
+import {
+  pgTable,
+  text,
+  json,
+  timestamp,
+  index,
+  pgEnum,
+  uuid,
+} from 'drizzle-orm/pg-core'
 import { user } from './auth'
 
 export const documentType = pgTable('document_type', {
@@ -18,8 +26,12 @@ export const documentType = pgTable('document_type', {
   updatedAt: timestamp('updated_at')
     .defaultNow()
     .$onUpdate(() => new Date()),
-  createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' }),
-  updatedBy: uuid('updated_by').references(() => user.id, { onDelete: 'set null' }),
+  createdBy: uuid('created_by').references(() => user.id, {
+    onDelete: 'set null',
+  }),
+  updatedBy: uuid('updated_by').references(() => user.id, {
+    onDelete: 'set null',
+  }),
 })
 
 export const documentStatus = pgEnum('document_status', [
@@ -48,8 +60,12 @@ export const document = pgTable(
     updatedAt: timestamp('updated_at')
       .defaultNow()
       .$onUpdate(() => new Date()),
-    createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' }),
-    updatedBy: uuid('updated_by').references(() => user.id, { onDelete: 'set null' }),
+    createdBy: uuid('created_by').references(() => user.id, {
+      onDelete: 'set null',
+    }),
+    updatedBy: uuid('updated_by').references(() => user.id, {
+      onDelete: 'set null',
+    }),
   },
   (table) => [
     index('idx_document_document_type_id').on(table.documentTypeId),

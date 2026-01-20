@@ -24,7 +24,9 @@ export function NumberField({
   // Sync rawInput when value changes externally (e.g., from streaming or reset)
   useEffect(() => {
     if (!isFocused) {
-      setRawInput(typeof value === 'number' ? value.toLocaleString() : (value ?? ''))
+      setRawInput(
+        typeof value === 'number' ? value.toLocaleString() : (value ?? ''),
+      )
     }
   }, [value, isFocused])
 
@@ -34,7 +36,9 @@ export function NumberField({
         {schema.title || name}
         {required && <span className="ml-1 text-red-500">*</span>}
       </FieldLabel>
-      {schema.description && <FieldDescription>{schema.description}</FieldDescription>}
+      {schema.description && (
+        <FieldDescription>{schema.description}</FieldDescription>
+      )}
       <Input
         id={name}
         type="text"
@@ -60,7 +64,9 @@ export function NumberField({
           // Only parse and update if it's a complete number (not ending with . or -)
           if (!raw.endsWith('.') && !raw.endsWith('-')) {
             const parsed =
-              fieldType === 'integer' ? Number.parseInt(raw) : Number.parseFloat(raw)
+              fieldType === 'integer'
+                ? Number.parseInt(raw)
+                : Number.parseFloat(raw)
             if (!Number.isNaN(parsed)) {
               onChange(parsed)
             }

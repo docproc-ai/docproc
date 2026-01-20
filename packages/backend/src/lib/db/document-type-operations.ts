@@ -14,7 +14,10 @@ import {
   decryptWebhookConfig,
   type DocumentWebhookConfig,
 } from '../webhook-encryption'
-import type { DocumentTypeSelect, DocumentTypeInsert } from '../../db/schema/app'
+import type {
+  DocumentTypeSelect,
+  DocumentTypeInsert,
+} from '../../db/schema/app'
 
 export type { DocumentTypeSelect, DocumentTypeInsert }
 
@@ -67,10 +70,42 @@ export async function getDocumentTypes(): Promise<DocumentTypeWithCount[]> {
 
       // Get counts by status
       const statusCountsRaw = await Promise.all([
-        db.select({ count: count() }).from(document).where(and(eq(document.documentTypeId, type.id), eq(document.status, 'pending'))),
-        db.select({ count: count() }).from(document).where(and(eq(document.documentTypeId, type.id), eq(document.status, 'processed'))),
-        db.select({ count: count() }).from(document).where(and(eq(document.documentTypeId, type.id), eq(document.status, 'approved'))),
-        db.select({ count: count() }).from(document).where(and(eq(document.documentTypeId, type.id), eq(document.status, 'rejected'))),
+        db
+          .select({ count: count() })
+          .from(document)
+          .where(
+            and(
+              eq(document.documentTypeId, type.id),
+              eq(document.status, 'pending'),
+            ),
+          ),
+        db
+          .select({ count: count() })
+          .from(document)
+          .where(
+            and(
+              eq(document.documentTypeId, type.id),
+              eq(document.status, 'processed'),
+            ),
+          ),
+        db
+          .select({ count: count() })
+          .from(document)
+          .where(
+            and(
+              eq(document.documentTypeId, type.id),
+              eq(document.status, 'approved'),
+            ),
+          ),
+        db
+          .select({ count: count() })
+          .from(document)
+          .where(
+            and(
+              eq(document.documentTypeId, type.id),
+              eq(document.status, 'rejected'),
+            ),
+          ),
       ])
 
       // Return with safe webhook config (sensitive values masked)
@@ -130,7 +165,9 @@ export async function getDocumentType(
  * Get a document type by ID with raw (encrypted) webhook config
  * Used for merging during updates
  */
-export async function getDocumentTypeRaw(id: string): Promise<DocumentTypeSelect | null> {
+export async function getDocumentTypeRaw(
+  id: string,
+): Promise<DocumentTypeSelect | null> {
   const [result] = await db
     .select()
     .from(documentType)
@@ -143,7 +180,9 @@ export async function getDocumentTypeRaw(id: string): Promise<DocumentTypeSelect
  * Get a document type by slug
  * Returns safe webhook config (sensitive values masked)
  */
-export async function getDocumentTypeBySlug(slug: string): Promise<DocumentTypeSelect | null> {
+export async function getDocumentTypeBySlug(
+  slug: string,
+): Promise<DocumentTypeSelect | null> {
   const [result] = await db
     .select()
     .from(documentType)
@@ -166,7 +205,8 @@ export async function getDocumentTypeBySlugOrId(
   slugOrId: string,
 ): Promise<DocumentTypeSelect | null> {
   // UUID v4 pattern
-  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+  const uuidPattern =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
   // If it looks like a UUID, try by ID first
   if (uuidPattern.test(slugOrId)) {
@@ -236,7 +276,8 @@ export async function updateDocumentType(
     } else {
       // Get existing encrypted config for merging
       const existing = await getDocumentTypeRaw(id)
-      const existingConfig = existing?.webhookConfig as DocumentWebhookConfig | null
+      const existingConfig =
+        existing?.webhookConfig as DocumentWebhookConfig | null
 
       // Merge: preserve existing encrypted values for unedited sensitive fields
       updateData.webhookConfig = mergeWebhookConfigs(

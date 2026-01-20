@@ -74,15 +74,18 @@ export const usersRoutes = new Hono()
           .limit(pageSize)
           .offset(offset)
 
-        return c.json({
-          users,
-          pagination: {
-            page,
-            pageSize,
-            total: count,
-            totalPages: Math.ceil(count / pageSize),
+        return c.json(
+          {
+            users,
+            pagination: {
+              page,
+              pageSize,
+              total: count,
+              totalPages: Math.ceil(count / pageSize),
+            },
           },
-        }, 200)
+          200,
+        )
       } catch (error) {
         console.error('Failed to get users:', error)
         return c.json({ error: 'Failed to get users' }, 500)
@@ -255,7 +258,10 @@ export const usersRoutes = new Hono()
             .limit(1)
 
           if (existingUser && existingUser.id !== id) {
-            return c.json({ error: 'A user with this email already exists' }, 400)
+            return c.json(
+              { error: 'A user with this email already exists' },
+              400,
+            )
           }
         }
 

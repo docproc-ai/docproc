@@ -1,7 +1,24 @@
-import { useState, useRef, useEffect, useCallback, memo, useTransition } from 'react'
+import {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  memo,
+  useTransition,
+} from 'react'
 import { Document, pdfjs } from 'react-pdf'
-import { TransformWrapper, TransformComponent, type ReactZoomPanPinchRef } from 'react-zoom-pan-pinch'
-import { ChevronLeft, ChevronRight, RotateCcw, RotateCw, File } from 'lucide-react'
+import {
+  TransformWrapper,
+  TransformComponent,
+  type ReactZoomPanPinchRef,
+} from 'react-zoom-pan-pinch'
+import {
+  ChevronLeft,
+  ChevronRight,
+  RotateCcw,
+  RotateCw,
+  File,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 // Configure pdfjs worker
@@ -13,7 +30,11 @@ interface DocumentViewerProps {
   onRotate?: (degrees: number, pageNumber?: number) => Promise<void>
 }
 
-function DocumentViewerComponent({ documentId, filename, onRotate }: DocumentViewerProps) {
+function DocumentViewerComponent({
+  documentId,
+  filename,
+  onRotate,
+}: DocumentViewerProps) {
   const [numPages, setNumPages] = useState<number | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageImage, setPageImage] = useState<string | null>(null)
@@ -33,7 +54,9 @@ function DocumentViewerComponent({ documentId, filename, onRotate }: DocumentVie
   // Determine file type from filename extension
   const fileExtension = filename.toLowerCase().split('.').pop()
   const isPdf = fileExtension === 'pdf'
-  const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'tiff', 'bmp'].includes(fileExtension || '')
+  const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'tiff', 'bmp'].includes(
+    fileExtension || '',
+  )
 
   // Reset state when document changes
   useEffect(() => {
@@ -124,36 +147,41 @@ function DocumentViewerComponent({ documentId, filename, onRotate }: DocumentVie
   }, [isRendering, pageImage, isPending])
 
   const goToPrevPage = () => setCurrentPage((prev) => Math.max(prev - 1, 1))
-  const goToNextPage = () => setCurrentPage((prev) => Math.min(prev + 1, numPages || 1))
+  const goToNextPage = () =>
+    setCurrentPage((prev) => Math.min(prev + 1, numPages || 1))
 
   // Rotate an image on canvas and return data URL
-  const rotateImageData = useCallback((src: string, degrees: number): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image()
-      img.onload = () => {
-        const canvas = document.createElement('canvas')
-        const normalizedDegrees = ((degrees % 360) + 360) % 360
-        const isRightAngle = normalizedDegrees === 90 || normalizedDegrees === 270
+  const rotateImageData = useCallback(
+    (src: string, degrees: number): Promise<string> => {
+      return new Promise((resolve, reject) => {
+        const img = new Image()
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          const normalizedDegrees = ((degrees % 360) + 360) % 360
+          const isRightAngle =
+            normalizedDegrees === 90 || normalizedDegrees === 270
 
-        canvas.width = isRightAngle ? img.height : img.width
-        canvas.height = isRightAngle ? img.width : img.height
+          canvas.width = isRightAngle ? img.height : img.width
+          canvas.height = isRightAngle ? img.width : img.height
 
-        const ctx = canvas.getContext('2d')
-        if (!ctx) {
-          reject(new Error('Could not get canvas context'))
-          return
+          const ctx = canvas.getContext('2d')
+          if (!ctx) {
+            reject(new Error('Could not get canvas context'))
+            return
+          }
+
+          ctx.translate(canvas.width / 2, canvas.height / 2)
+          ctx.rotate((normalizedDegrees * Math.PI) / 180)
+          ctx.drawImage(img, -img.width / 2, -img.height / 2)
+
+          resolve(canvas.toDataURL('image/png'))
         }
-
-        ctx.translate(canvas.width / 2, canvas.height / 2)
-        ctx.rotate((normalizedDegrees * Math.PI) / 180)
-        ctx.drawImage(img, -img.width / 2, -img.height / 2)
-
-        resolve(canvas.toDataURL('image/png'))
-      }
-      img.onerror = reject
-      img.src = src
-    })
-  }, [])
+        img.onerror = reject
+        img.src = src
+      })
+    },
+    [],
+  )
 
   const handleRotate = async (degrees: number) => {
     if (!onRotate || isPending) return
@@ -193,7 +221,13 @@ function DocumentViewerComponent({ documentId, filename, onRotate }: DocumentVie
     <div className="flex items-center justify-center gap-2 px-3 py-2 border-t bg-background/80 backdrop-blur-sm">
       {/* Page navigation for PDFs */}
       {showPageNav && numPages && numPages > 1 && (
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goToPrevPage} disabled={currentPage <= 1}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={goToPrevPage}
+          disabled={currentPage <= 1}
+        >
           <ChevronLeft className="size-4" />
         </Button>
       )}
@@ -226,12 +260,22 @@ function DocumentViewerComponent({ documentId, filename, onRotate }: DocumentVie
 
       {/* Page info */}
       <span className="text-xs text-muted-foreground px-2">
-        {showPageNav && numPages ? `Page ${currentPage} of ${numPages}` : isPdf ? 'PDF' : 'Image'}
+        {showPageNav && numPages
+          ? `Page ${currentPage} of ${numPages}`
+          : isPdf
+            ? 'PDF'
+            : 'Image'}
       </span>
 
       {/* Page navigation for PDFs */}
       {showPageNav && numPages && numPages > 1 && (
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goToNextPage} disabled={currentPage >= numPages}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={goToNextPage}
+          disabled={currentPage >= numPages}
+        >
           <ChevronRight className="size-4" />
         </Button>
       )}
@@ -244,7 +288,11 @@ function DocumentViewerComponent({ documentId, filename, onRotate }: DocumentVie
       <div className="relative grow overflow-hidden bg-muted/30">
         {/* Hidden react-pdf document for loading */}
         <div style={{ display: 'none' }}>
-          <Document key={fileUrl} file={fileUrl} onLoadSuccess={onDocumentLoadSuccess} />
+          <Document
+            key={fileUrl}
+            file={fileUrl}
+            onLoadSuccess={onDocumentLoadSuccess}
+          />
         </div>
 
         {/* Loading spinner - delayed to avoid flash on quick loads */}

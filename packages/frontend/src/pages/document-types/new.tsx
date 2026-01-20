@@ -28,9 +28,14 @@ export default function NewDocumentTypePage() {
       })
 
       // Redirect to settings to configure the schema and other options
-      navigate({ to: '/document-types/$slug/settings', params: { slug: result.slug } })
+      navigate({
+        to: '/document-types/$slug/settings',
+        params: { slug: result.slug },
+      })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create document type')
+      setError(
+        err instanceof Error ? err.message : 'Failed to create document type',
+      )
     }
   }
 
@@ -38,7 +43,10 @@ export default function NewDocumentTypePage() {
     <div className="container mx-auto px-6 py-8 max-w-md">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-        <Link to="/document-types" className="hover:text-foreground transition-colors">
+        <Link
+          to="/document-types"
+          className="hover:text-foreground transition-colors"
+        >
           Document Types
         </Link>
         <span className="text-muted-foreground/50">/</span>

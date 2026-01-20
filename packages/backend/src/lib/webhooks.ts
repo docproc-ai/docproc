@@ -42,7 +42,9 @@ export async function triggerWebhook(
   event: DocumentWebhookEventName,
 ): Promise<void> {
   // Get document type with decrypted webhook config
-  const docType = await getDocumentType(documentTypeId, { includeDecryptedWebhook: true })
+  const docType = await getDocumentType(documentTypeId, {
+    includeDecryptedWebhook: true,
+  })
   if (!docType?.webhookConfig) return
 
   const webhookConfig = docType.webhookConfig as DocumentWebhookConfig

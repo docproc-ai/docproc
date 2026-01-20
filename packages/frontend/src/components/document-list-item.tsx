@@ -1,4 +1,12 @@
-import { File, FileCheck, FileJson, FileX, Loader2, type LucideIcon, X } from 'lucide-react'
+import {
+  File,
+  FileCheck,
+  FileJson,
+  FileX,
+  Loader2,
+  type LucideIcon,
+  X,
+} from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 
 const statusConfig: Record<string, { icon: LucideIcon; className: string }> = {
@@ -43,9 +51,7 @@ export function DocumentListItem({
     <div
       ref={(el) => registerRef(doc.id, el)}
       className={`flex items-center w-full border-b transition-colors relative ${
-        isSelected
-          ? 'bg-primary/10'
-          : 'hover:bg-muted/50'
+        isSelected ? 'bg-primary/10' : 'hover:bg-muted/50'
       }`}
     >
       {isSelected && (
@@ -82,7 +88,9 @@ export function DocumentListItem({
         onClick={onSelect}
         className="flex-1 text-left py-3 pr-3 pl-2 min-w-0"
       >
-        <p className="text-sm font-medium truncate">{doc.slug || doc.filename}</p>
+        <p className="text-sm font-medium truncate">
+          {doc.slug || doc.filename}
+        </p>
         {doc.createdAt && (
           <p className="text-xs text-muted-foreground mt-0.5">
             {new Date(doc.createdAt).toLocaleDateString('en-US', {

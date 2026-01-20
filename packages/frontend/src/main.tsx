@@ -7,28 +7,28 @@ import {
   RouterProvider,
   useNavigate,
   useRouterState,
-} from "@tanstack/react-router"
-import { TanStackRouterDevtools } from "@tanstack/react-router-devtools"
-import { Moon, Sun } from "lucide-react"
-import { StrictMode } from "react"
-import ReactDOM from "react-dom/client"
+} from '@tanstack/react-router'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import { Moon, Sun } from 'lucide-react'
+import { StrictMode } from 'react'
+import ReactDOM from 'react-dom/client'
 
-import { Button } from "./components/ui/button"
-import * as TanStackQueryProvider from "./integrations/tanstack-query/root-provider.tsx"
-import { signOut, useSession } from "./lib/auth"
-import { ThemeProvider, useTheme } from "./lib/theme"
-import DocumentTypesPage from "./pages/document-types"
-import DocumentTypeSettingsPage from "./pages/document-types/[slug]/settings"
-import ProcessLayout from "./pages/document-types/[slug]/process"
-import DocumentEditorPage from "./pages/document-types/[slug]/process/[id]"
-import NewDocumentTypePage from "./pages/document-types/new"
-import UsersPage from "./pages/users"
+import { Button } from './components/ui/button'
+import * as TanStackQueryProvider from './integrations/tanstack-query/root-provider.tsx'
+import { signOut, useSession } from './lib/auth'
+import { ThemeProvider, useTheme } from './lib/theme'
+import DocumentTypesPage from './pages/document-types'
+import DocumentTypeSettingsPage from './pages/document-types/[slug]/settings'
+import ProcessLayout from './pages/document-types/[slug]/process'
+import DocumentEditorPage from './pages/document-types/[slug]/process/[id]'
+import NewDocumentTypePage from './pages/document-types/new'
+import UsersPage from './pages/users'
 // Page components
-import LoginPage from "./pages/login"
+import LoginPage from './pages/login'
 
-import "./styles.css"
-import reportWebVitals from "./reportWebVitals.ts"
-import { useEffect } from "react"
+import './styles.css'
+import reportWebVitals from './reportWebVitals.ts'
+import { useEffect } from 'react'
 
 // Auth guard - redirects to login if not authenticated
 function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -37,7 +37,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isPending && !session?.user) {
-      navigate({ to: "/login" })
+      navigate({ to: '/login' })
     }
   }, [isPending, session, navigate])
 
@@ -94,9 +94,9 @@ function ThemeToggle() {
       size="icon"
       onClick={toggleTheme}
       className="h-9 w-9"
-      aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+      aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
     >
-      {theme === "dark" ? (
+      {theme === 'dark' ? (
         <Sun className="size-[18px]" />
       ) : (
         <Moon className="size-[18px]" />
@@ -109,11 +109,12 @@ function ThemeToggle() {
 function AppHeader() {
   const { data: session, isPending } = useSession()
   const navigate = useNavigate()
-  const isAdmin = (session?.user as { role?: string } | undefined)?.role === 'admin'
+  const isAdmin =
+    (session?.user as { role?: string } | undefined)?.role === 'admin'
 
   const handleSignOut = async () => {
     await signOut()
-    navigate({ to: "/login" })
+    navigate({ to: '/login' })
   }
 
   return (
@@ -191,11 +192,11 @@ function HomePage() {
   }
 
   if (!session?.user) {
-    navigate({ to: "/login" })
+    navigate({ to: '/login' })
     return null
   }
 
-  navigate({ to: "/document-types" })
+  navigate({ to: '/document-types' })
   return null
 }
 
@@ -206,7 +207,9 @@ function RootLayout() {
 
   // Hide main header on login and pages with their own headers (process, settings)
   const hideHeader =
-    pathname === "/login" || pathname.includes("/process") || pathname.includes("/settings")
+    pathname === '/login' ||
+    pathname.includes('/process') ||
+    pathname.includes('/settings')
 
   return (
     <div className="min-h-screen bg-background relative">
@@ -231,19 +234,19 @@ const rootRoute = createRootRoute({
 // Create routes
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/",
+  path: '/',
   component: HomePage,
 })
 
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/login",
+  path: '/login',
   component: LoginPage,
 })
 
 const documentTypesRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/document-types",
+  path: '/document-types',
   component: () => (
     <AuthGuard>
       <DocumentTypesPage />
@@ -253,7 +256,7 @@ const documentTypesRoute = createRoute({
 
 const usersRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/users",
+  path: '/users',
   component: () => (
     <AuthGuard>
       <UsersPage />
@@ -263,7 +266,7 @@ const usersRoute = createRoute({
 
 const newDocumentTypeRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/document-types/new",
+  path: '/document-types/new',
   component: () => (
     <AuthGuard>
       <NewDocumentTypePage />
@@ -273,28 +276,28 @@ const newDocumentTypeRoute = createRoute({
 
 const documentTypeProcessRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/document-types/$slug/process",
+  path: '/document-types/$slug/process',
   component: () => (
     <AuthGuard>
       <ProcessLayout />
     </AuthGuard>
   ),
   validateSearch: (search: Record<string, unknown>) => ({
-    q: (search.q as string) || "",
-    status: (search.status as string) || "all",
+    q: (search.q as string) || '',
+    status: (search.status as string) || 'all',
     page: Number(search.page) || 1,
   }),
 })
 
 const documentEditorRoute = createRoute({
   getParentRoute: () => documentTypeProcessRoute,
-  path: "$id",
+  path: '$id',
   component: DocumentEditorPage,
 })
 
 const documentTypeSettingsRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/document-types/$slug/settings",
+  path: '/document-types/$slug/settings',
   component: () => (
     <AuthGuard>
       <DocumentTypeSettingsPage />
@@ -320,21 +323,21 @@ const router = createRouter({
   context: {
     ...TanStackQueryProviderContext,
   },
-  defaultPreload: "intent",
+  defaultPreload: 'intent',
   scrollRestoration: true,
   defaultStructuralSharing: true,
   defaultPreloadStaleTime: 0,
 })
 
 // Type registration
-declare module "@tanstack/react-router" {
+declare module '@tanstack/react-router' {
   interface Register {
     router: typeof router
   }
 }
 
 // Mount app
-const rootElement = document.getElementById("app")
+const rootElement = document.getElementById('app')
 if (rootElement && !rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
   root.render(

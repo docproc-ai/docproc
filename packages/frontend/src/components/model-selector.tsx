@@ -39,7 +39,11 @@ async function fetchModels(): Promise<Model[]> {
   return response.json()
 }
 
-export function ModelSelector({ value, onChange, placeholder = 'Select model...' }: ModelSelectorProps) {
+export function ModelSelector({
+  value,
+  onChange,
+  placeholder = 'Select model...',
+}: ModelSelectorProps) {
   const [open, setOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
 
@@ -57,7 +61,7 @@ export function ModelSelector({ value, onChange, placeholder = 'Select model...'
     ? models.filter(
         (m) =>
           m.id.toLowerCase().includes(searchValue.toLowerCase()) ||
-          m.name.toLowerCase().includes(searchValue.toLowerCase())
+          m.name.toLowerCase().includes(searchValue.toLowerCase()),
       )
     : models
 
@@ -88,11 +92,15 @@ export function ModelSelector({ value, onChange, placeholder = 'Select model...'
           aria-expanded={open}
           className="justify-between font-mono text-sm"
         >
-          {value ? (selectedModel?.id || value) : placeholder}
+          {value ? selectedModel?.id || value : placeholder}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="p-0" align="end" style={{ width: 'var(--radix-popover-trigger-width)' }}>
+      <PopoverContent
+        className="p-0"
+        align="end"
+        style={{ width: 'var(--radix-popover-trigger-width)' }}
+      >
         <Command shouldFilter={false}>
           <CommandInput
             placeholder="Search models..."
@@ -119,7 +127,9 @@ export function ModelSelector({ value, onChange, placeholder = 'Select model...'
                       >
                         <Plus className="mr-2 h-4 w-4" />
                         <span>Use custom: </span>
-                        <span className="font-mono font-medium">{searchValue}</span>
+                        <span className="font-mono font-medium">
+                          {searchValue}
+                        </span>
                       </CommandItem>
                     </CommandGroup>
                     <CommandSeparator />
@@ -135,7 +145,7 @@ export function ModelSelector({ value, onChange, placeholder = 'Select model...'
                       onSelect={() => handleSelect(model.id)}
                       className={cn(
                         'cursor-pointer',
-                        value === model.id && 'bg-primary/10 text-primary'
+                        value === model.id && 'bg-primary/10 text-primary',
                       )}
                     >
                       <span className="font-mono text-sm">{model.id}</span>
@@ -145,7 +155,8 @@ export function ModelSelector({ value, onChange, placeholder = 'Select model...'
 
                 {filteredModels.length > 50 && (
                   <div className="py-2 text-center text-xs text-muted-foreground">
-                    Showing 50 of {filteredModels.length} models. Type to filter.
+                    Showing 50 of {filteredModels.length} models. Type to
+                    filter.
                   </div>
                 )}
               </>

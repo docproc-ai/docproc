@@ -1,20 +1,35 @@
 import { createRoute, Link, useParams } from '@tanstack/react-router'
 import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { useDocumentType, useDocuments, useProcessDocument } from '@/lib/queries'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import {
+  useDocumentType,
+  useDocuments,
+  useProcessDocument,
+} from '@/lib/queries'
 import type { RootRoute } from '@tanstack/react-router'
 
 function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
-    pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-    processed: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-    approved: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+    pending:
+      'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+    processed:
+      'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+    approved:
+      'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
     rejected: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
   }
 
   return (
-    <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[status] || 'bg-gray-100'}`}>
+    <span
+      className={`px-2 py-1 rounded-full text-xs font-medium ${colors[status] || 'bg-gray-100'}`}
+    >
       {status}
     </span>
   )
@@ -105,7 +120,10 @@ function DocumentTypeDetailPage() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" asChild>
-            <Link to="/document-types/$slug/settings" params={{ slug: docType.slug }}>
+            <Link
+              to="/document-types/$slug/settings"
+              params={{ slug: docType.slug }}
+            >
               Settings
             </Link>
           </Button>
@@ -126,19 +144,21 @@ function DocumentTypeDetailPage() {
 
       {/* Filter Tabs */}
       <div className="flex gap-2">
-        {['all', 'pending', 'processed', 'approved', 'rejected'].map((status) => (
-          <Button
-            key={status}
-            variant={statusFilter === status ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => {
-              setStatusFilter(status)
-              setPage(1)
-            }}
-          >
-            {status.charAt(0).toUpperCase() + status.slice(1)}
-          </Button>
-        ))}
+        {['all', 'pending', 'processed', 'approved', 'rejected'].map(
+          (status) => (
+            <Button
+              key={status}
+              variant={statusFilter === status ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                setStatusFilter(status)
+                setPage(1)
+              }}
+            >
+              {status.charAt(0).toUpperCase() + status.slice(1)}
+            </Button>
+          ),
+        )}
       </div>
 
       {/* Documents List */}
@@ -169,7 +189,10 @@ function DocumentTypeDetailPage() {
       ) : (
         <div className="space-y-2">
           {documentsData?.documents.map((doc) => (
-            <Card key={doc.id} className="hover:border-primary/50 transition-colors">
+            <Card
+              key={doc.id}
+              className="hover:border-primary/50 transition-colors"
+            >
               <CardContent className="flex items-center justify-between py-4">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 bg-muted rounded flex items-center justify-center text-xs font-mono">
@@ -211,29 +234,30 @@ function DocumentTypeDetailPage() {
           ))}
 
           {/* Pagination */}
-          {documentsData?.pagination && documentsData.pagination.totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 pt-4">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page === 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                Previous
-              </Button>
-              <span className="text-sm text-muted-foreground">
-                Page {page} of {documentsData.pagination.totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page === documentsData.pagination.totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          )}
+          {documentsData?.pagination &&
+            documentsData.pagination.totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 pt-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page === 1}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  Previous
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  Page {page} of {documentsData.pagination.totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page === documentsData.pagination.totalPages}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
         </div>
       )}
     </div>

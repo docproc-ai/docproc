@@ -74,7 +74,9 @@ export function useUpdateDocumentType() {
       return res.json()
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['documentType', variables.slugOrId] })
+      queryClient.invalidateQueries({
+        queryKey: ['documentType', variables.slugOrId],
+      })
       queryClient.invalidateQueries({ queryKey: ['documentTypes'] })
     },
   })
@@ -98,7 +100,10 @@ export function useDeleteDocumentType() {
 }
 
 // Documents
-export function useDocuments(documentTypeId: string, options?: { page?: number; status?: string; search?: string }) {
+export function useDocuments(
+  documentTypeId: string,
+  options?: { page?: number; status?: string; search?: string },
+) {
   return useQuery({
     queryKey: ['documents', documentTypeId, options],
     queryFn: async () => {
@@ -184,7 +189,13 @@ export function useProcessDocument() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ documentId, model }: { documentId: string; model?: string }) => {
+    mutationFn: async ({
+      documentId,
+      model,
+    }: {
+      documentId: string
+      model?: string
+    }) => {
       const res = await api.api.process[':documentId'].$post({
         param: { documentId },
         json: model ? { model } : {},
@@ -193,7 +204,9 @@ export function useProcessDocument() {
       return res.json()
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['document', variables.documentId] })
+      queryClient.invalidateQueries({
+        queryKey: ['document', variables.documentId],
+      })
       queryClient.invalidateQueries({ queryKey: ['documents'], exact: false })
     },
   })
@@ -267,8 +280,13 @@ export function useProcessDocumentStreaming() {
                   } else if (eventType === 'error') {
                     onError(data)
                   } else if (eventType === 'done') {
-                    queryClient.invalidateQueries({ queryKey: ['document', documentId] })
-                    queryClient.invalidateQueries({ queryKey: ['documents'], exact: false })
+                    queryClient.invalidateQueries({
+                      queryKey: ['document', documentId],
+                    })
+                    queryClient.invalidateQueries({
+                      queryKey: ['documents'],
+                      exact: false,
+                    })
                     resolve()
                     return
                   }
@@ -397,7 +415,9 @@ export function useCreateUser() {
       const res = await api.api.users.$post({ json: data })
       if (!res.ok) {
         const error = await res.json()
-        throw new Error((error as { error?: string }).error || 'Failed to create user')
+        throw new Error(
+          (error as { error?: string }).error || 'Failed to create user',
+        )
       }
       return res.json()
     },
@@ -411,7 +431,13 @@ export function useUpdateUserRole() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ userId, role }: { userId: string; role: 'admin' | 'user' | 'none' }) => {
+    mutationFn: async ({
+      userId,
+      role,
+    }: {
+      userId: string
+      role: 'admin' | 'user' | 'none'
+    }) => {
       const res = await api.api.users[':id'].role.$patch({
         param: { id: userId },
         json: { role },
@@ -446,7 +472,9 @@ export function useUpdateUser() {
       })
       if (!res.ok) {
         const error = await res.json()
-        throw new Error((error as { error?: string }).error || 'Failed to update user')
+        throw new Error(
+          (error as { error?: string }).error || 'Failed to update user',
+        )
       }
       return res.json()
     },
@@ -478,7 +506,15 @@ export function useRotateDocument() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ documentId, degrees, pageNumber }: { documentId: string; degrees: number; pageNumber?: number }) => {
+    mutationFn: async ({
+      documentId,
+      degrees,
+      pageNumber,
+    }: {
+      documentId: string
+      degrees: number
+      pageNumber?: number
+    }) => {
       const res = await api.api.documents[':id'].rotate.$post({
         param: { id: documentId },
         json: { degrees, pageNumber },

@@ -56,10 +56,13 @@ export const processingRoutes = new Hono()
     '/process/stream',
     requireApiKeyOrAuth,
     requirePermission('document', 'update'),
-    zValidator('json', z.object({
-      documentId: z.string().uuid(),
-      model: z.string().optional(),
-    })),
+    zValidator(
+      'json',
+      z.object({
+        documentId: z.string().uuid(),
+        model: z.string().optional(),
+      }),
+    ),
     async (c) => {
       const { documentId, model } = c.req.valid('json')
 
@@ -89,7 +92,8 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
           try {
             // Get image from prepared context
             const imageContent = streamingContext.messages[0].content[1]
-            const imageData = imageContent.type === 'image' ? imageContent.image : ''
+            const imageData =
+              imageContent.type === 'image' ? imageContent.image : ''
 
             const result = streamText({
               model: openrouterProvider(streamingContext.modelName),
@@ -139,7 +143,8 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
               data: 'Processing complete',
             })
           } catch (error) {
-            const message = error instanceof Error ? error.message : 'Processing failed'
+            const message =
+              error instanceof Error ? error.message : 'Processing failed'
             await stream.writeSSE({
               event: 'error',
               data: message,
@@ -148,7 +153,8 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
         })
       } catch (error) {
         console.error('Streaming error:', error)
-        const message = error instanceof Error ? error.message : 'Processing failed'
+        const message =
+          error instanceof Error ? error.message : 'Processing failed'
         return c.json({ error: message }, 500)
       }
     },
@@ -182,15 +188,19 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
           overrideModel: body?.model,
         })
 
-        return c.json({
-          success: true,
-          documentId,
-          extractedData: data,
-          status: document?.status,
-        }, 200)
+        return c.json(
+          {
+            success: true,
+            documentId,
+            extractedData: data,
+            status: document?.status,
+          },
+          200,
+        )
       } catch (error) {
         console.error('Failed to process document:', error)
-        const message = error instanceof Error ? error.message : 'Processing failed'
+        const message =
+          error instanceof Error ? error.message : 'Processing failed'
         return c.json({ error: message }, 500)
       }
     },
@@ -208,23 +218,33 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
         const user = c.get('user')
 
         // Verify all documents exist and get document type
-        const documents = await Promise.all(documentIds.map((id) => getDocument(id)))
+        const documents = await Promise.all(
+          documentIds.map((id) => getDocument(id)),
+        )
         const missingDocs = documentIds.filter((_, i) => !documents[i])
 
         if (missingDocs.length > 0) {
-          return c.json({
-            error: 'Some documents not found',
-            missing: missingDocs,
-          }, 400)
+          return c.json(
+            {
+              error: 'Some documents not found',
+              missing: missingDocs,
+            },
+            400,
+          )
         }
 
         // All documents must be same document type
         const documentTypeId = documents[0]!.documentTypeId
-        const differentTypes = documents.filter((d) => d!.documentTypeId !== documentTypeId)
+        const differentTypes = documents.filter(
+          (d) => d!.documentTypeId !== documentTypeId,
+        )
         if (differentTypes.length > 0) {
-          return c.json({
-            error: 'All documents must be of the same document type',
-          }, 400)
+          return c.json(
+            {
+              error: 'All documents must be of the same document type',
+            },
+            400,
+          )
         }
 
         // Create batch and jobs
@@ -236,14 +256,22 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
         })
 
         // Start batch processing in background (don't await)
-        processBatchInBackground(batch.id, documentTypeId, documentIds, webhookUrl)
+        processBatchInBackground(
+          batch.id,
+          documentTypeId,
+          documentIds,
+          webhookUrl,
+        )
 
-        return c.json({
-          success: true,
-          batchId: batch.id,
-          total: documentIds.length,
-          jobs: jobs.map((j) => ({ id: j.id, documentId: j.documentId })),
-        }, 201)
+        return c.json(
+          {
+            success: true,
+            batchId: batch.id,
+            total: documentIds.length,
+            jobs: jobs.map((j) => ({ id: j.id, documentId: j.documentId })),
+          },
+          201,
+        )
       } catch (error) {
         console.error('Failed to create batch:', error)
         return c.json({ error: 'Failed to create batch' }, 500)
@@ -265,23 +293,26 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
           return c.json({ error: 'Batch not found' }, 404)
         }
 
-        return c.json({
-          id: result.batch.id,
-          status: result.batch.status,
-          total: parseInt(result.batch.total),
-          completed: parseInt(result.batch.completed || '0'),
-          failed: parseInt(result.batch.failed || '0'),
-          webhookUrl: result.batch.webhookUrl,
-          createdAt: result.batch.createdAt,
-          completedAt: result.batch.completedAt,
-          jobs: result.jobs.map((j) => ({
-            id: j.id,
-            documentId: j.documentId,
-            status: j.status,
-            error: j.error,
-            progress: j.progress,
-          })),
-        }, 200)
+        return c.json(
+          {
+            id: result.batch.id,
+            status: result.batch.status,
+            total: parseInt(result.batch.total),
+            completed: parseInt(result.batch.completed || '0'),
+            failed: parseInt(result.batch.failed || '0'),
+            webhookUrl: result.batch.webhookUrl,
+            createdAt: result.batch.createdAt,
+            completedAt: result.batch.completedAt,
+            jobs: result.jobs.map((j) => ({
+              id: j.id,
+              documentId: j.documentId,
+              status: j.status,
+              error: j.error,
+              progress: j.progress,
+            })),
+          },
+          200,
+        )
       } catch (error) {
         console.error('Failed to get batch:', error)
         return c.json({ error: 'Failed to get batch' }, 500)
@@ -316,7 +347,13 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
         // Emit WebSocket events for each cancelled job
         for (const job of result.cancelledJobs) {
           if (job.documentId) {
-            emitJobFailed(job.id, job.documentId, result.batch.documentTypeId, 'Batch cancelled', job.batchId)
+            emitJobFailed(
+              job.id,
+              job.documentId,
+              result.batch.documentTypeId,
+              'Batch cancelled',
+              job.batchId,
+            )
           }
         }
 
@@ -338,14 +375,17 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
         const { documentTypeId } = c.req.valid('query')
         const jobs = await getActiveJobsForDocumentType(documentTypeId)
 
-        return c.json({
-          jobs: jobs.map((j) => ({
-            id: j.id,
-            documentId: j.documentId,
-            batchId: j.batchId,
-            status: j.status,
-          })),
-        }, 200)
+        return c.json(
+          {
+            jobs: jobs.map((j) => ({
+              id: j.id,
+              documentId: j.documentId,
+              batchId: j.batchId,
+              status: j.status,
+            })),
+          },
+          200,
+        )
       } catch (error) {
         console.error('Failed to get active jobs:', error)
         return c.json({ error: 'Failed to get active jobs' }, 500)
@@ -381,17 +421,26 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
 
         // Emit WebSocket event for job cancellation (only if we have documentTypeId)
         if (documentTypeId) {
-          emitJobFailed(cancelled.id, cancelled.documentId!, documentTypeId, 'Job cancelled', cancelled.batchId)
+          emitJobFailed(
+            cancelled.id,
+            cancelled.documentId!,
+            documentTypeId,
+            'Job cancelled',
+            cancelled.batchId,
+          )
         }
 
-        return c.json({
-          success: true,
-          job: {
-            id: cancelled.id,
-            documentId: cancelled.documentId,
-            status: cancelled.status,
+        return c.json(
+          {
+            success: true,
+            job: {
+              id: cancelled.id,
+              documentId: cancelled.documentId,
+              status: cancelled.status,
+            },
           },
-        }, 200)
+          200,
+        )
       } catch (error) {
         console.error('Failed to cancel job:', error)
         return c.json({ error: 'Failed to cancel job' }, 500)
@@ -438,7 +487,13 @@ async function processBatchInBackground(
           // Job was cancelled - emit skipped event
           skipped++
           await updateBatchProgress(batchId, completed, failed + skipped)
-          emitBatchProgress(batchId, documentTypeId, completed, failed + skipped, documentIds.length)
+          emitBatchProgress(
+            batchId,
+            documentTypeId,
+            completed,
+            failed + skipped,
+            documentIds.length,
+          )
           return false
         }
 
@@ -458,7 +513,13 @@ async function processBatchInBackground(
             error: error.message,
             completedAt: new Date(),
           })
-          emitJobFailed(jobId, documentId, documentTypeId, error.message, batchId)
+          emitJobFailed(
+            jobId,
+            documentId,
+            documentTypeId,
+            error.message,
+            batchId,
+          )
         } else {
           completed++
           await updateJobStatus(jobId, 'completed', {
@@ -469,13 +530,25 @@ async function processBatchInBackground(
 
         // Update batch progress
         await updateBatchProgress(batchId, completed, failed + skipped)
-        emitBatchProgress(batchId, documentTypeId, completed, failed + skipped, total)
+        emitBatchProgress(
+          batchId,
+          documentTypeId,
+          completed,
+          failed + skipped,
+          total,
+        )
       },
     )
 
     // Mark batch as complete
     await updateBatchStatus(batchId, 'completed')
-    emitBatchCompleted(batchId, documentTypeId, completed, failed + skipped, documentIds.length)
+    emitBatchCompleted(
+      batchId,
+      documentTypeId,
+      completed,
+      failed + skipped,
+      documentIds.length,
+    )
 
     // Call webhook if configured
     if (webhookUrl) {
@@ -502,6 +575,10 @@ async function processBatchInBackground(
   } catch (error) {
     console.error('Batch processing failed:', error)
     await updateBatchStatus(batchId, 'failed')
-    emitBatchFailed(batchId, documentTypeId, error instanceof Error ? error.message : 'Unknown error')
+    emitBatchFailed(
+      batchId,
+      documentTypeId,
+      error instanceof Error ? error.message : 'Unknown error',
+    )
   }
 }

@@ -46,13 +46,17 @@ function getEncryptionKey(): Buffer | null {
   }
   // Validate hex format and length
   if (!/^[0-9a-fA-F]{64}$/.test(key)) {
-    console.warn('[Webhook] WEBHOOK_ENCRYPTION_KEY must be exactly 64 hex characters (32 bytes). Encryption disabled.')
+    console.warn(
+      '[Webhook] WEBHOOK_ENCRYPTION_KEY must be exactly 64 hex characters (32 bytes). Encryption disabled.',
+    )
     return null
   }
   const buffer = Buffer.from(key, 'hex')
   // Double-check buffer length (should be 32 bytes for AES-256)
   if (buffer.length !== 32) {
-    console.warn(`[Webhook] Encryption key produced invalid buffer length: ${buffer.length}. Expected 32.`)
+    console.warn(
+      `[Webhook] Encryption key produced invalid buffer length: ${buffer.length}. Expected 32.`,
+    )
     return null
   }
   return buffer
@@ -67,7 +71,9 @@ export function isEncryptionEnabled(): boolean {
 
 // Log encryption status on module load
 const encryptionEnabled = isEncryptionEnabled()
-console.log(`[Webhook] Encryption ${encryptionEnabled ? 'ENABLED' : 'DISABLED - sensitive headers stored in plaintext'}`)
+console.log(
+  `[Webhook] Encryption ${encryptionEnabled ? 'ENABLED' : 'DISABLED - sensitive headers stored in plaintext'}`,
+)
 
 /**
  * Encrypt a single value
@@ -109,7 +115,10 @@ export function decryptValue(encryptedValue: string): string {
 
   // Check if value looks like it was encrypted (should be hex and at least iv+tag length)
   const minLength = (IV_LENGTH + TAG_LENGTH) * 2
-  if (encryptedValue.length < minLength || !/^[0-9a-f]+$/i.test(encryptedValue)) {
+  if (
+    encryptedValue.length < minLength ||
+    !/^[0-9a-f]+$/i.test(encryptedValue)
+  ) {
     // Doesn't look encrypted - return as-is (migration case)
     return encryptedValue
   }
@@ -117,7 +126,10 @@ export function decryptValue(encryptedValue: string): string {
   try {
     // Extract iv, tag, and encrypted data
     const iv = Buffer.from(encryptedValue.slice(0, IV_LENGTH * 2), 'hex')
-    const tag = Buffer.from(encryptedValue.slice(IV_LENGTH * 2, (IV_LENGTH + TAG_LENGTH) * 2), 'hex')
+    const tag = Buffer.from(
+      encryptedValue.slice(IV_LENGTH * 2, (IV_LENGTH + TAG_LENGTH) * 2),
+      'hex',
+    )
     const encrypted = encryptedValue.slice((IV_LENGTH + TAG_LENGTH) * 2)
 
     const decipher = createDecipheriv(ALGORITHM, key, iv)
@@ -137,7 +149,9 @@ export function decryptValue(encryptedValue: string): string {
 /**
  * Encrypt all sensitive header values in a webhook config
  */
-export function encryptWebhookConfig(config: DocumentWebhookConfig): DocumentWebhookConfig {
+export function encryptWebhookConfig(
+  config: DocumentWebhookConfig,
+): DocumentWebhookConfig {
   if (!config || !config.events) return config
 
   const encryptedConfig: DocumentWebhookConfig = { events: {} }
@@ -162,7 +176,9 @@ export function encryptWebhookConfig(config: DocumentWebhookConfig): DocumentWeb
 /**
  * Decrypt all sensitive header values in a webhook config
  */
-export function decryptWebhookConfig(config: DocumentWebhookConfig): DocumentWebhookConfig {
+export function decryptWebhookConfig(
+  config: DocumentWebhookConfig,
+): DocumentWebhookConfig {
   if (!config || !config.events) return config
 
   const decryptedConfig: DocumentWebhookConfig = { events: {} }
@@ -187,7 +203,9 @@ export function decryptWebhookConfig(config: DocumentWebhookConfig): DocumentWeb
  * Create a safe version of webhook config for API responses
  * Replaces sensitive header values with [ENCRYPTED] placeholder
  */
-export function createSafeWebhookConfig(config: DocumentWebhookConfig): DocumentWebhookConfig {
+export function createSafeWebhookConfig(
+  config: DocumentWebhookConfig,
+): DocumentWebhookConfig {
   if (!config || !config.events) return config
 
   const safeConfig: DocumentWebhookConfig = { events: {} }
@@ -227,17 +245,24 @@ export function mergeWebhookConfigs(
 
   const mergedConfig: DocumentWebhookConfig = { events: {} }
 
-  for (const [eventName, eventConfig] of Object.entries(updatedFromFrontend.events)) {
+  for (const [eventName, eventConfig] of Object.entries(
+    updatedFromFrontend.events,
+  )) {
     if (!eventConfig) continue
 
-    const existingEventConfig = existingEncrypted.events[eventName as DocumentWebhookEventName]
+    const existingEventConfig =
+      existingEncrypted.events[eventName as DocumentWebhookEventName]
 
     mergedConfig.events[eventName as DocumentWebhookEventName] = {
       ...eventConfig,
       headers: eventConfig.headers.map((header, index) => {
         // If this is a sensitive field with placeholder and not being edited,
         // preserve the existing encrypted value
-        if (header.sensitive && header.value === PLACEHOLDER_VALUE && !header.isEditing) {
+        if (
+          header.sensitive &&
+          header.value === PLACEHOLDER_VALUE &&
+          !header.isEditing
+        ) {
           const existingHeader = existingEventConfig?.headers[index]
           if (existingHeader?.sensitive && existingHeader.value) {
             return {

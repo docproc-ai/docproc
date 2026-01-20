@@ -1,13 +1,22 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import { SchemaBuilder, type JsonSchema } from '@/components/schema-builder'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { SchemaEditorTab } from '@/components/editor-tabs'
 import Editor from '@/components/editor'
 import { ModelSelector } from '@/components/model-selector'
-import { WebhookConfigComponent, type WebhookConfig } from '@/components/webhook-config'
+import {
+  WebhookConfigComponent,
+  type WebhookConfig,
+} from '@/components/webhook-config'
 
 interface DocumentTypeFormProps {
   initialData?: {
@@ -82,7 +91,16 @@ export function DocumentTypeForm({
         isValid,
       })
     }
-  }, [name, validationInstructions, modelName, slugPattern, schema, webhookConfig, isValid, onFormDataChange])
+  }, [
+    name,
+    validationInstructions,
+    modelName,
+    slugPattern,
+    schema,
+    webhookConfig,
+    isValid,
+    onFormDataChange,
+  ])
 
   const handleSchemaTextChange = useCallback((text: string | undefined) => {
     setSchemaText(text || '')
@@ -97,7 +115,9 @@ export function DocumentTypeForm({
       <Card>
         <CardHeader>
           <CardTitle>General Information</CardTitle>
-          <CardDescription>Give your document type a name and configure AI model.</CardDescription>
+          <CardDescription>
+            Give your document type a name and configure AI model.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -117,11 +137,14 @@ export function DocumentTypeForm({
               placeholder="Select a model or use default..."
             />
             <p className="text-xs text-muted-foreground">
-              Leave blank to use the default model. You can also type a custom model ID.
+              Leave blank to use the default model. You can also type a custom
+              model ID.
             </p>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="slugPattern">Document Slug Pattern (optional)</Label>
+            <Label htmlFor="slugPattern">
+              Document Slug Pattern (optional)
+            </Label>
             <Input
               id="slugPattern"
               value={slugPattern}
@@ -130,9 +153,11 @@ export function DocumentTypeForm({
               className="font-mono text-sm"
             />
             <p className="text-xs text-muted-foreground">
-              Pattern for generating document slugs from extracted data.
-              Use <code className="bg-muted px-1 rounded">{'{field_name}'}</code> to reference schema fields,
-              or <code className="bg-muted px-1 rounded">{'{id()}'}</code> for a unique ID.
+              Pattern for generating document slugs from extracted data. Use{' '}
+              <code className="bg-muted px-1 rounded">{'{field_name}'}</code> to
+              reference schema fields, or{' '}
+              <code className="bg-muted px-1 rounded">{'{id()}'}</code> for a
+              unique ID.
             </p>
           </div>
         </CardContent>
@@ -142,16 +167,19 @@ export function DocumentTypeForm({
         <CardHeader>
           <CardTitle>Validation Instructions</CardTitle>
           <CardDescription>
-            Define validation criteria to verify documents match this type before processing. This
-            helps avoid wasting tokens on incorrect document types.
+            Define validation criteria to verify documents match this type
+            before processing. This helps avoid wasting tokens on incorrect
+            document types.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            <Label htmlFor="validationInstructions">Instructions (optional)</Label>
+            <Label htmlFor="validationInstructions">
+              Instructions (optional)
+            </Label>
             <p className="text-muted-foreground mb-2 text-sm">
-              Describe what the document should contain. If validation fails, processing will be
-              skipped.
+              Describe what the document should contain. If validation fails,
+              processing will be skipped.
             </p>
             <div className="h-[300px]">
               <Editor
@@ -168,8 +196,8 @@ export function DocumentTypeForm({
         <CardHeader>
           <CardTitle>Schema Definition</CardTitle>
           <CardDescription>
-            Define the structure of the data you want to extract. Use the builder for a visual
-            experience or edit the JSON directly.
+            Define the structure of the data you want to extract. Use the
+            builder for a visual experience or edit the JSON directly.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -180,10 +208,16 @@ export function DocumentTypeForm({
             </TabsList>
             <div className="flex-grow overflow-auto pt-4">
               <TabsContent value="builder">
-                <SchemaBuilder schema={schema} onChange={handleSchemaBuilderChange} />
+                <SchemaBuilder
+                  schema={schema}
+                  onChange={handleSchemaBuilderChange}
+                />
               </TabsContent>
               <TabsContent value="schema" className="h-full">
-                <SchemaEditorTab value={schemaText} onChange={handleSchemaTextChange} />
+                <SchemaEditorTab
+                  value={schemaText}
+                  onChange={handleSchemaTextChange}
+                />
               </TabsContent>
             </div>
           </Tabs>
@@ -194,11 +228,15 @@ export function DocumentTypeForm({
         <CardHeader>
           <CardTitle>Integrations</CardTitle>
           <CardDescription>
-            Configure webhooks to notify external services when documents are processed.
+            Configure webhooks to notify external services when documents are
+            processed.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <WebhookConfigComponent config={webhookConfig} onChange={setWebhookConfig} />
+          <WebhookConfigComponent
+            config={webhookConfig}
+            onChange={setWebhookConfig}
+          />
         </CardContent>
       </Card>
     </div>

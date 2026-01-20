@@ -51,9 +51,16 @@ import {
 import { useJobEvents } from '@/lib/websocket'
 
 // Status icon config
-const statusConfig: Record<string, { icon: LucideIcon; className: string; title: string }> = {
+const statusConfig: Record<
+  string,
+  { icon: LucideIcon; className: string; title: string }
+> = {
   pending: { icon: File, className: 'text-muted-foreground', title: 'Pending' },
-  processing: { icon: Loader2, className: 'text-blue-500 animate-spin', title: 'Processing' },
+  processing: {
+    icon: Loader2,
+    className: 'text-blue-500 animate-spin',
+    title: 'Processing',
+  },
   processed: { icon: FileJson, className: 'text-blue-500', title: 'Processed' },
   approved: { icon: FileCheck, className: 'text-green-500', title: 'Approved' },
   rejected: { icon: FileX, className: 'text-red-500', title: 'Rejected' },
@@ -101,7 +108,9 @@ export function DocumentQueue({
   const [checkedDocIds, setCheckedDocIds] = useState<Set<string>>(new Set())
   const [isDragOver, setIsDragOver] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const [activeJobsMap, setActiveJobsMap] = useState<Map<string, { jobId: string; batchId?: string }>>(new Map())
+  const [activeJobsMap, setActiveJobsMap] = useState<
+    Map<string, { jobId: string; batchId?: string }>
+  >(new Map())
   const documentRefs = useRef<Map<string, HTMLDivElement>>(new Map())
   const uploadInputRef = useRef<HTMLInputElement>(null)
 
@@ -145,7 +154,11 @@ export function DocumentQueue({
   // Sync activeJobsMap with server state
   useEffect(() => {
     if (activeJobsData?.jobs) {
-      const serverJobs = activeJobsData.jobs as Array<{ id: string; documentId: string; batchId?: string }>
+      const serverJobs = activeJobsData.jobs as Array<{
+        id: string
+        documentId: string
+        batchId?: string
+      }>
       // Build new map from server data - this removes completed jobs automatically
       const newMap = new Map<string, { jobId: string; batchId?: string }>()
       for (const job of serverJobs) {
@@ -163,10 +176,16 @@ export function DocumentQueue({
       if (event.type === 'job:started' && event.jobId) {
         setActiveJobsMap((prev) => {
           const next = new Map(prev)
-          next.set(event.documentId!, { jobId: event.jobId!, batchId: event.batchId })
+          next.set(event.documentId!, {
+            jobId: event.jobId!,
+            batchId: event.batchId,
+          })
           return next
         })
-      } else if (event.type === 'job:completed' || event.type === 'job:failed') {
+      } else if (
+        event.type === 'job:completed' ||
+        event.type === 'job:failed'
+      ) {
         setActiveJobsMap((prev) => {
           const next = new Map(prev)
           next.delete(event.documentId!)
@@ -174,7 +193,7 @@ export function DocumentQueue({
         })
       }
     }, []),
-    [documentTypeId]
+    [documentTypeId],
   )
 
   // Scroll to selected document
@@ -207,10 +226,13 @@ export function DocumentQueue({
         formData.append('files', file)
       }
       try {
-        const res = await fetch(`/api/document-types/${documentTypeSlug}/upload`, {
-          method: 'POST',
-          body: formData,
-        })
+        const res = await fetch(
+          `/api/document-types/${documentTypeSlug}/upload`,
+          {
+            method: 'POST',
+            body: formData,
+          },
+        )
         if (res.ok) {
           refetch()
         }
@@ -218,7 +240,7 @@ export function DocumentQueue({
         console.error('Upload failed:', err)
       }
     },
-    [documentTypeSlug, refetch]
+    [documentTypeSlug, refetch],
   )
 
   const handleToggleCheck = useCallback((docId: string, checked: boolean) => {
@@ -269,7 +291,10 @@ export function DocumentQueue({
       if (result?.batchId && result?.jobs) {
         setActiveJobsMap((prev) => {
           const next = new Map(prev)
-          for (const job of result.jobs as Array<{ id: string; documentId: string }>) {
+          for (const job of result.jobs as Array<{
+            id: string
+            documentId: string
+          }>) {
             next.set(job.documentId, { jobId: job.id, batchId: result.batchId })
           }
           return next
@@ -282,14 +307,17 @@ export function DocumentQueue({
     }
   }, [checkedDocIds, documentTypeId, createBatch])
 
-  const handleBulkSetStatus = useCallback(async (status: 'pending' | 'processed' | 'approved' | 'rejected') => {
-    if (checkedDocIds.size === 0) return
+  const handleBulkSetStatus = useCallback(
+    async (status: 'pending' | 'processed' | 'approved' | 'rejected') => {
+      if (checkedDocIds.size === 0) return
 
-    for (const id of checkedDocIds) {
-      await updateDocument.mutateAsync({ id, data: { status } })
-    }
-    setCheckedDocIds(new Set())
-  }, [checkedDocIds, updateDocument])
+      for (const id of checkedDocIds) {
+        await updateDocument.mutateAsync({ id, data: { status } })
+      }
+      setCheckedDocIds(new Set())
+    },
+    [checkedDocIds, updateDocument],
+  )
 
   const handleCancelAllProcessing = useCallback(async () => {
     const batchIds = new Set<string>()
@@ -304,18 +332,21 @@ export function DocumentQueue({
     setActiveJobsMap(new Map())
   }, [activeJobsMap, cancelBatch])
 
-  const handleCancelJob = useCallback(async (documentId: string) => {
-    const job = activeJobsMap.get(documentId)
-    if (!job) return
+  const handleCancelJob = useCallback(
+    async (documentId: string) => {
+      const job = activeJobsMap.get(documentId)
+      if (!job) return
 
-    await cancelJob.mutateAsync(job.jobId)
+      await cancelJob.mutateAsync(job.jobId)
 
-    setActiveJobsMap((prev) => {
-      const next = new Map(prev)
-      next.delete(documentId)
-      return next
-    })
-  }, [activeJobsMap, cancelJob])
+      setActiveJobsMap((prev) => {
+        const next = new Map(prev)
+        next.delete(documentId)
+        return next
+      })
+    },
+    [activeJobsMap, cancelJob],
+  )
 
   // ============================================
   // Render
@@ -334,19 +365,39 @@ export function DocumentQueue({
           size="sm"
           className="w-full"
         >
-          <ToggleGroupItem value="all" className="flex-1" aria-label="All documents">
+          <ToggleGroupItem
+            value="all"
+            className="flex-1"
+            aria-label="All documents"
+          >
             <Files className="h-4 w-4" />
           </ToggleGroupItem>
-          <ToggleGroupItem value="pending" className="flex-1" aria-label="Pending">
+          <ToggleGroupItem
+            value="pending"
+            className="flex-1"
+            aria-label="Pending"
+          >
             <StatusIcon status="pending" size={14} />
           </ToggleGroupItem>
-          <ToggleGroupItem value="processed" className="flex-1" aria-label="Processed">
+          <ToggleGroupItem
+            value="processed"
+            className="flex-1"
+            aria-label="Processed"
+          >
             <StatusIcon status="processed" size={14} />
           </ToggleGroupItem>
-          <ToggleGroupItem value="approved" className="flex-1" aria-label="Approved">
+          <ToggleGroupItem
+            value="approved"
+            className="flex-1"
+            aria-label="Approved"
+          >
             <StatusIcon status="approved" size={14} />
           </ToggleGroupItem>
-          <ToggleGroupItem value="rejected" className="flex-1" aria-label="Rejected">
+          <ToggleGroupItem
+            value="rejected"
+            className="flex-1"
+            aria-label="Rejected"
+          >
             <StatusIcon status="rejected" size={14} />
           </ToggleGroupItem>
         </ToggleGroup>
@@ -355,15 +406,21 @@ export function DocumentQueue({
       {/* Search bar with checkbox and actions */}
       <div className="px-3 py-2 border-b flex items-center gap-2">
         <Checkbox
-          checked={checkedDocIds.size === documents.length && documents.length > 0}
+          checked={
+            checkedDocIds.size === documents.length && documents.length > 0
+          }
           onCheckedChange={() => handleSelectAll()}
         />
         {checkedDocIds.size > 0 && (
-          <span className="text-xs text-muted-foreground tabular-nums">{checkedDocIds.size}</span>
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {checkedDocIds.size}
+          </span>
         )}
         {/* Processing indicator */}
         {(() => {
-          const processingCount = documents.filter(d => processingDocIds.has(d.id)).length
+          const processingCount = documents.filter((d) =>
+            processingDocIds.has(d.id),
+          ).length
           return processingCount > 0 ? (
             <button
               type="button"
@@ -386,56 +443,70 @@ export function DocumentQueue({
           />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" className="h-8 w-8 shrink-0">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 shrink-0"
+              >
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            {checkedDocIds.size === 0 ? (
-              // Nothing selected - show upload option only
-              <DropdownMenuItem onClick={() => uploadInputRef.current?.click()}>
-                <Upload className="mr-2 h-4 w-4" />
-                Upload Files
-              </DropdownMenuItem>
-            ) : (
-              // Documents selected - show actions
-              <>
-                <div className="px-2 py-1.5 text-sm font-medium">
-                  {checkedDocIds.size} selected
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleBulkProcess}>
-                  <Settings2 className="mr-2 h-4 w-4" />
-                  Process
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => handleBulkSetStatus('pending')}>
-                  <File className="mr-2 h-4 w-4 text-muted-foreground" />
-                  Mark as Pending
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleBulkSetStatus('processed')}>
-                  <FileJson className="mr-2 h-4 w-4 text-blue-500" />
-                  Mark as Processed
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleBulkSetStatus('approved')}>
-                  <FileCheck className="mr-2 h-4 w-4 text-green-500" />
-                  Mark as Approved
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleBulkSetStatus('rejected')}>
-                  <FileX className="mr-2 h-4 w-4 text-red-500" />
-                  Mark as Rejected
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
+            <DropdownMenuContent align="end" className="w-48">
+              {checkedDocIds.size === 0 ? (
+                // Nothing selected - show upload option only
                 <DropdownMenuItem
-                  onClick={handleBulkDelete}
-                  className="text-destructive focus:text-destructive"
+                  onClick={() => uploadInputRef.current?.click()}
                 >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload Files
                 </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
+              ) : (
+                // Documents selected - show actions
+                <>
+                  <div className="px-2 py-1.5 text-sm font-medium">
+                    {checkedDocIds.size} selected
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleBulkProcess}>
+                    <Settings2 className="mr-2 h-4 w-4" />
+                    Process
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => handleBulkSetStatus('pending')}
+                  >
+                    <File className="mr-2 h-4 w-4 text-muted-foreground" />
+                    Mark as Pending
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleBulkSetStatus('processed')}
+                  >
+                    <FileJson className="mr-2 h-4 w-4 text-blue-500" />
+                    Mark as Processed
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleBulkSetStatus('approved')}
+                  >
+                    <FileCheck className="mr-2 h-4 w-4 text-green-500" />
+                    Mark as Approved
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleBulkSetStatus('rejected')}
+                  >
+                    <FileX className="mr-2 h-4 w-4 text-red-500" />
+                    Mark as Rejected
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={handleBulkDelete}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
           </DropdownMenu>
         </ButtonGroup>
       </div>
@@ -465,30 +536,32 @@ export function DocumentQueue({
         {/* Drag overlay */}
         {isDragOver && (
           <div className="absolute inset-0 flex items-center justify-center bg-primary/10 border-2 border-dashed border-primary rounded-lg m-2 pointer-events-none z-10">
-            <span className="text-sm font-medium text-primary">Drop files to upload</span>
+            <span className="text-sm font-medium text-primary">
+              Drop files to upload
+            </span>
           </div>
         )}
-        {documents.length === 0 ? null : (
-          documents.map((doc) => (
-            <DocumentListItem
-              key={doc.id}
-              doc={doc}
-              isSelected={selectedDocId === doc.id}
-              isChecked={checkedDocIds.has(doc.id)}
-              isProcessing={processingDocIds.has(doc.id)}
-              onSelect={() => onDocumentSelect(doc.id)}
-              onCheck={(checked) => handleToggleCheck(doc.id, checked)}
-              onCancelJob={() => handleCancelJob(doc.id)}
-              registerRef={(id, el) => {
-                if (el) {
-                  documentRefs.current.set(id, el)
-                } else {
-                  documentRefs.current.delete(id)
-                }
-              }}
-            />
-          ))
-        )}
+        {documents.length === 0
+          ? null
+          : documents.map((doc) => (
+              <DocumentListItem
+                key={doc.id}
+                doc={doc}
+                isSelected={selectedDocId === doc.id}
+                isChecked={checkedDocIds.has(doc.id)}
+                isProcessing={processingDocIds.has(doc.id)}
+                onSelect={() => onDocumentSelect(doc.id)}
+                onCheck={(checked) => handleToggleCheck(doc.id, checked)}
+                onCancelJob={() => handleCancelJob(doc.id)}
+                registerRef={(id, el) => {
+                  if (el) {
+                    documentRefs.current.set(id, el)
+                  } else {
+                    documentRefs.current.delete(id)
+                  }
+                }}
+              />
+            ))}
       </div>
 
       {/* Pagination */}
@@ -507,7 +580,10 @@ export function DocumentQueue({
         <button
           type="button"
           onClick={() => onPageChange(urlPage + 1)}
-          disabled={!documentsData?.pagination || urlPage >= documentsData.pagination.totalPages}
+          disabled={
+            !documentsData?.pagination ||
+            urlPage >= documentsData.pagination.totalPages
+          }
           className="px-2 py-1 rounded hover:bg-muted disabled:opacity-50"
         >
           <ChevronRight className="h-4 w-4" />
@@ -535,7 +611,8 @@ export function DocumentQueue({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Documents</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete {checkedDocIds.size} document(s)? This action cannot be undone.
+              Are you sure you want to delete {checkedDocIds.size} document(s)?
+              This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -555,13 +632,19 @@ export function DocumentQueue({
 
 // Export a hook to check if a document is processing (for parent components)
 export function useDocumentProcessingState(documentTypeId: string) {
-  const [activeJobsMap, setActiveJobsMap] = useState<Map<string, { jobId: string; batchId?: string }>>(new Map())
+  const [activeJobsMap, setActiveJobsMap] = useState<
+    Map<string, { jobId: string; batchId?: string }>
+  >(new Map())
   const { data: activeJobsData } = useActiveJobs(documentTypeId)
 
   // Sync with server state
   useEffect(() => {
     if (activeJobsData?.jobs) {
-      const serverJobs = activeJobsData.jobs as Array<{ id: string; documentId: string; batchId?: string }>
+      const serverJobs = activeJobsData.jobs as Array<{
+        id: string
+        documentId: string
+        batchId?: string
+      }>
       // Build new map from server data - this removes completed jobs automatically
       const newMap = new Map<string, { jobId: string; batchId?: string }>()
       for (const job of serverJobs) {
@@ -579,10 +662,16 @@ export function useDocumentProcessingState(documentTypeId: string) {
       if (event.type === 'job:started' && event.jobId) {
         setActiveJobsMap((prev) => {
           const next = new Map(prev)
-          next.set(event.documentId!, { jobId: event.jobId!, batchId: event.batchId })
+          next.set(event.documentId!, {
+            jobId: event.jobId!,
+            batchId: event.batchId,
+          })
           return next
         })
-      } else if (event.type === 'job:completed' || event.type === 'job:failed') {
+      } else if (
+        event.type === 'job:completed' ||
+        event.type === 'job:failed'
+      ) {
         setActiveJobsMap((prev) => {
           const next = new Map(prev)
           next.delete(event.documentId!)
@@ -590,10 +679,13 @@ export function useDocumentProcessingState(documentTypeId: string) {
         })
       }
     }, []),
-    [documentTypeId]
+    [documentTypeId],
   )
 
-  const isProcessing = useCallback((docId: string) => activeJobsMap.has(docId), [activeJobsMap])
+  const isProcessing = useCallback(
+    (docId: string) => activeJobsMap.has(docId),
+    [activeJobsMap],
+  )
   const processingDocIds = new Set(activeJobsMap.keys())
 
   return { isProcessing, processingDocIds, activeJobsMap }

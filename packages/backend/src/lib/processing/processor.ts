@@ -35,14 +35,18 @@ function buildMessageContent(
   fileBuffer: Buffer,
   filename: string,
   schema: Record<string, unknown>,
-): Array<{ type: 'text'; text: string } | { type: 'image_url'; imageUrl: { url: string } }> {
+): Array<
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; imageUrl: { url: string } }
+> {
   const extension = getFileExtension(filename)
   const mimeType = getMimeType(extension)
   const base64Data = fileBuffer.toString('base64')
   const dataUrl = `data:${mimeType};base64,${base64Data}`
 
   const content: Array<
-    { type: 'text'; text: string } | { type: 'image_url'; imageUrl: { url: string } }
+    | { type: 'text'; text: string }
+    | { type: 'image_url'; imageUrl: { url: string } }
   > = [
     {
       type: 'text',
@@ -116,7 +120,8 @@ Output ONLY valid JSON. No explanatory text.`,
     })
 
     const messageContent = result.choices[0]?.message?.content
-    const responseText = typeof messageContent === 'string' ? messageContent : ''
+    const responseText =
+      typeof messageContent === 'string' ? messageContent : ''
     const repairedJson = jsonrepair(responseText.trim())
     const validationResult = JSON.parse(repairedJson) as ValidationResult
 
@@ -124,7 +129,10 @@ Output ONLY valid JSON. No explanatory text.`,
   } catch (error) {
     console.error('Validation failed:', error)
     // On validation error, allow processing to continue
-    return { isValid: true, reason: 'Validation check failed, proceeding with processing' }
+    return {
+      isValid: true,
+      reason: 'Validation check failed, proceeding with processing',
+    }
   }
 }
 
@@ -169,7 +177,8 @@ export async function processDocument(
       // Save rejection to database
       await updateDocument(documentId, {
         status: 'rejected',
-        rejectionReason: validation.reason || 'Document does not match expected type',
+        rejectionReason:
+          validation.reason || 'Document does not match expected type',
       })
 
       throw new Error(
@@ -179,7 +188,11 @@ export async function processDocument(
   }
 
   // Build message content
-  const userMessageContent = buildMessageContent(fileBuffer, doc.filename, schema)
+  const userMessageContent = buildMessageContent(
+    fileBuffer,
+    doc.filename,
+    schema,
+  )
 
   // Call OpenRouter API
   const result = await openrouter.chat.send({
@@ -199,14 +212,19 @@ export async function processDocument(
 
   // Parse the response
   const responseContent = result.choices[0]?.message?.content
-  const responseText = typeof responseContent === 'string' ? responseContent : ''
+  const responseText =
+    typeof responseContent === 'string' ? responseContent : ''
 
   let extractedData: Record<string, unknown>
   try {
     const repairedJson = jsonrepair(responseText.trim())
     extractedData = JSON.parse(repairedJson)
   } catch (parseError) {
-    console.error('Failed to parse JSON response for document:', documentId, parseError)
+    console.error(
+      'Failed to parse JSON response for document:',
+      documentId,
+      parseError,
+    )
     console.error('Raw response text:', responseText)
     throw new Error('Model returned invalid JSON')
   }
@@ -221,7 +239,10 @@ export async function processDocument(
 export async function processAndSaveDocument(
   documentId: string,
   options: ProcessingOptions = {},
-): Promise<{ data: Record<string, unknown>; document: Awaited<ReturnType<typeof getDocument>> }> {
+): Promise<{
+  data: Record<string, unknown>
+  document: Awaited<ReturnType<typeof getDocument>>
+}> {
   // Get document type to capture schema snapshot
   const doc = await getDocument(documentId)
   if (!doc) {
@@ -266,7 +287,11 @@ export async function processAndSaveDocument(
 export async function* processDocumentStreaming(
   documentId: string,
   options: ProcessingOptions = {},
-): AsyncGenerator<{ type: 'partial' | 'complete'; data: Record<string, unknown> }, void, unknown> {
+): AsyncGenerator<
+  { type: 'partial' | 'complete'; data: Record<string, unknown> },
+  void,
+  unknown
+> {
   const { skipValidation = false, overrideModel } = options
 
   // Get the document
@@ -299,7 +324,8 @@ export async function* processDocumentStreaming(
     if (!validation.isValid) {
       await updateDocument(documentId, {
         status: 'rejected',
-        rejectionReason: validation.reason || 'Document does not match expected type',
+        rejectionReason:
+          validation.reason || 'Document does not match expected type',
       })
 
       throw new Error(
@@ -373,7 +399,9 @@ export async function prepareDocumentForStreaming(
   systemPrompt: string
   messages: Array<{
     role: 'user'
-    content: Array<{ type: 'text'; text: string } | { type: 'image'; image: string }>
+    content: Array<
+      { type: 'text'; text: string } | { type: 'image'; image: string }
+    >
   }>
   documentId: string
   updateDocumentOnComplete: (data: Record<string, unknown>) => Promise<void>
@@ -410,7 +438,8 @@ export async function prepareDocumentForStreaming(
     if (!validation.isValid) {
       await updateDocument(documentId, {
         status: 'rejected',
-        rejectionReason: validation.reason || 'Document does not match expected type',
+        rejectionReason:
+          validation.reason || 'Document does not match expected type',
       })
 
       throw new Error(

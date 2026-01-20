@@ -13,7 +13,8 @@ const SchemaEditorTabComponent = ({ value, onChange }: EditorTabProps) => {
       <div>
         <Label className="text-lg font-semibold">JSON Schema</Label>
         <p className="text-muted-foreground mb-4 text-sm">
-          Edit the JSON schema directly. Changes will update the form and builder.
+          Edit the JSON schema directly. Changes will update the form and
+          builder.
         </p>
       </div>
       <div className="h-[500px]">

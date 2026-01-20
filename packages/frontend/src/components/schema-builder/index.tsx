@@ -15,7 +15,11 @@ import { ArrayFieldBuilder } from './array-field-builder'
 import { ObjectFieldBuilder } from './object-field-builder'
 import type { JsonSchema, SchemaBuilderProps } from './types'
 
-export function SchemaBuilder({ schema, onChange, path = '' }: SchemaBuilderProps) {
+export function SchemaBuilder({
+  schema,
+  onChange,
+  path = '',
+}: SchemaBuilderProps) {
   const updateSchema = (updates: Partial<JsonSchema>) => {
     const newSchema = { ...schema }
 
@@ -36,7 +40,11 @@ export function SchemaBuilder({ schema, onChange, path = '' }: SchemaBuilderProp
         <Field>
           <FieldLabel htmlFor="type">Type</FieldLabel>
           <Select
-            value={Array.isArray(schema.type) ? schema.type[0] : String(schema.type || 'object')}
+            value={
+              Array.isArray(schema.type)
+                ? schema.type[0]
+                : String(schema.type || 'object')
+            }
             onValueChange={(type) => {
               const updates: Partial<JsonSchema> = { type }
               if (type === 'object' && !schema.properties) {
@@ -66,7 +74,9 @@ export function SchemaBuilder({ schema, onChange, path = '' }: SchemaBuilderProp
           <Input
             id="title"
             value={schema.title ?? ''}
-            onChange={(e) => updateSchema({ title: e.target.value || undefined })}
+            onChange={(e) =>
+              updateSchema({ title: e.target.value || undefined })
+            }
             placeholder="Field title"
           />
         </Field>
@@ -77,14 +87,24 @@ export function SchemaBuilder({ schema, onChange, path = '' }: SchemaBuilderProp
         <Input
           id="description"
           value={schema.description ?? ''}
-          onChange={(e) => updateSchema({ description: e.target.value || undefined })}
+          onChange={(e) =>
+            updateSchema({ description: e.target.value || undefined })
+          }
           placeholder="Field description"
         />
       </Field>
 
-      <StringFieldBuilder schema={schema} onChange={updateSchema} fieldId={path || 'root'} />
+      <StringFieldBuilder
+        schema={schema}
+        onChange={updateSchema}
+        fieldId={path || 'root'}
+      />
 
-      <NumberFieldBuilder schema={schema} onChange={updateSchema} fieldId={path || 'root'} />
+      <NumberFieldBuilder
+        schema={schema}
+        onChange={updateSchema}
+        fieldId={path || 'root'}
+      />
 
       <ObjectFieldBuilder schema={schema} onChange={updateSchema}>
         {(key, propertySchema, propertyId) => (
@@ -94,7 +114,9 @@ export function SchemaBuilder({ schema, onChange, path = '' }: SchemaBuilderProp
               onChange={(updates) => {
                 const updatedProperty = { ...propertySchema }
 
-                for (const [updateKey, updateValue] of Object.entries(updates)) {
+                for (const [updateKey, updateValue] of Object.entries(
+                  updates,
+                )) {
                   if (updateValue === undefined) {
                     delete updatedProperty[updateKey as keyof JsonSchema]
                   } else {
@@ -116,7 +138,9 @@ export function SchemaBuilder({ schema, onChange, path = '' }: SchemaBuilderProp
               onChange={(updates) => {
                 const updatedProperty = { ...propertySchema }
 
-                for (const [updateKey, updateValue] of Object.entries(updates)) {
+                for (const [updateKey, updateValue] of Object.entries(
+                  updates,
+                )) {
                   if (updateValue === undefined) {
                     delete updatedProperty[updateKey as keyof JsonSchema]
                   } else {
@@ -200,7 +224,9 @@ export function SchemaBuilder({ schema, onChange, path = '' }: SchemaBuilderProp
             {propertySchema.type === 'array' && (
               <div className="border-border rounded-lg border p-4">
                 <div className="mb-4 space-y-4">
-                  <FieldLabel className="text-sm font-semibold">Array Items Schema</FieldLabel>
+                  <FieldLabel className="text-sm font-semibold">
+                    Array Items Schema
+                  </FieldLabel>
                   <div className="grid grid-cols-2 gap-4">
                     <Field>
                       <FieldLabel>Items Type</FieldLabel>
@@ -214,7 +240,10 @@ export function SchemaBuilder({ schema, onChange, path = '' }: SchemaBuilderProp
                               items: {
                                 ...propertySchema.items,
                                 type,
-                                ...(type === 'object' && !propertySchema.items?.properties ? { properties: {} } : {}),
+                                ...(type === 'object' &&
+                                !propertySchema.items?.properties
+                                  ? { properties: {} }
+                                  : {}),
                               },
                             },
                           }
@@ -276,7 +305,10 @@ export function SchemaBuilder({ schema, onChange, path = '' }: SchemaBuilderProp
                             updateSchema({ properties: newProperties })
                           }}
                         />
-                        <Label htmlFor={`pivoted-${key}`} className="cursor-pointer">
+                        <Label
+                          htmlFor={`pivoted-${key}`}
+                          className="cursor-pointer"
+                        >
                           Default to pivoted view
                         </Label>
                       </div>
@@ -301,8 +333,14 @@ export function SchemaBuilder({ schema, onChange, path = '' }: SchemaBuilderProp
                           items: {
                             ...propertySchema.items,
                             type: 'object',
-                            properties: updates.properties || propertySchema.items?.properties || {},
-                            required: updates.required || propertySchema.items?.required || [],
+                            properties:
+                              updates.properties ||
+                              propertySchema.items?.properties ||
+                              {},
+                            required:
+                              updates.required ||
+                              propertySchema.items?.required ||
+                              [],
                           },
                         },
                       }
@@ -315,11 +353,17 @@ export function SchemaBuilder({ schema, onChange, path = '' }: SchemaBuilderProp
                           schema={propSchema}
                           onChange={(updates) => {
                             const updatedProperty = { ...propSchema }
-                            for (const [updateKey, updateValue] of Object.entries(updates)) {
+                            for (const [
+                              updateKey,
+                              updateValue,
+                            ] of Object.entries(updates)) {
                               if (updateValue === undefined) {
-                                delete updatedProperty[updateKey as keyof JsonSchema]
+                                delete updatedProperty[
+                                  updateKey as keyof JsonSchema
+                                ]
                               } else {
-                                ;(updatedProperty as any)[updateKey] = updateValue
+                                ;(updatedProperty as any)[updateKey] =
+                                  updateValue
                               }
                             }
                             const newItemProperties = {
@@ -344,11 +388,17 @@ export function SchemaBuilder({ schema, onChange, path = '' }: SchemaBuilderProp
                           schema={propSchema}
                           onChange={(updates) => {
                             const updatedProperty = { ...propSchema }
-                            for (const [updateKey, updateValue] of Object.entries(updates)) {
+                            for (const [
+                              updateKey,
+                              updateValue,
+                            ] of Object.entries(updates)) {
                               if (updateValue === undefined) {
-                                delete updatedProperty[updateKey as keyof JsonSchema]
+                                delete updatedProperty[
+                                  updateKey as keyof JsonSchema
+                                ]
                               } else {
-                                ;(updatedProperty as any)[updateKey] = updateValue
+                                ;(updatedProperty as any)[updateKey] =
+                                  updateValue
                               }
                             }
                             const newItemProperties = {
@@ -386,8 +436,11 @@ export function SchemaBuilder({ schema, onChange, path = '' }: SchemaBuilderProp
             title: schema.items?.title,
             description: schema.items?.description,
             properties:
-              schema.items?.type === 'object' ? schema.items?.properties || {} : undefined,
-            items: schema.items?.type === 'array' ? schema.items?.items : undefined,
+              schema.items?.type === 'object'
+                ? schema.items?.properties || {}
+                : undefined,
+            items:
+              schema.items?.type === 'array' ? schema.items?.items : undefined,
             required: schema.items?.required || [],
             minimum: schema.items?.minimum,
             maximum: schema.items?.maximum,

@@ -3,7 +3,11 @@ import { useNavigate, useParams, useRouter } from '@tanstack/react-router'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { useDocumentType, useUpdateDocumentType, useDeleteDocumentType } from '@/lib/queries'
+import {
+  useDocumentType,
+  useUpdateDocumentType,
+  useDeleteDocumentType,
+} from '@/lib/queries'
 import { DocumentTypeForm } from '@/components/document-type-form'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { JsonSchema } from '@/components/schema-builder'
@@ -40,12 +44,26 @@ export default function DocumentTypeSettingsPage() {
   useEffect(() => {
     if (docType && formData) {
       const hasNameChange = formData.name !== docType.name
-      const hasInstructionsChange = (formData.validationInstructions || '') !== (docType.validationInstructions || '')
-      const hasModelChange = (formData.modelName || '') !== (docType.modelName || '')
-      const hasSlugPatternChange = (formData.slugPattern || '') !== (docType.slugPattern || '')
-      const hasSchemaChange = JSON.stringify(formData.schema) !== JSON.stringify(docType.schema)
-      const hasWebhookChange = JSON.stringify(formData.webhookConfig) !== JSON.stringify(docType.webhookConfig || null)
-      setHasChanges(hasNameChange || hasInstructionsChange || hasModelChange || hasSlugPatternChange || hasSchemaChange || hasWebhookChange)
+      const hasInstructionsChange =
+        (formData.validationInstructions || '') !==
+        (docType.validationInstructions || '')
+      const hasModelChange =
+        (formData.modelName || '') !== (docType.modelName || '')
+      const hasSlugPatternChange =
+        (formData.slugPattern || '') !== (docType.slugPattern || '')
+      const hasSchemaChange =
+        JSON.stringify(formData.schema) !== JSON.stringify(docType.schema)
+      const hasWebhookChange =
+        JSON.stringify(formData.webhookConfig) !==
+        JSON.stringify(docType.webhookConfig || null)
+      setHasChanges(
+        hasNameChange ||
+          hasInstructionsChange ||
+          hasModelChange ||
+          hasSlugPatternChange ||
+          hasSchemaChange ||
+          hasWebhookChange,
+      )
     }
   }, [docType, formData])
 
@@ -66,18 +84,27 @@ export default function DocumentTypeSettingsPage() {
           validationInstructions: formData.validationInstructions || null,
           modelName: formData.modelName || null,
           slugPattern: formData.slugPattern || null,
-          webhookConfig: formData.webhookConfig as Record<string, unknown> | null,
+          webhookConfig: formData.webhookConfig as Record<
+            string,
+            unknown
+          > | null,
         },
       })
 
       setHasChanges(false)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update document type')
+      setError(
+        err instanceof Error ? err.message : 'Failed to update document type',
+      )
     }
   }
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this document type? This will also delete all associated documents.')) {
+    if (
+      !confirm(
+        'Are you sure you want to delete this document type? This will also delete all associated documents.',
+      )
+    ) {
       return
     }
 
@@ -85,7 +112,9 @@ export default function DocumentTypeSettingsPage() {
       await deleteDocumentType.mutateAsync(slug)
       navigate({ to: '/document-types' })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete document type')
+      setError(
+        err instanceof Error ? err.message : 'Failed to delete document type',
+      )
     }
   }
 
@@ -165,7 +194,9 @@ export default function DocumentTypeSettingsPage() {
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={updateDocumentType.isPending || !formData?.isValid || !hasChanges}
+            disabled={
+              updateDocumentType.isPending || !formData?.isValid || !hasChanges
+            }
           >
             {updateDocumentType.isPending ? (
               <>

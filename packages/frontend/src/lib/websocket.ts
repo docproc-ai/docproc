@@ -87,7 +87,10 @@ function connect() {
       }
 
       // Handle job/batch events
-      if (message.type?.startsWith('job:') || message.type?.startsWith('batch:')) {
+      if (
+        message.type?.startsWith('job:') ||
+        message.type?.startsWith('batch:')
+      ) {
         const jobEvent = message as unknown as JobEvent
         listeners.forEach((listener) => listener(jobEvent))
       }
@@ -129,7 +132,12 @@ function disconnect() {
 function subscribe(jobId?: string, batchId?: string, documentTypeId?: string) {
   if (!globalWs || globalWs.readyState !== WebSocket.OPEN) return
 
-  const message: { type: string; jobId?: string; batchId?: string; documentTypeId?: string } = {
+  const message: {
+    type: string
+    jobId?: string
+    batchId?: string
+    documentTypeId?: string
+  } = {
     type: 'subscribe',
   }
   if (jobId) message.jobId = jobId
@@ -140,10 +148,19 @@ function subscribe(jobId?: string, batchId?: string, documentTypeId?: string) {
   console.log('[WS] Subscribed to:', { jobId, batchId, documentTypeId })
 }
 
-function unsubscribe(jobId?: string, batchId?: string, documentTypeId?: string) {
+function unsubscribe(
+  jobId?: string,
+  batchId?: string,
+  documentTypeId?: string,
+) {
   if (!globalWs || globalWs.readyState !== WebSocket.OPEN) return
 
-  const message: { type: string; jobId?: string; batchId?: string; documentTypeId?: string } = {
+  const message: {
+    type: string
+    jobId?: string
+    batchId?: string
+    documentTypeId?: string
+  } = {
     type: 'unsubscribe',
   }
   if (jobId) message.jobId = jobId
@@ -157,7 +174,7 @@ function unsubscribe(jobId?: string, batchId?: string, documentTypeId?: string) 
 // Hook for WebSocket connection status
 export function useWebSocketStatus(): ConnectionStatus {
   const [status, setStatus] = useState<ConnectionStatus>(
-    globalWs?.readyState === WebSocket.OPEN ? 'connected' : 'disconnected'
+    globalWs?.readyState === WebSocket.OPEN ? 'connected' : 'disconnected',
   )
 
   useEffect(() => {
@@ -173,7 +190,7 @@ export function useWebSocketStatus(): ConnectionStatus {
 // Hook for subscribing to job events
 export function useJobEvents(
   onEvent: (event: JobEvent) => void,
-  deps: React.DependencyList = []
+  deps: React.DependencyList = [],
 ) {
   const callbackRef = useRef(onEvent)
   callbackRef.current = onEvent
@@ -210,55 +227,91 @@ export function useDocumentTypeLiveUpdates(documentTypeId: string | undefined) {
         if (event.documentId) {
           if (event.type === 'job:completed') {
             // Invalidate queries to refetch fresh data
-            queryClient.invalidateQueries({ queryKey: ['document', event.documentId] })
-            queryClient.invalidateQueries({ queryKey: ['documents'], exact: false })
-            queryClient.invalidateQueries({ queryKey: ['activeJobs'], exact: false })
+            queryClient.invalidateQueries({
+              queryKey: ['document', event.documentId],
+            })
+            queryClient.invalidateQueries({
+              queryKey: ['documents'],
+              exact: false,
+            })
+            queryClient.invalidateQueries({
+              queryKey: ['activeJobs'],
+              exact: false,
+            })
           } else if (event.type === 'job:progress' && event.data.partialData) {
             // Optimistically update with partial data
-            queryClient.setQueryData(['document', event.documentId], (old: unknown) => {
-              if (!old || typeof old !== 'object') return old
-              return {
-                ...old,
-                extractedData: event.data.partialData,
-                status: 'processing',
-              }
-            })
+            queryClient.setQueryData(
+              ['document', event.documentId],
+              (old: unknown) => {
+                if (!old || typeof old !== 'object') return old
+                return {
+                  ...old,
+                  extractedData: event.data.partialData,
+                  status: 'processing',
+                }
+              },
+            )
           } else if (event.type === 'job:failed') {
-            queryClient.invalidateQueries({ queryKey: ['document', event.documentId] })
-            queryClient.invalidateQueries({ queryKey: ['documents'], exact: false })
-            queryClient.invalidateQueries({ queryKey: ['activeJobs'], exact: false })
+            queryClient.invalidateQueries({
+              queryKey: ['document', event.documentId],
+            })
+            queryClient.invalidateQueries({
+              queryKey: ['documents'],
+              exact: false,
+            })
+            queryClient.invalidateQueries({
+              queryKey: ['activeJobs'],
+              exact: false,
+            })
           } else if (event.type === 'job:started') {
             // Optimistically mark document as processing in individual cache
-            queryClient.setQueryData(['document', event.documentId], (old: unknown) => {
-              if (!old || typeof old !== 'object') return old
-              return {
-                ...old,
-                status: 'processing',
-              }
-            })
+            queryClient.setQueryData(
+              ['document', event.documentId],
+              (old: unknown) => {
+                if (!old || typeof old !== 'object') return old
+                return {
+                  ...old,
+                  status: 'processing',
+                }
+              },
+            )
             // Also update documents list cache to show processing status
-            queryClient.setQueriesData({ queryKey: ['documents'], exact: false }, (old: unknown) => {
-              if (!old || typeof old !== 'object' || !('documents' in old)) return old
-              const data = old as { documents: Array<{ id: string; status: string | null }> }
-              return {
-                ...data,
-                documents: data.documents.map((doc) =>
-                  doc.id === event.documentId ? { ...doc, status: 'processing' } : doc
-                ),
-              }
-            })
+            queryClient.setQueriesData(
+              { queryKey: ['documents'], exact: false },
+              (old: unknown) => {
+                if (!old || typeof old !== 'object' || !('documents' in old))
+                  return old
+                const data = old as {
+                  documents: Array<{ id: string; status: string | null }>
+                }
+                return {
+                  ...data,
+                  documents: data.documents.map((doc) =>
+                    doc.id === event.documentId
+                      ? { ...doc, status: 'processing' }
+                      : doc,
+                  ),
+                }
+              },
+            )
           }
         }
 
         // Handle batch events
         if (event.type === 'batch:completed' || event.type === 'batch:failed') {
-          queryClient.invalidateQueries({ queryKey: ['documents'], exact: false })
-          queryClient.invalidateQueries({ queryKey: ['activeJobs'], exact: false })
+          queryClient.invalidateQueries({
+            queryKey: ['documents'],
+            exact: false,
+          })
+          queryClient.invalidateQueries({
+            queryKey: ['activeJobs'],
+            exact: false,
+          })
         }
       },
-      [queryClient]
+      [queryClient],
     ),
-    [documentTypeId]
+    [documentTypeId],
   )
 
   // Subscribe to document type updates when connected
@@ -293,15 +346,23 @@ export function useJobSubscription(jobId: string | undefined) {
 
         if (event.documentId) {
           if (event.type === 'job:completed' || event.type === 'job:failed') {
-            queryClient.invalidateQueries({ queryKey: ['document', event.documentId] })
-            queryClient.invalidateQueries({ queryKey: ['documents'], exact: false })
-            queryClient.invalidateQueries({ queryKey: ['activeJobs'], exact: false })
+            queryClient.invalidateQueries({
+              queryKey: ['document', event.documentId],
+            })
+            queryClient.invalidateQueries({
+              queryKey: ['documents'],
+              exact: false,
+            })
+            queryClient.invalidateQueries({
+              queryKey: ['activeJobs'],
+              exact: false,
+            })
           }
         }
       },
-      [jobId, queryClient]
+      [jobId, queryClient],
     ),
-    [jobId]
+    [jobId],
   )
 
   return { status }
@@ -329,7 +390,10 @@ export function useBatchSubscription(batchId: string | undefined) {
       (event: JobEvent) => {
         if (event.batchId !== batchId) return
 
-        if (event.type === 'batch:progress' || event.type === 'batch:completed') {
+        if (
+          event.type === 'batch:progress' ||
+          event.type === 'batch:completed'
+        ) {
           setProgress({
             completed: event.data.completed || 0,
             failed: event.data.failed || 0,
@@ -338,20 +402,37 @@ export function useBatchSubscription(batchId: string | undefined) {
         }
 
         if (event.type === 'batch:completed' || event.type === 'batch:failed') {
-          queryClient.invalidateQueries({ queryKey: ['documents'], exact: false })
-          queryClient.invalidateQueries({ queryKey: ['activeJobs'], exact: false })
+          queryClient.invalidateQueries({
+            queryKey: ['documents'],
+            exact: false,
+          })
+          queryClient.invalidateQueries({
+            queryKey: ['activeJobs'],
+            exact: false,
+          })
         }
 
         // Also handle individual job completions within batch
-        if (event.documentId && (event.type === 'job:completed' || event.type === 'job:failed')) {
-          queryClient.invalidateQueries({ queryKey: ['document', event.documentId] })
-          queryClient.invalidateQueries({ queryKey: ['documents'], exact: false })
-          queryClient.invalidateQueries({ queryKey: ['activeJobs'], exact: false })
+        if (
+          event.documentId &&
+          (event.type === 'job:completed' || event.type === 'job:failed')
+        ) {
+          queryClient.invalidateQueries({
+            queryKey: ['document', event.documentId],
+          })
+          queryClient.invalidateQueries({
+            queryKey: ['documents'],
+            exact: false,
+          })
+          queryClient.invalidateQueries({
+            queryKey: ['activeJobs'],
+            exact: false,
+          })
         }
       },
-      [batchId, queryClient]
+      [batchId, queryClient],
     ),
-    [batchId]
+    [batchId],
   )
 
   return { status, progress }

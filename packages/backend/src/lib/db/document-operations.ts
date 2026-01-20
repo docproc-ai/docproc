@@ -74,8 +74,8 @@ export async function getDocuments(
     conditions.push(
       or(
         like(document.filename, searchPattern),
-        like(document.slug, searchPattern)
-      )!
+        like(document.slug, searchPattern),
+      )!,
     )
   }
 
@@ -118,21 +118,31 @@ export async function getDocument(id: string): Promise<DocumentSelect | null> {
  * Check if a string is a valid UUID
  */
 function isUUID(str: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+    str,
+  )
 }
 
 /**
  * Get a single document by slug or ID (slug first, falls back to ID)
  * This enables backwards compatibility for legacy documents without slugs
  */
-export async function getDocumentBySlugOrId(slugOrId: string): Promise<DocumentSelect | null> {
+export async function getDocumentBySlugOrId(
+  slugOrId: string,
+): Promise<DocumentSelect | null> {
   // Try slug first
-  const [bySlug] = await db.select().from(document).where(eq(document.slug, slugOrId))
+  const [bySlug] = await db
+    .select()
+    .from(document)
+    .where(eq(document.slug, slugOrId))
   if (bySlug) return bySlug
 
   // Fall back to ID lookup (only if it looks like a UUID)
   if (isUUID(slugOrId)) {
-    const [byId] = await db.select().from(document).where(eq(document.id, slugOrId))
+    const [byId] = await db
+      .select()
+      .from(document)
+      .where(eq(document.id, slugOrId))
     return byId || null
   }
 
@@ -146,10 +156,7 @@ export async function getDocumentWithType(id: string): Promise<{
   document: DocumentSelect
   documentType: typeof documentType.$inferSelect
 } | null> {
-  const [result] = await db
-    .select()
-    .from(document)
-    .where(eq(document.id, id))
+  const [result] = await db.select().from(document).where(eq(document.id, id))
 
   if (!result) return null
 
@@ -169,7 +176,9 @@ export async function getDocumentWithType(id: string): Promise<{
 /**
  * Create a new document
  */
-export async function createDocument(data: CreateDocumentData): Promise<DocumentSelect> {
+export async function createDocument(
+  data: CreateDocumentData,
+): Promise<DocumentSelect> {
   const [result] = await db
     .insert(document)
     .values({
@@ -192,7 +201,10 @@ export async function updateDocument(
   data: UpdateDocumentData,
 ): Promise<DocumentSelect | null> {
   // Get current document to check previous status
-  const [currentDoc] = await db.select().from(document).where(eq(document.id, id))
+  const [currentDoc] = await db
+    .select()
+    .from(document)
+    .where(eq(document.id, id))
   if (!currentDoc) {
     return null
   }
@@ -246,9 +258,7 @@ export async function bulkUpdateDocumentStatus(
       updatedAt: new Date(),
       updatedBy: updatedBy || null,
     })
-    .where(
-      or(...documentIds.map((id) => eq(document.id, id)))!,
-    )
+    .where(or(...documentIds.map((id) => eq(document.id, id)))!)
 
   return documentIds.length
 }
@@ -263,7 +273,9 @@ export async function deleteDocument(id: string): Promise<void> {
 /**
  * Bulk delete documents
  */
-export async function bulkDeleteDocuments(documentIds: string[]): Promise<number> {
+export async function bulkDeleteDocuments(
+  documentIds: string[],
+): Promise<number> {
   if (documentIds.length === 0) return 0
 
   await db
@@ -276,7 +288,9 @@ export async function bulkDeleteDocuments(documentIds: string[]): Promise<number
 /**
  * Get all documents for a document type (for deletion)
  */
-export async function getDocumentsByType(documentTypeId: string): Promise<DocumentSelect[]> {
+export async function getDocumentsByType(
+  documentTypeId: string,
+): Promise<DocumentSelect[]> {
   return db
     .select()
     .from(document)

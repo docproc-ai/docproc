@@ -2,8 +2,18 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Trash2, Plus, ChevronDown, ChevronRight, ArrowLeftRight } from 'lucide-react'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import {
+  Trash2,
+  Plus,
+  ChevronDown,
+  ChevronRight,
+  ArrowLeftRight,
+} from 'lucide-react'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
 import {
   Table,
   TableBody,
@@ -13,7 +23,13 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Field, FieldLabel, FieldDescription } from '@/components/ui/field'
-import { Item, ItemContent, ItemTitle, ItemActions, ItemGroup } from '@/components/ui/item'
+import {
+  Item,
+  ItemContent,
+  ItemTitle,
+  ItemActions,
+  ItemGroup,
+} from '@/components/ui/item'
 import { cn } from '@/lib/utils'
 import type { FormFieldProps } from './types'
 import type { JsonSchema } from '../schema-builder/types'
@@ -178,7 +194,9 @@ function DateCellInput({
   className?: string
   disabled?: boolean
 }) {
-  const [localValue, setLocalValue] = useState(() => formatDateForDisplay(value))
+  const [localValue, setLocalValue] = useState(() =>
+    formatDateForDisplay(value),
+  )
 
   // Sync from prop when value changes externally
   useEffect(() => {
@@ -229,7 +247,8 @@ function SpreadsheetCellInput({
     // Skip if Ctrl is pressed - let global handler handle document navigation
     if (e.ctrlKey) return
 
-    const isVerticalNav = e.key === 'Enter' || e.key === 'ArrowUp' || e.key === 'ArrowDown'
+    const isVerticalNav =
+      e.key === 'Enter' || e.key === 'ArrowUp' || e.key === 'ArrowDown'
     if (!isVerticalNav) return
 
     e.preventDefault()
@@ -242,7 +261,9 @@ function SpreadsheetCellInput({
     const targetRow = goUp ? row.previousElementSibling : row.nextElementSibling
     if (targetRow) {
       const targetCell = targetRow.children[cellIndex]
-      const targetInput = targetCell?.querySelector('input') as HTMLInputElement | null
+      const targetInput = targetCell?.querySelector(
+        'input',
+      ) as HTMLInputElement | null
       if (targetInput) {
         targetInput.focus()
         targetInput.select()
@@ -254,7 +275,8 @@ function SpreadsheetCellInput({
     case 'number':
     case 'integer': {
       // Display formatted value, parse on change
-      const displayNum = typeof value === 'number' ? value.toLocaleString() : (value ?? '')
+      const displayNum =
+        typeof value === 'number' ? value.toLocaleString() : (value ?? '')
       return (
         <Input
           type="text"
@@ -267,7 +289,9 @@ function SpreadsheetCellInput({
               return
             }
             const parsed =
-              fieldType === 'integer' ? Number.parseInt(raw) : Number.parseFloat(raw)
+              fieldType === 'integer'
+                ? Number.parseInt(raw)
+                : Number.parseFloat(raw)
             if (!Number.isNaN(parsed)) {
               onChange(parsed)
             }
@@ -282,7 +306,11 @@ function SpreadsheetCellInput({
     case 'boolean':
       return (
         <div className="flex h-full items-center justify-center">
-          <Checkbox checked={!!value} onCheckedChange={onChange} disabled={disabled} />
+          <Checkbox
+            checked={!!value}
+            onCheckedChange={onChange}
+            disabled={disabled}
+          />
         </div>
       )
     case 'string':
@@ -347,7 +375,10 @@ function ArrayTableField({
     if (itemsSchema.type === 'object') {
       newItem = Object.entries(itemsSchema.properties || {}).reduce(
         (acc, [key, propSchema]) => {
-          acc[key] = (propSchema as JsonSchema).default !== undefined ? (propSchema as JsonSchema).default : undefined
+          acc[key] =
+            (propSchema as JsonSchema).default !== undefined
+              ? (propSchema as JsonSchema).default
+              : undefined
           return acc
         },
         {} as Record<string, any>,
@@ -363,7 +394,11 @@ function ArrayTableField({
     onChange(newArray)
   }
 
-  const handleCellChange = (recordIndex: number, fieldKey: string | null, newValue: any) => {
+  const handleCellChange = (
+    recordIndex: number,
+    fieldKey: string | null,
+    newValue: any,
+  ) => {
     const newArray = [...arrayValue]
     if (fieldKey) {
       newArray[recordIndex] = { ...newArray[recordIndex], [fieldKey]: newValue }
@@ -382,7 +417,9 @@ function ArrayTableField({
   // Get field title from schema
   const getFieldTitle = (fieldKey: string) => {
     if (isObjectArray) {
-      return (itemsSchema.properties?.[fieldKey] as JsonSchema)?.title || fieldKey
+      return (
+        (itemsSchema.properties?.[fieldKey] as JsonSchema)?.title || fieldKey
+      )
     }
     return fieldKey
   }
@@ -416,11 +453,17 @@ function ArrayTableField({
                 const isDate = cellSchema.format === 'date'
                 const minWidth = isDate ? '100px' : undefined
                 return (
-                  <TableCell key={fieldKey} className="h-10 p-0" style={{ minWidth }}>
+                  <TableCell
+                    key={fieldKey}
+                    className="h-10 p-0"
+                    style={{ minWidth }}
+                  >
                     <SpreadsheetCellInput
                       schema={cellSchema}
                       value={cellValue}
-                      onChange={(newValue) => handleCellChange(recordIndex, columnKey, newValue)}
+                      onChange={(newValue) =>
+                        handleCellChange(recordIndex, columnKey, newValue)
+                      }
                       disabled={isStreaming}
                     />
                   </TableCell>
@@ -449,9 +492,14 @@ function ArrayTableField({
       <Table className="w-auto">
         <TableHeader>
           <TableRow className="bg-muted/50 hover:bg-muted/50">
-            <TableHead className="px-2 py-2 whitespace-nowrap font-semibold">Field</TableHead>
+            <TableHead className="px-2 py-2 whitespace-nowrap font-semibold">
+              Field
+            </TableHead>
             {arrayValue.map((_, recordIndex) => (
-              <TableHead key={recordIndex} className="px-1 py-2 whitespace-nowrap text-center">
+              <TableHead
+                key={recordIndex}
+                className="px-1 py-2 whitespace-nowrap text-center"
+              >
                 <div className="flex items-center justify-center gap-0.5">
                   <span className="text-xs">{recordIndex + 1}</span>
                   <Button
@@ -506,7 +554,8 @@ function ArrayTableField({
                       }
                     }
                     if (
-                      (cellSchema.type === 'number' || cellSchema.type === 'integer') &&
+                      (cellSchema.type === 'number' ||
+                        cellSchema.type === 'integer') &&
                       typeof cellValue === 'number'
                     ) {
                       return cellValue.toLocaleString()
@@ -515,7 +564,9 @@ function ArrayTableField({
                   })()
                   // Calculate min width in pixels (~9px per char average)
                   // Using pixels ensures proper sizing even when content is off-screen
-                  const charCount = displayValue ? String(displayValue).length : 4
+                  const charCount = displayValue
+                    ? String(displayValue).length
+                    : 4
                   const minWidthPx = Math.max(60, charCount * 8 + 16) // min 60px, 8px/char + padding
                   return (
                     <TableCell
@@ -526,7 +577,9 @@ function ArrayTableField({
                       <SpreadsheetCellInput
                         schema={cellSchema}
                         value={cellValue}
-                        onChange={(newValue) => handleCellChange(recordIndex, columnKey, newValue)}
+                        onChange={(newValue) =>
+                          handleCellChange(recordIndex, columnKey, newValue)
+                        }
                         disabled={isStreaming}
                       />
                     </TableCell>
@@ -549,7 +602,9 @@ function ArrayTableField({
             {schema.title || name}
             {required && <span className="ml-1 text-red-500">*</span>}
           </FieldLabel>
-          {schema.description && <FieldDescription>{schema.description}</FieldDescription>}
+          {schema.description && (
+            <FieldDescription>{schema.description}</FieldDescription>
+          )}
         </div>
         <Button
           type="button"
@@ -563,7 +618,12 @@ function ArrayTableField({
       </div>
       {isPivoted ? renderPivotedTable() : renderNormalTable()}
       {!isPivoted && !isStreaming && (
-        <Button type="button" variant="outline" size="sm" onClick={handleAddRecord}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleAddRecord}
+        >
           <Plus className="h-4 w-4" />
           Add Record
         </Button>
@@ -580,7 +640,9 @@ export function ArrayField({
   required,
   isStreaming,
 }: FormFieldProps) {
-  const [expandedArrayItems, setExpandedArrayItems] = useState<Record<string, boolean>>({})
+  const [expandedArrayItems, setExpandedArrayItems] = useState<
+    Record<string, boolean>
+  >({})
 
   if (schema.type !== 'array') return null
 
@@ -631,7 +693,9 @@ export function ArrayField({
             {schema.title || name}
             {required && <span className="ml-1 text-red-500">*</span>}
           </FieldLabel>
-          {schema.description && <FieldDescription>{schema.description}</FieldDescription>}
+          {schema.description && (
+            <FieldDescription>{schema.description}</FieldDescription>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {arrayValue.length > 1 && (
@@ -681,7 +745,12 @@ export function ArrayField({
             }
 
             // For non-object items, show the value directly
-            if (!isObjectItem && item !== undefined && item !== null && item !== '') {
+            if (
+              !isObjectItem &&
+              item !== undefined &&
+              item !== null &&
+              item !== ''
+            ) {
               return String(item)
             }
 
@@ -715,7 +784,9 @@ export function ArrayField({
                         size="icon"
                         onClick={(e) => {
                           e.stopPropagation()
-                          const newArray = arrayValue.filter((_: any, i: number) => i !== index)
+                          const newArray = arrayValue.filter(
+                            (_: any, i: number) => i !== index,
+                          )
                           onChange(newArray)
                         }}
                       >

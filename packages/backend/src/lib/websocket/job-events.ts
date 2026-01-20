@@ -62,7 +62,10 @@ export function subscribeToDocumentType(ws: WebSocket, documentTypeId: string) {
 /**
  * Unsubscribe from a document type
  */
-export function unsubscribeFromDocumentType(ws: WebSocket, documentTypeId: string) {
+export function unsubscribeFromDocumentType(
+  ws: WebSocket,
+  documentTypeId: string,
+) {
   const clients = documentTypeSubscriptions.get(documentTypeId)
   if (clients) {
     clients.delete(ws)
@@ -137,7 +140,12 @@ export function broadcastJobEvent(event: JobEvent) {
 // Convenience functions for emitting common events
 // All events include documentTypeId for scoped broadcasting
 
-export function emitJobStarted(jobId: string, documentId: string, documentTypeId: string, batchId?: string) {
+export function emitJobStarted(
+  jobId: string,
+  documentId: string,
+  documentTypeId: string,
+  batchId?: string,
+) {
   broadcastJobEvent({
     type: 'job:started',
     jobId,
@@ -168,7 +176,12 @@ export function emitJobProgress(
   })
 }
 
-export function emitJobCompleted(jobId: string, documentId: string, documentTypeId: string, batchId?: string) {
+export function emitJobCompleted(
+  jobId: string,
+  documentId: string,
+  documentTypeId: string,
+  batchId?: string,
+) {
   broadcastJobEvent({
     type: 'job:completed',
     jobId,
@@ -180,7 +193,13 @@ export function emitJobCompleted(jobId: string, documentId: string, documentType
   })
 }
 
-export function emitJobFailed(jobId: string, documentId: string, documentTypeId: string, error: string, batchId?: string) {
+export function emitJobFailed(
+  jobId: string,
+  documentId: string,
+  documentTypeId: string,
+  error: string,
+  batchId?: string,
+) {
   broadcastJobEvent({
     type: 'job:failed',
     jobId,
@@ -192,7 +211,11 @@ export function emitJobFailed(jobId: string, documentId: string, documentTypeId:
   })
 }
 
-export function emitBatchStarted(batchId: string, documentTypeId: string, total: number) {
+export function emitBatchStarted(
+  batchId: string,
+  documentTypeId: string,
+  total: number,
+) {
   broadcastJobEvent({
     type: 'batch:started',
     batchId,
@@ -202,7 +225,13 @@ export function emitBatchStarted(batchId: string, documentTypeId: string, total:
   })
 }
 
-export function emitBatchProgress(batchId: string, documentTypeId: string, completed: number, failed: number, total: number) {
+export function emitBatchProgress(
+  batchId: string,
+  documentTypeId: string,
+  completed: number,
+  failed: number,
+  total: number,
+) {
   broadcastJobEvent({
     type: 'batch:progress',
     batchId,
@@ -212,7 +241,13 @@ export function emitBatchProgress(batchId: string, documentTypeId: string, compl
   })
 }
 
-export function emitBatchCompleted(batchId: string, documentTypeId: string, completed: number, failed: number, total: number) {
+export function emitBatchCompleted(
+  batchId: string,
+  documentTypeId: string,
+  completed: number,
+  failed: number,
+  total: number,
+) {
   broadcastJobEvent({
     type: 'batch:completed',
     batchId,
@@ -222,7 +257,11 @@ export function emitBatchCompleted(batchId: string, documentTypeId: string, comp
   })
 }
 
-export function emitBatchFailed(batchId: string, documentTypeId: string, error: string) {
+export function emitBatchFailed(
+  batchId: string,
+  documentTypeId: string,
+  error: string,
+) {
   broadcastJobEvent({
     type: 'batch:failed',
     batchId,

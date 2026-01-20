@@ -148,7 +148,9 @@ export function safeParseJson(text: string): Record<string, unknown> | null {
  * Recursively add additionalProperties: false to all object types in a schema
  * Required for Anthropic's structured output
  */
-export function addAdditionalPropertiesFalse(schema: Record<string, unknown>): Record<string, unknown> {
+export function addAdditionalPropertiesFalse(
+  schema: Record<string, unknown>,
+): Record<string, unknown> {
   const result = { ...schema }
 
   if (result.type === 'object') {
@@ -161,14 +163,20 @@ export function addAdditionalPropertiesFalse(schema: Record<string, unknown>): R
         Object.entries(props).map(([key, value]) => [
           key,
           addAdditionalPropertiesFalse(value),
-        ])
+        ]),
       )
     }
   }
 
   // Process array items
-  if (result.type === 'array' && result.items && typeof result.items === 'object') {
-    result.items = addAdditionalPropertiesFalse(result.items as Record<string, unknown>)
+  if (
+    result.type === 'array' &&
+    result.items &&
+    typeof result.items === 'object'
+  ) {
+    result.items = addAdditionalPropertiesFalse(
+      result.items as Record<string, unknown>,
+    )
   }
 
   return result

@@ -133,7 +133,9 @@ export function ObjectField({
             {schema.title || name}
             {required && <span className="ml-1 text-red-500">*</span>}
           </FieldLabel>
-          {schema.description && <FieldDescription>{schema.description}</FieldDescription>}
+          {schema.description && (
+            <FieldDescription>{schema.description}</FieldDescription>
+          )}
         </div>
       )}
       {schema.properties &&
@@ -143,7 +145,9 @@ export function ObjectField({
             name={key}
             schema={subSchema as JsonSchema}
             value={objectValue[key]}
-            onChange={(newValue) => onChange({ ...objectValue, [key]: newValue })}
+            onChange={(newValue) =>
+              onChange({ ...objectValue, [key]: newValue })
+            }
             required={schema.required?.includes(key)}
             isArrayItem={false}
             isStreaming={isStreaming}

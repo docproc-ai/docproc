@@ -50,7 +50,10 @@ export function handleWebSocketMessage(
       case 'subscribe':
         // Primary: subscribe to document type
         if (data.documentTypeId) {
-          subscribeToDocumentType(ws as unknown as WebSocket, data.documentTypeId)
+          subscribeToDocumentType(
+            ws as unknown as WebSocket,
+            data.documentTypeId,
+          )
           ws.data.subscriptions.push(`docType:${data.documentTypeId}`)
         }
         // Legacy: job/batch subscriptions
@@ -62,26 +65,51 @@ export function handleWebSocketMessage(
           subscribeToBatch(ws as unknown as WebSocket, data.batchId)
           ws.data.subscriptions.push(`batch:${data.batchId}`)
         }
-        ws.send(JSON.stringify({ type: 'subscribed', documentTypeId: data.documentTypeId, jobId: data.jobId, batchId: data.batchId }))
+        ws.send(
+          JSON.stringify({
+            type: 'subscribed',
+            documentTypeId: data.documentTypeId,
+            jobId: data.jobId,
+            batchId: data.batchId,
+          }),
+        )
         break
 
       case 'unsubscribe':
         if (data.documentTypeId) {
-          unsubscribeFromDocumentType(ws as unknown as WebSocket, data.documentTypeId)
-          ws.data.subscriptions = ws.data.subscriptions.filter(s => s !== `docType:${data.documentTypeId}`)
+          unsubscribeFromDocumentType(
+            ws as unknown as WebSocket,
+            data.documentTypeId,
+          )
+          ws.data.subscriptions = ws.data.subscriptions.filter(
+            (s) => s !== `docType:${data.documentTypeId}`,
+          )
         }
-        ws.send(JSON.stringify({ type: 'unsubscribed', documentTypeId: data.documentTypeId, jobId: data.jobId, batchId: data.batchId }))
+        ws.send(
+          JSON.stringify({
+            type: 'unsubscribed',
+            documentTypeId: data.documentTypeId,
+            jobId: data.jobId,
+            batchId: data.batchId,
+          }),
+        )
         break
 
       case 'ping':
-        ws.send(JSON.stringify({ type: 'pong', timestamp: new Date().toISOString() }))
+        ws.send(
+          JSON.stringify({ type: 'pong', timestamp: new Date().toISOString() }),
+        )
         break
 
       default:
-        ws.send(JSON.stringify({ type: 'error', message: 'Unknown message type' }))
+        ws.send(
+          JSON.stringify({ type: 'error', message: 'Unknown message type' }),
+        )
     }
   } catch (error) {
-    ws.send(JSON.stringify({ type: 'error', message: 'Invalid message format' }))
+    ws.send(
+      JSON.stringify({ type: 'error', message: 'Invalid message format' }),
+    )
   }
 }
 

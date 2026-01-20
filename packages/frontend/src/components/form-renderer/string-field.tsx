@@ -28,8 +28,14 @@ export function StringField({
           {schema.title || name}
           {required && <span className="ml-1 text-red-500">*</span>}
         </FieldLabel>
-        {schema.description && <FieldDescription>{schema.description}</FieldDescription>}
-        <Select value={String(value ?? '')} onValueChange={onChange} disabled={isStreaming}>
+        {schema.description && (
+          <FieldDescription>{schema.description}</FieldDescription>
+        )}
+        <Select
+          value={String(value ?? '')}
+          onValueChange={onChange}
+          disabled={isStreaming}
+        >
           <SelectTrigger id={name}>
             <SelectValue placeholder="Select an option" />
           </SelectTrigger>
@@ -55,7 +61,9 @@ export function StringField({
           {schema.title || name}
           {required && <span className="ml-1 text-red-500">*</span>}
         </FieldLabel>
-        {schema.description && <FieldDescription>{schema.description}</FieldDescription>}
+        {schema.description && (
+          <FieldDescription>{schema.description}</FieldDescription>
+        )}
         <Textarea
           id={name}
           value={value ?? ''}
@@ -75,7 +83,9 @@ export function StringField({
           {schema.title || name}
           {required && <span className="ml-1 text-red-500">*</span>}
         </FieldLabel>
-        {schema.description && <FieldDescription>{schema.description}</FieldDescription>}
+        {schema.description && (
+          <FieldDescription>{schema.description}</FieldDescription>
+        )}
         <Input
           id={name}
           type={isStreaming ? 'text' : 'date'}
@@ -94,7 +104,9 @@ export function StringField({
         {schema.title || name}
         {required && <span className="ml-1 text-red-500">*</span>}
       </FieldLabel>
-      {schema.description && <FieldDescription>{schema.description}</FieldDescription>}
+      {schema.description && (
+        <FieldDescription>{schema.description}</FieldDescription>
+      )}
       <Input
         id={name}
         type="text"

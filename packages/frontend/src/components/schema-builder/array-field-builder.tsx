@@ -16,19 +16,27 @@ interface ArrayFieldBuilderProps {
   children: React.ReactNode
 }
 
-export function ArrayFieldBuilder({ schema, onChange, children }: ArrayFieldBuilderProps) {
+export function ArrayFieldBuilder({
+  schema,
+  onChange,
+  children,
+}: ArrayFieldBuilderProps) {
   if (schema.type !== 'array') return null
 
   const isObjectArray = schema.items?.type === 'object'
 
   return (
     <div className="space-y-4">
-      <FieldLabel className="text-base font-semibold">Array Settings</FieldLabel>
+      <FieldLabel className="text-base font-semibold">
+        Array Settings
+      </FieldLabel>
       <Field>
         <FieldLabel>Display as</FieldLabel>
         <Select
           value={schema['ui:widget'] || 'default'}
-          onValueChange={(value) => onChange({ 'ui:widget': value as 'default' | 'table' })}
+          onValueChange={(value) =>
+            onChange({ 'ui:widget': value as 'default' | 'table' })
+          }
         >
           <SelectTrigger className="w-full">
             <SelectValue />
@@ -45,7 +53,9 @@ export function ArrayFieldBuilder({ schema, onChange, children }: ArrayFieldBuil
             <Checkbox
               id="pivoted"
               checked={schema['ui:pivoted'] ?? false}
-              onCheckedChange={(checked) => onChange({ 'ui:pivoted': checked === true })}
+              onCheckedChange={(checked) =>
+                onChange({ 'ui:pivoted': checked === true })
+              }
             />
             <FieldLabel htmlFor="pivoted" className="!mb-0 cursor-pointer">
               Default to pivoted view
@@ -58,9 +68,12 @@ export function ArrayFieldBuilder({ schema, onChange, children }: ArrayFieldBuil
       )}
       {isObjectArray && schema['ui:widget'] !== 'table' && (
         <Field>
-          <FieldLabel htmlFor="displayTemplate">Item Display Template</FieldLabel>
+          <FieldLabel htmlFor="displayTemplate">
+            Item Display Template
+          </FieldLabel>
           <FieldDescription>
-            Use {`{{fieldName}}`} to reference field values. Example: {`{{firstName}} {{lastName}}`}
+            Use {`{{fieldName}}`} to reference field values. Example:{' '}
+            {`{{firstName}} {{lastName}}`}
           </FieldDescription>
           <Input
             id="displayTemplate"
@@ -78,7 +91,9 @@ export function ArrayFieldBuilder({ schema, onChange, children }: ArrayFieldBuil
           />
         </Field>
       )}
-      <FieldLabel className="text-base font-semibold">Array Items Schema</FieldLabel>
+      <FieldLabel className="text-base font-semibold">
+        Array Items Schema
+      </FieldLabel>
       <div className="border-border rounded-lg border p-4">{children}</div>
     </div>
   )

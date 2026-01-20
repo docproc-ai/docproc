@@ -58,7 +58,9 @@ export const documentTypesRoutes = new Hono()
           validationInstructions: data.validationInstructions,
           modelName: data.modelName,
           slugPattern: data.slugPattern,
-          webhookConfig: data.webhookConfig as Record<string, unknown> | undefined,
+          webhookConfig: data.webhookConfig as
+            | Record<string, unknown>
+            | undefined,
           createdBy: user?.id,
         })
 
@@ -117,7 +119,9 @@ export const documentTypesRoutes = new Hono()
           validationInstructions: data.validationInstructions,
           modelName: data.modelName,
           slugPattern: data.slugPattern,
-          webhookConfig: data.webhookConfig as Record<string, unknown> | undefined,
+          webhookConfig: data.webhookConfig as
+            | Record<string, unknown>
+            | undefined,
           updatedBy: user?.id,
         })
 
@@ -240,7 +244,11 @@ export const documentTypesRoutes = new Hono()
             const buffer = Buffer.from(await file.arrayBuffer())
 
             // Upload to storage
-            const storageKey = await storage.upload(buffer, file.name, file.type)
+            const storageKey = await storage.upload(
+              buffer,
+              file.name,
+              file.type,
+            )
 
             // Create document record
             const document = await createDocument({
@@ -272,17 +280,20 @@ export const documentTypesRoutes = new Hono()
         // TODO: Implement auto-processing when processing engine is ready
         void autoProcess
 
-        return c.json({
-          success: true,
-          documentTypeId: docType.id,
-          documentTypeSlug: docType.slug,
-          results,
-          summary: {
-            total: files.length,
-            uploaded: successful,
-            failed,
+        return c.json(
+          {
+            success: true,
+            documentTypeId: docType.id,
+            documentTypeSlug: docType.slug,
+            results,
+            summary: {
+              total: files.length,
+              uploaded: successful,
+              failed,
+            },
           },
-        }, 200)
+          200,
+        )
       } catch (error) {
         console.error('Upload API error:', error)
         return c.json({ error: 'Internal server error' }, 500)

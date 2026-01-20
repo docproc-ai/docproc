@@ -34,7 +34,11 @@ export function EnumBuilder({ value, onChange }: EnumBuilderProps) {
             onChange={(e) => handleOptionChange(index, e.target.value)}
             placeholder={`Option ${index + 1}`}
           />
-          <Button variant="ghost" size="icon" onClick={() => removeOption(index)}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => removeOption(index)}
+          >
             <Trash2 className="size-4" />
           </Button>
         </div>

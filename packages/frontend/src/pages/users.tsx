@@ -1,6 +1,11 @@
 import { useState } from 'react'
 import { Pencil, Trash2, UserPlus, Users } from 'lucide-react'
-import { useUsers, useDeleteUser, useCreateUser, useUpdateUser } from '@/lib/queries'
+import {
+  useUsers,
+  useDeleteUser,
+  useCreateUser,
+  useUpdateUser,
+} from '@/lib/queries'
 import { useSession } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -104,7 +109,8 @@ function CreateUserDialog() {
           <DialogHeader>
             <DialogTitle>Create New User</DialogTitle>
             <DialogDescription>
-              Add a new user to the system. They will receive an account with the specified role.
+              Add a new user to the system. They will receive an account with
+              the specified role.
             </DialogDescription>
           </DialogHeader>
           {createUser.isError && (
@@ -161,7 +167,11 @@ function CreateUserDialog() {
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleOpenChange(false)}
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={createUser.isPending}>
@@ -284,7 +294,11 @@ function EditUserDialog({
             )}
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleOpenChange(false)}
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={updateUser.isPending}>
@@ -343,7 +357,9 @@ function UserRow({
         </div>
       </TableCell>
       <TableCell>
-        <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${roleBadgeStyles[role]}`}>
+        <span
+          className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${roleBadgeStyles[role]}`}
+        >
           {roleLabels[role]}
         </span>
       </TableCell>
@@ -360,7 +376,11 @@ function UserRow({
           {!isCurrentUser && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive"
+                >
                   <Trash2 className="size-4" />
                 </Button>
               </AlertDialogTrigger>
@@ -368,7 +388,8 @@ function UserRow({
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete User</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Are you sure you want to delete {user.name}? This action cannot be undone.
+                    Are you sure you want to delete {user.name}? This action
+                    cannot be undone.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -378,10 +399,10 @@ function UserRow({
                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   >
                     Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           )}
         </div>
       </TableCell>
@@ -432,11 +453,15 @@ export default function UsersPage() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const { data: session, isPending: sessionPending } = useSession()
-  const { data, isLoading, error } = useUsers({ page, search: search || undefined })
+  const { data, isLoading, error } = useUsers({
+    page,
+    search: search || undefined,
+  })
 
   const users = data?.users ?? []
   const pagination = data?.pagination
-  const isAdmin = (session?.user as { role?: string } | undefined)?.role === 'admin'
+  const isAdmin =
+    (session?.user as { role?: string } | undefined)?.role === 'admin'
 
   // Show loading while checking session
   if (sessionPending) {
@@ -449,9 +474,12 @@ export default function UsersPage() {
       <div className="container mx-auto px-6 py-8">
         <div className="bg-card border border-destructive/30 rounded-xl shadow-sm shadow-black/5 p-8">
           <div className="flex flex-col items-center justify-center py-12">
-            <h3 className="font-sans text-xl font-semibold mb-2">Access Denied</h3>
+            <h3 className="font-sans text-xl font-semibold mb-2">
+              Access Denied
+            </h3>
             <p className="text-muted-foreground text-center max-w-sm">
-              You don't have permission to view this page. Only administrators can manage users.
+              You don't have permission to view this page. Only administrators
+              can manage users.
             </p>
           </div>
         </div>
@@ -464,7 +492,9 @@ export default function UsersPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-sans font-semibold tracking-tight">Users</h1>
+          <h1 className="text-3xl font-sans font-semibold tracking-tight">
+            Users
+          </h1>
           <p className="text-muted-foreground mt-1">
             Manage user accounts and permissions
           </p>
@@ -490,8 +520,12 @@ export default function UsersPage() {
         <LoadingSkeleton />
       ) : error ? (
         <div className="bg-card border border-destructive/30 rounded-xl shadow-sm shadow-black/5 p-6">
-          <h3 className="font-medium mb-1 text-destructive">Failed to load users</h3>
-          <p className="text-sm text-muted-foreground">Please try refreshing the page.</p>
+          <h3 className="font-medium mb-1 text-destructive">
+            Failed to load users
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            Please try refreshing the page.
+          </p>
         </div>
       ) : users.length === 0 ? (
         <EmptyState search={search} />
@@ -524,8 +558,11 @@ export default function UsersPage() {
             <div className="flex items-center justify-between mt-4">
               <p className="text-sm text-muted-foreground">
                 Showing {(pagination.page - 1) * pagination.pageSize + 1} to{' '}
-                {Math.min(pagination.page * pagination.pageSize, pagination.total)} of{' '}
-                {pagination.total} users
+                {Math.min(
+                  pagination.page * pagination.pageSize,
+                  pagination.total,
+                )}{' '}
+                of {pagination.total} users
               </p>
               <div className="flex items-center gap-2">
                 <Button

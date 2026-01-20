@@ -56,7 +56,7 @@ function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
 export function generateSlugFromPattern(
   pattern: string,
   extractedData: Record<string, unknown>,
-  documentId: string
+  documentId: string,
 ): string | null {
   try {
     const result = pattern.replace(FIELD_PATTERN, (match, field: string) => {
@@ -94,9 +94,11 @@ export function generateSlugFromPattern(
  * Validate a slug pattern for syntax errors
  * Returns validation result with any errors
  */
-export function validateSlugPattern(
-  pattern: string
-): { valid: boolean; error?: string; fields: string[] } {
+export function validateSlugPattern(pattern: string): {
+  valid: boolean
+  error?: string
+  fields: string[]
+} {
   const fields: string[] = []
   const matches = pattern.matchAll(FIELD_PATTERN)
 
@@ -124,7 +126,8 @@ export function validateSlugPattern(
   if (fields.length === 0) {
     return {
       valid: false,
-      error: 'Pattern must contain at least one field placeholder like {fieldName}',
+      error:
+        'Pattern must contain at least one field placeholder like {fieldName}',
       fields,
     }
   }

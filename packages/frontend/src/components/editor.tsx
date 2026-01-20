@@ -10,7 +10,11 @@ interface EditorProps {
   language?: string
 }
 
-export default function Editor({ value, onChange, language = 'json' }: EditorProps) {
+export default function Editor({
+  value,
+  onChange,
+  language = 'json',
+}: EditorProps) {
   const { theme } = useTheme()
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
 

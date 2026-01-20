@@ -1,4 +1,10 @@
-import { Link, Outlet, useNavigate, useParams, useSearch } from '@tanstack/react-router'
+import {
+  Link,
+  Outlet,
+  useNavigate,
+  useParams,
+  useSearch,
+} from '@tanstack/react-router'
 import { useCallback, useRef, useState } from 'react'
 import {
   ChevronLeft,
@@ -34,11 +40,18 @@ import {
 import { useSession } from '@/lib/auth'
 import { ButtonGroup } from '@/components/ui/button-group'
 import { ModelSelector } from '@/components/model-selector'
-import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from '@/components/ui/popover'
 import { Kbd } from '@/components/ui/kbd'
 import { useDocumentTypeLiveUpdates } from '@/lib/websocket'
 import { DocumentEditorProvider } from '@/lib/document-editor-context'
-import { DocumentQueue, useDocumentProcessingState } from '@/components/document-queue'
+import {
+  DocumentQueue,
+  useDocumentProcessingState,
+} from '@/components/document-queue'
 
 export default function ProcessLayout() {
   const params = useParams({ strict: false })
@@ -47,7 +60,11 @@ export default function ProcessLayout() {
   const navigate = useNavigate()
 
   // URL search params for shareable state
-  const { q: urlSearch, status: urlStatus, page: urlPage } = useSearch({
+  const {
+    q: urlSearch,
+    status: urlStatus,
+    page: urlPage,
+  } = useSearch({
     from: '/document-types/$slug/process',
   })
 
@@ -55,11 +72,16 @@ export default function ProcessLayout() {
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamingDocId, setStreamingDocId] = useState<string | null>(null)
   const [modelOverride, setModelOverride] = useState('')
-  const [streamingData, setStreamingData] = useState<Record<string, unknown> | null>(null)
+  const [streamingData, setStreamingData] = useState<Record<
+    string,
+    unknown
+  > | null>(null)
   const abortStreamRef = useRef<(() => void) | null>(null)
 
   // Editor context state (lifted from child)
-  const [editorSaveFn, setEditorSaveFn] = useState<(() => Promise<void>) | null>(null)
+  const [editorSaveFn, setEditorSaveFn] = useState<
+    (() => Promise<void>) | null
+  >(null)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const registerSave = useCallback((fn: (() => Promise<void>) | null) => {
     setEditorSaveFn(() => fn)
@@ -71,11 +93,14 @@ export default function ProcessLayout() {
   const { data: docType, isLoading: typeLoading } = useDocumentType(slug)
   const { data: currentDoc } = useDocument(selectedDocId || '')
 
-  const { processWithStreaming, abort: abortStreaming } = useProcessDocumentStreaming()
+  const { processWithStreaming, abort: abortStreaming } =
+    useProcessDocumentStreaming()
   const updateDocument = useUpdateDocument()
 
   // Track processing state for the selected document
-  const { isProcessing: isDocProcessing } = useDocumentProcessingState(docType?.id || '')
+  const { isProcessing: isDocProcessing } = useDocumentProcessingState(
+    docType?.id || '',
+  )
 
   // WebSocket for live updates
   useDocumentTypeLiveUpdates(docType?.id)
@@ -84,36 +109,48 @@ export default function ProcessLayout() {
   // Navigation Handlers
   // ============================================
 
-  const handleDocumentSelect = useCallback((docId: string) => {
-    if (docType?.slug) {
+  const handleDocumentSelect = useCallback(
+    (docId: string) => {
+      if (docType?.slug) {
+        navigate({
+          to: '/document-types/$slug/process/$id',
+          params: { slug: docType.slug, id: docId },
+          search: (prev) => prev,
+        })
+      }
+    },
+    [docType?.slug, navigate],
+  )
+
+  const handleSearchChange = useCallback(
+    (search: string) => {
       navigate({
-        to: '/document-types/$slug/process/$id',
-        params: { slug: docType.slug, id: docId },
-        search: (prev) => prev,
+        search: (prev) => ({ ...prev, q: search || undefined, page: 1 }),
+        replace: true,
       })
-    }
-  }, [docType?.slug, navigate])
+    },
+    [navigate],
+  )
 
-  const handleSearchChange = useCallback((search: string) => {
-    navigate({
-      search: (prev) => ({ ...prev, q: search || undefined, page: 1 }),
-      replace: true,
-    })
-  }, [navigate])
+  const handleStatusChange = useCallback(
+    (status: string) => {
+      navigate({
+        search: (prev) => ({ ...prev, status, page: 1 }),
+        replace: true,
+      })
+    },
+    [navigate],
+  )
 
-  const handleStatusChange = useCallback((status: string) => {
-    navigate({
-      search: (prev) => ({ ...prev, status, page: 1 }),
-      replace: true,
-    })
-  }, [navigate])
-
-  const handlePageChange = useCallback((page: number) => {
-    navigate({
-      search: (prev) => ({ ...prev, page }),
-      replace: true,
-    })
-  }, [navigate])
+  const handlePageChange = useCallback(
+    (page: number) => {
+      navigate({
+        search: (prev) => ({ ...prev, page }),
+        replace: true,
+      })
+    },
+    [navigate],
+  )
 
   // ============================================
   // Document Action Handlers (Header Controls)
@@ -209,7 +246,9 @@ export default function ProcessLayout() {
 
   // Check if current document is processing (either streaming or batch job)
   const isCurrentDocStreaming = isStreaming && streamingDocId === selectedDocId
-  const isSelectedDocProcessing = selectedDocId ? (isCurrentDocStreaming || isDocProcessing(selectedDocId)) : false
+  const isSelectedDocProcessing = selectedDocId
+    ? isCurrentDocStreaming || isDocProcessing(selectedDocId)
+    : false
 
   return (
     <div className="h-screen flex flex-col">
@@ -256,12 +295,22 @@ export default function ProcessLayout() {
               </Button>
             ) : (
               <ButtonGroup>
-                <Button variant="outline" size="sm" onClick={handleProcess} disabled={!currentDoc}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleProcess}
+                  disabled={!currentDoc}
+                >
                   Process
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="icon" className="h-8 w-8" disabled={!currentDoc}>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      disabled={!currentDoc}
+                    >
                       <ChevronDown className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -302,23 +351,36 @@ export default function ProcessLayout() {
                   <Button
                     size="icon"
                     className={`h-8 w-8 ${currentDoc.status === 'approved' ? '' : 'bg-green-600 hover:bg-green-700 text-white'}`}
-                    disabled={updateDocument.isPending || isSelectedDocProcessing}
-                    variant={currentDoc.status === 'approved' ? 'secondary' : 'default'}
+                    disabled={
+                      updateDocument.isPending || isSelectedDocProcessing
+                    }
+                    variant={
+                      currentDoc.status === 'approved' ? 'secondary' : 'default'
+                    }
                   >
                     <ChevronDown className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={handleSaveFromHeader} disabled={!hasUnsavedChanges}>
+                  <DropdownMenuItem
+                    onClick={handleSaveFromHeader}
+                    disabled={!hasUnsavedChanges}
+                  >
                     <Save className="mr-2 h-4 w-4" />
                     Save
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleReject} className="text-red-600 focus:text-red-600 focus:bg-red-50">
+                  <DropdownMenuItem
+                    onClick={handleReject}
+                    className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                  >
                     <XCircle className="mr-2 h-4 w-4" />
                     Reject
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleClear} className="text-orange-600 focus:text-orange-600 focus:bg-orange-50">
+                  <DropdownMenuItem
+                    onClick={handleClear}
+                    className="text-orange-600 focus:text-orange-600 focus:bg-orange-50"
+                  >
                     <Trash2 className="mr-2 h-4 w-4" />
                     Clear Data
                   </DropdownMenuItem>
@@ -329,19 +391,54 @@ export default function ProcessLayout() {
             {/* Keyboard Help Popover */}
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8" title="Keyboard shortcuts">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  title="Keyboard shortcuts"
+                >
                   <Keyboard className="h-4 w-4" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-72">
                 <h4 className="font-medium mb-2">Keyboard Shortcuts</h4>
                 <div className="space-y-1.5 text-sm">
-                  <div className="flex justify-between"><span className="text-muted-foreground">Save</span> <span className="flex items-center gap-0.5"><Kbd>Ctrl</Kbd>+<Kbd>S</Kbd></span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Approve</span> <span className="flex items-center gap-0.5"><Kbd>Ctrl</Kbd>+<Kbd>Enter</Kbd></span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Process</span> <span className="flex items-center gap-0.5"><Kbd>Ctrl</Kbd>+<Kbd>P</Kbd></span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Reject</span> <span className="flex items-center gap-0.5"><Kbd>Ctrl</Kbd>+<Kbd>R</Kbd></span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Next doc</span> <span className="flex items-center gap-0.5"><Kbd>Ctrl</Kbd>+<Kbd>↓</Kbd></span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Prev doc</span> <span className="flex items-center gap-0.5"><Kbd>Ctrl</Kbd>+<Kbd>↑</Kbd></span></div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Save</span>{' '}
+                    <span className="flex items-center gap-0.5">
+                      <Kbd>Ctrl</Kbd>+<Kbd>S</Kbd>
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Approve</span>{' '}
+                    <span className="flex items-center gap-0.5">
+                      <Kbd>Ctrl</Kbd>+<Kbd>Enter</Kbd>
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Process</span>{' '}
+                    <span className="flex items-center gap-0.5">
+                      <Kbd>Ctrl</Kbd>+<Kbd>P</Kbd>
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Reject</span>{' '}
+                    <span className="flex items-center gap-0.5">
+                      <Kbd>Ctrl</Kbd>+<Kbd>R</Kbd>
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Next doc</span>{' '}
+                    <span className="flex items-center gap-0.5">
+                      <Kbd>Ctrl</Kbd>+<Kbd>↓</Kbd>
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Prev doc</span>{' '}
+                    <span className="flex items-center gap-0.5">
+                      <Kbd>Ctrl</Kbd>+<Kbd>↑</Kbd>
+                    </span>
+                  </div>
                 </div>
               </PopoverContent>
             </Popover>
@@ -376,7 +473,9 @@ export default function ProcessLayout() {
         {/* Middle + Right: Child route (editor + preview) */}
         <ResizablePanel defaultSize={80} minSize={50}>
           <DocumentEditorProvider
-            streamingData={streamingDocId === selectedDocId ? streamingData : null}
+            streamingData={
+              streamingDocId === selectedDocId ? streamingData : null
+            }
             isStreaming={isSelectedDocProcessing}
             registerSave={registerSave}
             hasUnsavedChanges={hasUnsavedChanges}

@@ -8,11 +8,21 @@ import type { JsonSchema } from './types'
 interface ObjectFieldBuilderProps {
   schema: JsonSchema
   onChange: (updates: Partial<JsonSchema>) => void
-  children: (key: string, propertySchema: JsonSchema, propertyId: string) => React.ReactNode
+  children: (
+    key: string,
+    propertySchema: JsonSchema,
+    propertyId: string,
+  ) => React.ReactNode
 }
 
-export function ObjectFieldBuilder({ schema, onChange, children }: ObjectFieldBuilderProps) {
-  const [expandedProperties, setExpandedProperties] = useState<Record<string, boolean>>({})
+export function ObjectFieldBuilder({
+  schema,
+  onChange,
+  children,
+}: ObjectFieldBuilderProps) {
+  const [expandedProperties, setExpandedProperties] = useState<
+    Record<string, boolean>
+  >({})
   const propertyIdMap = useRef(new Map<string, string>())
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
   const [dragOverItem, setDragOverItem] = useState<string | null>(null)
@@ -59,7 +69,7 @@ export function ObjectFieldBuilder({ schema, onChange, children }: ObjectFieldBu
 
     onChange({
       properties: newProperties,
-      required: newRequired.length > 0 ? newRequired : undefined
+      required: newRequired.length > 0 ? newRequired : undefined,
     })
 
     if (propertyIdMap.current.has(key)) {

@@ -1,5 +1,13 @@
 import { useState } from 'react'
-import { ChevronDown, Eye, EyeOff, Pencil, Plus, Trash2, Webhook } from 'lucide-react'
+import {
+  ChevronDown,
+  Eye,
+  EyeOff,
+  Pencil,
+  Plus,
+  Trash2,
+  Webhook,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -11,7 +19,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import {
   Collapsible,
   CollapsibleContent,
@@ -60,11 +74,17 @@ const DEFAULT_EVENT_CONFIG: WebhookEventConfig = {
   headers: [],
 }
 
-export function WebhookConfigComponent({ config, onChange }: WebhookConfigComponentProps) {
+export function WebhookConfigComponent({
+  config,
+  onChange,
+}: WebhookConfigComponentProps) {
   const [isOpen, setIsOpen] = useState(false)
   const currentConfig = config || { events: {} }
 
-  const updateEventConfig = (eventName: keyof WebhookConfig['events'], eventConfig: WebhookEventConfig) => {
+  const updateEventConfig = (
+    eventName: keyof WebhookConfig['events'],
+    eventConfig: WebhookEventConfig,
+  ) => {
     const newConfig: WebhookConfig = {
       ...currentConfig,
       events: {
@@ -73,7 +93,9 @@ export function WebhookConfigComponent({ config, onChange }: WebhookConfigCompon
       },
     }
     // Only emit non-null if there's at least one enabled event
-    const hasEnabledEvent = Object.values(newConfig.events).some(e => e?.enabled)
+    const hasEnabledEvent = Object.values(newConfig.events).some(
+      (e) => e?.enabled,
+    )
     onChange(hasEnabledEvent ? newConfig : null)
   }
 
@@ -81,24 +103,37 @@ export function WebhookConfigComponent({ config, onChange }: WebhookConfigCompon
     const eventConfig = currentConfig.events[eventName] || DEFAULT_EVENT_CONFIG
     updateEventConfig(eventName, {
       ...eventConfig,
-      headers: [...eventConfig.headers, { name: '', value: '', sensitive: false }],
+      headers: [
+        ...eventConfig.headers,
+        { name: '', value: '', sensitive: false },
+      ],
     })
   }
 
-  const updateHeader = (eventName: keyof WebhookConfig['events'], index: number, header: WebhookHeader) => {
+  const updateHeader = (
+    eventName: keyof WebhookConfig['events'],
+    index: number,
+    header: WebhookHeader,
+  ) => {
     const eventConfig = currentConfig.events[eventName] || DEFAULT_EVENT_CONFIG
     const newHeaders = [...eventConfig.headers]
     newHeaders[index] = header
     updateEventConfig(eventName, { ...eventConfig, headers: newHeaders })
   }
 
-  const removeHeader = (eventName: keyof WebhookConfig['events'], index: number) => {
+  const removeHeader = (
+    eventName: keyof WebhookConfig['events'],
+    index: number,
+  ) => {
     const eventConfig = currentConfig.events[eventName] || DEFAULT_EVENT_CONFIG
     const newHeaders = eventConfig.headers.filter((_, i) => i !== index)
     updateEventConfig(eventName, { ...eventConfig, headers: newHeaders })
   }
 
-  const addPresetHeader = (eventName: keyof WebhookConfig['events'], preset: string) => {
+  const addPresetHeader = (
+    eventName: keyof WebhookConfig['events'],
+    preset: string,
+  ) => {
     const eventConfig = currentConfig.events[eventName] || DEFAULT_EVENT_CONFIG
     let header: WebhookHeader
 
@@ -122,8 +157,12 @@ export function WebhookConfigComponent({ config, onChange }: WebhookConfigCompon
     })
   }
 
-  const eventNames = Object.keys(eventDescriptions) as Array<keyof WebhookConfig['events']>
-  const enabledCount = eventNames.filter(name => currentConfig.events[name]?.enabled).length
+  const eventNames = Object.keys(eventDescriptions) as Array<
+    keyof WebhookConfig['events']
+  >
+  const enabledCount = eventNames.filter(
+    (name) => currentConfig.events[name]?.enabled,
+  ).length
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -138,16 +177,22 @@ export function WebhookConfigComponent({ config, onChange }: WebhookConfigCompon
               </span>
             )}
           </div>
-          <ChevronDown className={`size-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+          <ChevronDown
+            className={`size-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          />
         </Button>
       </CollapsibleTrigger>
       <CollapsibleContent className="space-y-4 pt-4">
         {eventNames.map((eventName) => {
-          const eventConfig = currentConfig.events[eventName] || DEFAULT_EVENT_CONFIG
+          const eventConfig =
+            currentConfig.events[eventName] || DEFAULT_EVENT_CONFIG
           const isEnabled = eventConfig.enabled
 
           return (
-            <Card key={eventName} className={isEnabled ? 'border-primary/50' : ''}>
+            <Card
+              key={eventName}
+              className={isEnabled ? 'border-primary/50' : ''}
+            >
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
@@ -176,27 +221,43 @@ export function WebhookConfigComponent({ config, onChange }: WebhookConfigCompon
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-4 gap-3">
                     <div className="col-span-3 space-y-2">
-                      <Label htmlFor={`${eventName}-url`} className="text-xs">Webhook URL</Label>
+                      <Label htmlFor={`${eventName}-url`} className="text-xs">
+                        Webhook URL
+                      </Label>
                       <Input
                         id={`${eventName}-url`}
                         type="url"
                         value={eventConfig.url}
                         onChange={(e) =>
-                          updateEventConfig(eventName, { ...eventConfig, url: e.target.value })
+                          updateEventConfig(eventName, {
+                            ...eventConfig,
+                            url: e.target.value,
+                          })
                         }
                         placeholder="https://api.example.com/webhook"
                         className="h-9"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor={`${eventName}-method`} className="text-xs">Method</Label>
+                      <Label
+                        htmlFor={`${eventName}-method`}
+                        className="text-xs"
+                      >
+                        Method
+                      </Label>
                       <Select
                         value={eventConfig.method}
                         onValueChange={(method) =>
-                          updateEventConfig(eventName, { ...eventConfig, method })
+                          updateEventConfig(eventName, {
+                            ...eventConfig,
+                            method,
+                          })
                         }
                       >
-                        <SelectTrigger id={`${eventName}-method`} className="h-9">
+                        <SelectTrigger
+                          id={`${eventName}-method`}
+                          className="h-9"
+                        >
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -211,8 +272,13 @@ export function WebhookConfigComponent({ config, onChange }: WebhookConfigCompon
                   {/* Headers Section */}
                   <Collapsible>
                     <CollapsibleTrigger asChild>
-                      <Button variant="ghost" className="w-full justify-between p-0 h-auto text-xs">
-                        <span className="font-medium">Headers ({eventConfig.headers.length})</span>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-between p-0 h-auto text-xs"
+                      >
+                        <span className="font-medium">
+                          Headers ({eventConfig.headers.length})
+                        </span>
                         <ChevronDown className="size-3.5" />
                       </Button>
                     </CollapsibleTrigger>
@@ -222,17 +288,28 @@ export function WebhookConfigComponent({ config, onChange }: WebhookConfigCompon
                           Add authentication or custom headers
                         </span>
                         <div className="flex gap-2">
-                          <Select onValueChange={(preset) => addPresetHeader(eventName, preset)}>
+                          <Select
+                            onValueChange={(preset) =>
+                              addPresetHeader(eventName, preset)
+                            }
+                          >
                             <SelectTrigger className="w-[120px] h-7 text-xs">
                               <SelectValue placeholder="Add preset" />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="api-key">API Key</SelectItem>
-                              <SelectItem value="bearer">Bearer Token</SelectItem>
+                              <SelectItem value="bearer">
+                                Bearer Token
+                              </SelectItem>
                               <SelectItem value="basic">Basic Auth</SelectItem>
                             </SelectContent>
                           </Select>
-                          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => addHeader(eventName)}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => addHeader(eventName)}
+                          >
                             <Plus className="size-3 mr-1" />
                             Custom
                           </Button>
@@ -243,7 +320,9 @@ export function WebhookConfigComponent({ config, onChange }: WebhookConfigCompon
                         <HeaderRow
                           key={index}
                           header={header}
-                          onChange={(newHeader) => updateHeader(eventName, index, newHeader)}
+                          onChange={(newHeader) =>
+                            updateHeader(eventName, index, newHeader)
+                          }
                           onRemove={() => removeHeader(eventName, index)}
                         />
                       ))}
@@ -297,7 +376,9 @@ function HeaderRow({ header, onChange, onRemove }: HeaderRowProps) {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => onChange({ ...header, value: '', isEditing: true })}
+                onClick={() =>
+                  onChange({ ...header, value: '', isEditing: true })
+                }
                 className="h-8 px-2"
                 title="Edit encrypted value"
               >
@@ -336,11 +417,18 @@ function HeaderRow({ header, onChange, onRemove }: HeaderRowProps) {
         <div className="h-8 flex items-center">
           <Switch
             checked={header.sensitive}
-            onCheckedChange={(sensitive: boolean) => onChange({ ...header, sensitive })}
+            onCheckedChange={(sensitive: boolean) =>
+              onChange({ ...header, sensitive })
+            }
           />
         </div>
       </div>
-      <Button variant="outline" size="sm" onClick={onRemove} className="h-8 w-8 p-0 shrink-0">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onRemove}
+        className="h-8 w-8 p-0 shrink-0"
+      >
         <Trash2 className="size-3" />
       </Button>
     </div>

@@ -9,7 +9,9 @@ interface DocumentEditorContextValue {
   setHasUnsavedChanges: (has: boolean) => void
 }
 
-const DocumentEditorContext = createContext<DocumentEditorContextValue | null>(null)
+const DocumentEditorContext = createContext<DocumentEditorContextValue | null>(
+  null,
+)
 
 export function DocumentEditorProvider({
   children,
@@ -27,13 +29,15 @@ export function DocumentEditorProvider({
   setHasUnsavedChanges: (has: boolean) => void
 }) {
   return (
-    <DocumentEditorContext.Provider value={{
-      streamingData,
-      isStreaming,
-      registerSave,
-      hasUnsavedChanges,
-      setHasUnsavedChanges,
-    }}>
+    <DocumentEditorContext.Provider
+      value={{
+        streamingData,
+        isStreaming,
+        registerSave,
+        hasUnsavedChanges,
+        setHasUnsavedChanges,
+      }}
+    >
       {children}
     </DocumentEditorContext.Provider>
   )
@@ -42,7 +46,9 @@ export function DocumentEditorProvider({
 export function useDocumentEditorContext() {
   const context = useContext(DocumentEditorContext)
   if (!context) {
-    throw new Error('useDocumentEditorContext must be used within DocumentEditorProvider')
+    throw new Error(
+      'useDocumentEditorContext must be used within DocumentEditorProvider',
+    )
   }
   return context
 }
