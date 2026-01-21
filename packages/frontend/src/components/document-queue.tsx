@@ -31,10 +31,10 @@ import { ButtonGroup } from '@/components/ui/button-group'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   DropdownMenu,
-  DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -356,7 +356,7 @@ export function DocumentQueue({
   return (
     <div className="h-full flex flex-col bg-background">
       {/* Status filter */}
-      <div className="p-3 border-b">
+      <div className="flex flex-col gap-2 p-2 border-b">
         <ToggleGroup
           type="single"
           value={urlStatus}
@@ -364,7 +364,7 @@ export function DocumentQueue({
             if (value) onStatusChange(value)
           }}
           size="sm"
-          className="w-full"
+          className="w-full border"
         >
           <ToggleGroupItem
             value="all"
@@ -402,114 +402,114 @@ export function DocumentQueue({
             <StatusIcon status="rejected" size={14} />
           </ToggleGroupItem>
         </ToggleGroup>
-      </div>
 
-      {/* Search bar with checkbox and actions */}
-      <div className="px-3 py-2 border-b flex items-center gap-2">
-        <Checkbox
-          checked={
-            checkedDocIds.size === documents.length && documents.length > 0
-          }
-          onCheckedChange={() => handleSelectAll()}
-        />
-        {checkedDocIds.size > 0 && (
-          <span className="text-xs text-muted-foreground tabular-nums">
-            {checkedDocIds.size}
-          </span>
-        )}
-        {/* Processing indicator */}
-        {(() => {
-          const processingCount = documents.filter((d) =>
-            processingDocIds.has(d.id),
-          ).length
-          return processingCount > 0 ? (
-            <button
-              type="button"
-              onClick={handleCancelAllProcessing}
-              className="group flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-              title="Click to cancel all processing"
-            >
-              <Loader2 className="w-3.5 h-3.5 animate-spin group-hover:hidden" />
-              <X className="w-3.5 h-3.5 hidden group-hover:block" />
-            </button>
-          ) : null
-        })()}
-        {/* Search + actions menu */}
-        <ButtonGroup className="flex-1">
-          <Input
-            placeholder="Search documents..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            className="h-8 rounded-r-none border-r-0"
+        {/* Search bar with checkbox and actions */}
+        <div className="flex items-center gap-2">
+          <Checkbox
+            checked={
+              checkedDocIds.size === documents.length && documents.length > 0
+            }
+            onCheckedChange={() => handleSelectAll()}
           />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8 shrink-0"
+          {checkedDocIds.size > 0 && (
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {checkedDocIds.size}
+            </span>
+          )}
+          {/* Processing indicator */}
+          {(() => {
+            const processingCount = documents.filter((d) =>
+              processingDocIds.has(d.id),
+            ).length
+            return processingCount > 0 ? (
+              <button
+                type="button"
+                onClick={handleCancelAllProcessing}
+                className="group flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                title="Click to cancel all processing"
               >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              {checkedDocIds.size === 0 ? (
-                // Nothing selected - show upload option only
-                <DropdownMenuItem
-                  onClick={() => uploadInputRef.current?.click()}
+                <Loader2 className="w-3.5 h-3.5 animate-spin group-hover:hidden" />
+                <X className="w-3.5 h-3.5 hidden group-hover:block" />
+              </button>
+            ) : null
+          })()}
+          {/* Search + actions menu */}
+          <ButtonGroup className="flex-1">
+            <Input
+              placeholder="Search documents..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="h-8 rounded-r-none border-r-0"
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 shrink-0"
                 >
-                  <Upload className="mr-2 h-4 w-4" />
-                  Upload Files
-                </DropdownMenuItem>
-              ) : (
-                // Documents selected - show actions
-                <>
-                  <div className="px-2 py-1.5 text-sm font-medium">
-                    {checkedDocIds.size} selected
-                  </div>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleBulkProcess}>
-                    <Settings2 className="mr-2 h-4 w-4" />
-                    Process
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                {checkedDocIds.size === 0 ? (
+                  // Nothing selected - show upload option only
                   <DropdownMenuItem
-                    onClick={() => handleBulkSetStatus('pending')}
+                    onClick={() => uploadInputRef.current?.click()}
                   >
-                    <File className="mr-2 h-4 w-4 text-muted-foreground" />
-                    Mark as Pending
+                    <Upload className="mr-2 h-4 w-4" />
+                    Upload Files
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => handleBulkSetStatus('processed')}
-                  >
-                    <FileJson className="mr-2 h-4 w-4 text-blue-500" />
-                    Mark as Processed
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => handleBulkSetStatus('approved')}
-                  >
-                    <FileCheck className="mr-2 h-4 w-4 text-green-500" />
-                    Mark as Approved
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => handleBulkSetStatus('rejected')}
-                  >
-                    <FileX className="mr-2 h-4 w-4 text-red-500" />
-                    Mark as Rejected
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={handleBulkDelete}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </ButtonGroup>
+                ) : (
+                  // Documents selected - show actions
+                  <>
+                    <div className="px-2 py-1.5 text-sm font-medium">
+                      {checkedDocIds.size} selected
+                    </div>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleBulkProcess}>
+                      <Settings2 className="mr-2 h-4 w-4" />
+                      Process
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => handleBulkSetStatus('pending')}
+                    >
+                      <File className="mr-2 h-4 w-4 text-muted-foreground" />
+                      Mark as Pending
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleBulkSetStatus('processed')}
+                    >
+                      <FileJson className="mr-2 h-4 w-4 text-blue-500" />
+                      Mark as Processed
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleBulkSetStatus('approved')}
+                    >
+                      <FileCheck className="mr-2 h-4 w-4 text-green-500" />
+                      Mark as Approved
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleBulkSetStatus('rejected')}
+                    >
+                      <FileX className="mr-2 h-4 w-4 text-red-500" />
+                      Mark as Rejected
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={handleBulkDelete}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </ButtonGroup>
+        </div>
       </div>
 
       {/* Document list (dropzone) */}
