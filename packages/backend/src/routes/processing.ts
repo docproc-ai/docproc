@@ -212,7 +212,7 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
     zValidator('json', createBatchRequest),
     async (c) => {
       try {
-        const { documentIds, webhookUrl } = c.req.valid('json')
+        const { documentIds, webhookUrl, concurrency } = c.req.valid('json')
         const user = c.get('user')
 
         // Verify all documents exist and get document type
@@ -259,6 +259,7 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
           documentTypeId,
           documentIds,
           webhookUrl,
+          concurrency,
         )
 
         return c.json(
@@ -450,13 +451,14 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
  * Process batch in background
  * Updates job and batch status as processing progresses
  * Emits WebSocket events for real-time progress tracking
- * Processes sequentially and checks for cancellation before each document
+ * Processes concurrently with configurable limit and checks for cancellation
  */
 async function processBatchInBackground(
   batchId: string,
   documentTypeId: string,
   documentIds: string[],
   webhookUrl?: string,
+  concurrency?: number,
 ) {
   try {
     // Update batch status to processing
@@ -473,7 +475,7 @@ async function processBatchInBackground(
     let failed = 0
     let skipped = 0
 
-    // Process sequentially with cancellation check before each document
+    // Process concurrently with cancellation check before each document
     await processDocumentBatch(
       documentIds,
       {},
@@ -538,6 +540,7 @@ async function processBatchInBackground(
           total,
         )
       },
+      concurrency,
     )
 
     // Mark batch as complete

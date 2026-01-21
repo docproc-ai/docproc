@@ -102,6 +102,7 @@ export const processDocumentRequest = z.object({
 export const createBatchRequest = z.object({
   documentIds: z.array(z.uuid()).min(1),
   webhookUrl: z.string().url().optional(),
+  concurrency: z.number().int().min(1).max(20).optional(),
 })
 
 export type ProcessDocumentRequest = z.infer<typeof processDocumentRequest>

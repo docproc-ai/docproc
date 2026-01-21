@@ -226,14 +226,30 @@ export function useDocumentTypeLiveUpdates(documentTypeId: string | undefined) {
         // Update document in cache when job completes or progresses
         if (event.documentId) {
           if (event.type === 'job:completed') {
-            // Invalidate queries to refetch fresh data
-            queryClient.invalidateQueries({
+            // Optimistically update document status in list cache
+            queryClient.setQueriesData(
+              { queryKey: ['documents'], exact: false },
+              (old: unknown) => {
+                if (!old || typeof old !== 'object' || !('documents' in old))
+                  return old
+                const data = old as {
+                  documents: Array<{ id: string; status: string | null }>
+                }
+                return {
+                  ...data,
+                  documents: data.documents.map((doc) =>
+                    doc.id === event.documentId
+                      ? { ...doc, status: 'processed' }
+                      : doc,
+                  ),
+                }
+              },
+            )
+            // Force refetch individual document for fresh extracted data
+            queryClient.refetchQueries({
               queryKey: ['document', event.documentId],
             })
-            queryClient.invalidateQueries({
-              queryKey: ['documents'],
-              exact: false,
-            })
+            // Invalidate active jobs
             queryClient.invalidateQueries({
               queryKey: ['activeJobs'],
               exact: false,
@@ -252,13 +268,30 @@ export function useDocumentTypeLiveUpdates(documentTypeId: string | undefined) {
               },
             )
           } else if (event.type === 'job:failed') {
-            queryClient.invalidateQueries({
+            // Optimistically update document status in list cache
+            queryClient.setQueriesData(
+              { queryKey: ['documents'], exact: false },
+              (old: unknown) => {
+                if (!old || typeof old !== 'object' || !('documents' in old))
+                  return old
+                const data = old as {
+                  documents: Array<{ id: string; status: string | null }>
+                }
+                return {
+                  ...data,
+                  documents: data.documents.map((doc) =>
+                    doc.id === event.documentId
+                      ? { ...doc, status: 'pending' }
+                      : doc,
+                  ),
+                }
+              },
+            )
+            // Force refetch individual document
+            queryClient.refetchQueries({
               queryKey: ['document', event.documentId],
             })
-            queryClient.invalidateQueries({
-              queryKey: ['documents'],
-              exact: false,
-            })
+            // Invalidate active jobs
             queryClient.invalidateQueries({
               queryKey: ['activeJobs'],
               exact: false,
@@ -297,9 +330,9 @@ export function useDocumentTypeLiveUpdates(documentTypeId: string | undefined) {
           }
         }
 
-        // Handle batch events
+        // Handle batch events - refetch to ensure final state is accurate
         if (event.type === 'batch:completed' || event.type === 'batch:failed') {
-          queryClient.invalidateQueries({
+          queryClient.refetchQueries({
             queryKey: ['documents'],
             exact: false,
           })
@@ -345,13 +378,57 @@ export function useJobSubscription(jobId: string | undefined) {
         if (event.jobId !== jobId) return
 
         if (event.documentId) {
-          if (event.type === 'job:completed' || event.type === 'job:failed') {
-            queryClient.invalidateQueries({
+          if (event.type === 'job:completed') {
+            // Optimistically update document status in list cache
+            queryClient.setQueriesData(
+              { queryKey: ['documents'], exact: false },
+              (old: unknown) => {
+                if (!old || typeof old !== 'object' || !('documents' in old))
+                  return old
+                const data = old as {
+                  documents: Array<{ id: string; status: string | null }>
+                }
+                return {
+                  ...data,
+                  documents: data.documents.map((doc) =>
+                    doc.id === event.documentId
+                      ? { ...doc, status: 'processed' }
+                      : doc,
+                  ),
+                }
+              },
+            )
+            // Force refetch individual document
+            queryClient.refetchQueries({
               queryKey: ['document', event.documentId],
             })
             queryClient.invalidateQueries({
-              queryKey: ['documents'],
+              queryKey: ['activeJobs'],
               exact: false,
+            })
+          } else if (event.type === 'job:failed') {
+            // Optimistically update document status in list cache
+            queryClient.setQueriesData(
+              { queryKey: ['documents'], exact: false },
+              (old: unknown) => {
+                if (!old || typeof old !== 'object' || !('documents' in old))
+                  return old
+                const data = old as {
+                  documents: Array<{ id: string; status: string | null }>
+                }
+                return {
+                  ...data,
+                  documents: data.documents.map((doc) =>
+                    doc.id === event.documentId
+                      ? { ...doc, status: 'pending' }
+                      : doc,
+                  ),
+                }
+              },
+            )
+            // Force refetch individual document
+            queryClient.refetchQueries({
+              queryKey: ['document', event.documentId],
             })
             queryClient.invalidateQueries({
               queryKey: ['activeJobs'],
@@ -402,7 +479,7 @@ export function useBatchSubscription(batchId: string | undefined) {
         }
 
         if (event.type === 'batch:completed' || event.type === 'batch:failed') {
-          queryClient.invalidateQueries({
+          queryClient.refetchQueries({
             queryKey: ['documents'],
             exact: false,
           })
@@ -413,16 +490,57 @@ export function useBatchSubscription(batchId: string | undefined) {
         }
 
         // Also handle individual job completions within batch
-        if (
-          event.documentId &&
-          (event.type === 'job:completed' || event.type === 'job:failed')
-        ) {
-          queryClient.invalidateQueries({
+        if (event.documentId && event.type === 'job:completed') {
+          // Optimistically update document status in list cache
+          queryClient.setQueriesData(
+            { queryKey: ['documents'], exact: false },
+            (old: unknown) => {
+              if (!old || typeof old !== 'object' || !('documents' in old))
+                return old
+              const data = old as {
+                documents: Array<{ id: string; status: string | null }>
+              }
+              return {
+                ...data,
+                documents: data.documents.map((doc) =>
+                  doc.id === event.documentId
+                    ? { ...doc, status: 'processed' }
+                    : doc,
+                ),
+              }
+            },
+          )
+          // Force refetch individual document for fresh extracted data
+          queryClient.refetchQueries({
             queryKey: ['document', event.documentId],
           })
           queryClient.invalidateQueries({
-            queryKey: ['documents'],
+            queryKey: ['activeJobs'],
             exact: false,
+          })
+        } else if (event.documentId && event.type === 'job:failed') {
+          // Optimistically update document status in list cache
+          queryClient.setQueriesData(
+            { queryKey: ['documents'], exact: false },
+            (old: unknown) => {
+              if (!old || typeof old !== 'object' || !('documents' in old))
+                return old
+              const data = old as {
+                documents: Array<{ id: string; status: string | null }>
+              }
+              return {
+                ...data,
+                documents: data.documents.map((doc) =>
+                  doc.id === event.documentId
+                    ? { ...doc, status: 'pending' }
+                    : doc,
+                ),
+              }
+            },
+          )
+          // Force refetch individual document
+          queryClient.refetchQueries({
+            queryKey: ['document', event.documentId],
           })
           queryClient.invalidateQueries({
             queryKey: ['activeJobs'],
