@@ -76,6 +76,7 @@ export const processingRoutes = new Hono()
       // Create a job to track this streaming process
       const job = await createJob({
         documentId,
+        documentTypeId: doc.documentTypeId,
         createdBy: user?.id,
       })
 

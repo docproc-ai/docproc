@@ -16,6 +16,7 @@ export interface JobProgress {
 export interface Job {
   id: string
   documentId: string
+  documentTypeId: string
   batchId?: string
   status: JobStatus
   progress?: JobProgress
@@ -72,12 +73,14 @@ function scheduleCleanup(batchId: string) {
 
 export async function createJob(data: {
   documentId: string
+  documentTypeId: string
   batchId?: string
   createdBy?: string
 }): Promise<Job> {
   const job: Job = {
     id: nanoid(),
     documentId: data.documentId,
+    documentTypeId: data.documentTypeId,
     batchId: data.batchId,
     status: 'pending',
     createdAt: new Date(),
@@ -204,6 +207,7 @@ export async function createBatch(data: {
   for (const documentId of data.documentIds) {
     const job = await createJob({
       documentId,
+      documentTypeId: data.documentTypeId,
       batchId: batch.id,
       createdBy: data.createdBy,
     })
@@ -351,14 +355,17 @@ export async function getActiveJobsForDocumentType(
     }
   }
 
-  // Get jobs from those batches
+  // Get jobs: both batch jobs and standalone jobs for this document type
   const active: Job[] = []
   for (const job of jobs.values()) {
-    if (
-      job.batchId &&
-      activeBatchIds.has(job.batchId) &&
-      (job.status === 'pending' || job.status === 'processing')
-    ) {
+    if (job.status !== 'pending' && job.status !== 'processing') continue
+
+    // Include batch jobs from active batches
+    if (job.batchId && activeBatchIds.has(job.batchId)) {
+      active.push(job)
+    }
+    // Include standalone jobs (no batch) for this document type
+    else if (!job.batchId && job.documentTypeId === documentTypeId) {
       active.push(job)
     }
   }
