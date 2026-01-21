@@ -13,7 +13,7 @@
     "format": "biome format",
     "lint": "biome lint",
     "check": "biome check",
-    "ui:add": "bunx --bun shadcn@latest add",
+    "ui:add": "cd ./packages/frontend && bunx --bun shadcn@latest add",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:generate": "drizzle-kit generate"

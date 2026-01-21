@@ -11,6 +11,9 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from '@/components/ui/alert-dialog'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Spinner } from '@/components/ui/spinner'
+import { XCircle } from 'lucide-react'
 import {
   ResizablePanelGroup,
   ResizablePanel,
@@ -195,12 +198,23 @@ export default function DocumentEditorPage() {
           <div className="h-full flex flex-col bg-background">
             <div className="flex-1 overflow-y-auto p-6">
               <div className="max-w-2xl space-y-6">
+                {/* Rejection reason */}
+                {currentDoc.status === 'rejected' && currentDoc.rejectionReason && (
+                  <Alert variant="destructive">
+                    <XCircle className="h-4 w-4" />
+                    <AlertTitle>Rejected</AlertTitle>
+                    <AlertDescription>
+                      {currentDoc.rejectionReason}
+                    </AlertDescription>
+                  </Alert>
+                )}
+
                 {/* Streaming indicator */}
                 {isStreaming && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
-                    <div className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-                    <span>Extracting data...</span>
-                  </div>
+                  <Alert>
+                    <Spinner />
+                    <AlertDescription>Extracting data...</AlertDescription>
+                  </Alert>
                 )}
 
                 {/* Form fields */}
