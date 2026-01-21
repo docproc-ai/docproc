@@ -79,15 +79,16 @@ export const processingRoutes = new Hono()
         createdBy: user?.id,
       })
 
+      // Mark job as processing and emit started event IMMEDIATELY
+      // This shows the UI that processing has started before preparation
+      await updateJobStatus(job.id, 'processing', { startedAt: new Date() })
+      emitJobStarted(job.id, documentId, doc.documentTypeId)
+
       try {
-        // Prepare document data for streaming
+        // Prepare document data for streaming (downloads file, runs validation)
         const streamingContext = await prepareDocumentForStreaming(documentId, {
           overrideModel: model,
         })
-
-        // Mark job as processing and emit started event
-        await updateJobStatus(job.id, 'processing', { startedAt: new Date() })
-        emitJobStarted(job.id, documentId, doc.documentTypeId)
 
         // Build prompt with schema included in text (works with all models)
         const schemaPrompt = `Please analyze the attached document and extract the data according to the provided schema.

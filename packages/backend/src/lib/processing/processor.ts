@@ -1,8 +1,5 @@
 import { OpenRouter } from '@openrouter/sdk'
-import { streamObject } from 'ai'
-import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { jsonrepair } from 'jsonrepair'
-import { jsonSchema } from 'ai'
 import { storage } from '../../storage'
 import { getDocument, updateDocument } from '../db/document-operations'
 import { getDocumentType } from '../db/document-type-operations'
@@ -19,11 +16,6 @@ import { generateSlugFromPattern } from '../slug-template'
 
 // Initialize OpenRouter client (for non-streaming)
 const openrouter = new OpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY,
-})
-
-// Initialize AI SDK OpenRouter provider (for streaming)
-const openrouterProvider = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
 })
 
@@ -281,114 +273,8 @@ export async function processAndSaveDocument(
 }
 
 /**
- * Process a document with AI SDK streaming support
- * Uses streamObject for proper partial object streaming
- */
-export async function* processDocumentStreaming(
-  documentId: string,
-  options: ProcessingOptions = {},
-): AsyncGenerator<
-  { type: 'partial' | 'complete'; data: Record<string, unknown> },
-  void,
-  unknown
-> {
-  const { skipValidation = false, overrideModel } = options
-
-  // Get the document
-  const doc = await getDocument(documentId)
-  if (!doc) {
-    throw new Error('Document not found')
-  }
-
-  // Get the document type
-  const docType = await getDocumentType(doc.documentTypeId)
-  if (!docType) {
-    throw new Error('Document type not found')
-  }
-
-  const schema = docType.schema as Record<string, unknown>
-  const modelName = getModelForProcessing(docType.modelName, overrideModel)
-
-  // Load document file from storage
-  const { buffer: fileBuffer } = await storage.download(doc.storagePath)
-
-  // Validate document type if validation instructions exist
-  if (!skipValidation) {
-    const validation = await validateDocument(
-      docType.validationInstructions,
-      fileBuffer,
-      doc.filename,
-      modelName,
-    )
-
-    if (!validation.isValid) {
-      await updateDocument(documentId, {
-        status: 'rejected',
-        rejectionReason:
-          validation.reason || 'Document does not match expected type',
-      })
-
-      throw new Error(
-        `Document validation failed: ${validation.reason || 'Document does not match expected type'}`,
-      )
-    }
-  }
-
-  // Build message content for AI SDK format
-  const extension = getFileExtension(doc.filename)
-  const mimeType = getMimeType(extension)
-  const base64Data = fileBuffer.toString('base64')
-  const dataUrl = `data:${mimeType};base64,${base64Data}`
-
-  // Use AI SDK streamObject for proper partial streaming
-  const { partialObjectStream } = streamObject({
-    model: openrouterProvider(modelName),
-    schema: jsonSchema(schema),
-    system: getSystemPrompt(),
-    messages: [
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'text',
-            text: `Please analyze the attached document and extract the data according to the provided schema.`,
-          },
-          {
-            type: 'image',
-            image: dataUrl,
-          },
-        ],
-      },
-    ],
-  })
-
-  // Stream partial results
-  let finalData: Record<string, unknown> = {}
-  for await (const partialObject of partialObjectStream) {
-    finalData = partialObject as Record<string, unknown>
-    yield { type: 'partial', data: finalData }
-  }
-
-  // Generate slug if document doesn't have one and document type has a pattern
-  let slug: string | null = null
-  if (!doc.slug && docType.slugPattern) {
-    slug = generateSlugFromPattern(docType.slugPattern, finalData, doc.id)
-  }
-
-  // Save to database
-  await updateDocument(documentId, {
-    extractedData: finalData,
-    status: 'processed',
-    schemaSnapshot: schema,
-    ...(slug && { slug }),
-  })
-
-  yield { type: 'complete', data: finalData }
-}
-
-/**
  * Prepare document data for streaming without starting the stream
- * Returns all context needed to call streamObject in the route handler
+ * Returns all context needed to call streamText in the route handler
  */
 export async function prepareDocumentForStreaming(
   documentId: string,
