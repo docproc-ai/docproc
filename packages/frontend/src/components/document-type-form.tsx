@@ -1,6 +1,8 @@
-import { useState, useMemo, useCallback, useEffect } from 'react'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import Editor from '@/components/editor'
+import { SchemaEditorTab } from '@/components/editor-tabs'
+import { ModelSelector } from '@/components/model-selector'
+import { type JsonSchema, SchemaBuilder } from '@/components/schema-builder'
 import {
   Card,
   CardContent,
@@ -8,14 +10,12 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { SchemaBuilder, type JsonSchema } from '@/components/schema-builder'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { SchemaEditorTab } from '@/components/editor-tabs'
-import Editor from '@/components/editor'
-import { ModelSelector } from '@/components/model-selector'
 import {
-  WebhookConfigComponent,
   type WebhookConfig,
+  WebhookConfigComponent,
 } from '@/components/webhook-config'
 
 interface DocumentTypeFormProps {

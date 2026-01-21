@@ -566,7 +566,7 @@ export function DocumentQueue({
       </div>
 
       {/* Pagination */}
-      <div className="px-3 py-2 border-t flex items-center justify-between text-sm">
+      <div className="px-2 py-2 border-t flex items-center justify-between text-sm">
         <button
           type="button"
           onClick={() => onPageChange(Math.max(1, urlPage - 1))}

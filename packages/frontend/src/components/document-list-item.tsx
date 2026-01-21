@@ -57,7 +57,7 @@ export function DocumentListItem({
       {isSelected && (
         <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-primary" />
       )}
-      <div className="pl-3 py-3 self-center">
+      <div className="pl-2 py-2 self-center">
         <Checkbox
           checked={isChecked}
           onCheckedChange={(checked) => onCheck(checked === true)}
@@ -65,7 +65,7 @@ export function DocumentListItem({
         />
       </div>
       {/* Status icon with cancel on hover when processing */}
-      <div className="pl-2 self-center">
+      <div className="pl-2 py-2 self-center">
         {isProcessing ? (
           <button
             type="button"
@@ -86,7 +86,7 @@ export function DocumentListItem({
       <button
         type="button"
         onClick={onSelect}
-        className="flex-1 text-left py-3 pr-3 pl-2 min-w-0"
+        className="flex-1 text-left py-3 px-2 min-w-0"
       >
         <p className="text-sm font-medium truncate">
           {doc.slug || doc.filename}

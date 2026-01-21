@@ -21,7 +21,8 @@ services:
       # rustfs:
       #   condition: service_healthy
     volumes:
-      - documents:/documents
+      # - documents:/documents
+      - ./data/documents:/documents
 
   postgres:
     image: postgres:latest
@@ -74,5 +75,5 @@ services:
 
 volumes:
   postgres_data:
-  documents:
+  # documents:
   # rustfs_data:
