@@ -36,6 +36,7 @@ import {
   useDocument,
   useProcessDocumentStreaming,
   useUpdateDocument,
+  useCancelJob,
 } from '@/lib/queries'
 import { useSession } from '@/lib/auth'
 import { ButtonGroup } from '@/components/ui/button-group'
@@ -71,6 +72,7 @@ export default function ProcessLayout() {
   // Document action state (for header controls)
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamingDocId, setStreamingDocId] = useState<string | null>(null)
+  const [streamingJobId, setStreamingJobId] = useState<string | null>(null)
   const [modelOverride, setModelOverride] = useState('')
   const [streamingData, setStreamingData] = useState<Record<
     string,
@@ -98,9 +100,10 @@ export default function ProcessLayout() {
   const updateDocument = useUpdateDocument()
 
   // Track processing state for the selected document
-  const { isProcessing: isDocProcessing } = useDocumentProcessingState(
+  const { isProcessing: isDocProcessing, activeJobsMap } = useDocumentProcessingState(
     docType?.id || '',
   )
+  const cancelJob = useCancelJob()
 
   // WebSocket for live updates
   useDocumentTypeLiveUpdates(docType?.id)
@@ -161,6 +164,7 @@ export default function ProcessLayout() {
 
     setIsStreaming(true)
     setStreamingDocId(currentDoc.id)
+    setStreamingJobId(null)
     setStreamingData({})
     abortStreamRef.current = abortStreaming
 
@@ -168,6 +172,7 @@ export default function ProcessLayout() {
       await processWithStreaming(
         currentDoc.id,
         modelOverride || undefined,
+        (jobId) => setStreamingJobId(jobId),
         (partialData) => setStreamingData({ ...partialData }),
         (completeData) => setStreamingData({ ...completeData }),
         (error) => console.error('Processing error:', error),
@@ -175,16 +180,32 @@ export default function ProcessLayout() {
     } finally {
       setIsStreaming(false)
       setStreamingDocId(null)
+      setStreamingJobId(null)
       abortStreamRef.current = null
     }
   }, [currentDoc, modelOverride, processWithStreaming, abortStreaming])
 
-  const handleStop = useCallback(() => {
-    abortStreamRef.current?.()
-    setIsStreaming(false)
-    setStreamingDocId(null)
-    abortStreamRef.current = null
-  }, [])
+  const handleStop = useCallback(async () => {
+    // Stop streaming if active
+    if (abortStreamRef.current) {
+      abortStreamRef.current()
+      setIsStreaming(false)
+      setStreamingDocId(null)
+      abortStreamRef.current = null
+    }
+    // Cancel the streaming job if we have its ID
+    if (streamingJobId) {
+      await cancelJob.mutateAsync(streamingJobId)
+      setStreamingJobId(null)
+    }
+    // Cancel batch job if active (for non-streaming jobs)
+    if (selectedDocId && !streamingJobId) {
+      const job = activeJobsMap.get(selectedDocId)
+      if (job) {
+        await cancelJob.mutateAsync(job.jobId)
+      }
+    }
+  }, [selectedDocId, activeJobsMap, cancelJob, streamingJobId])
 
   const handleApprove = useCallback(async () => {
     if (!currentDoc) return

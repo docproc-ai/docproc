@@ -239,6 +239,7 @@ export function useProcessDocumentStreaming() {
   const processWithStreaming = async (
     documentId: string,
     model: string | undefined,
+    onStarted: (jobId: string) => void,
     onPartial: (data: Record<string, unknown>) => void,
     onComplete: (data: Record<string, unknown>) => void,
     onError: (error: string) => void,
@@ -284,7 +285,14 @@ export function useProcessDocumentStreaming() {
                 if (nextLine?.startsWith('data: ')) {
                   const data = nextLine.slice(6)
 
-                  if (eventType === 'partial') {
+                  if (eventType === 'started') {
+                    try {
+                      const { jobId } = JSON.parse(data)
+                      onStarted(jobId)
+                    } catch (_e) {
+                      // Ignore parse errors
+                    }
+                  } else if (eventType === 'partial') {
                     try {
                       onPartial(JSON.parse(data))
                     } catch (_e) {
@@ -304,6 +312,10 @@ export function useProcessDocumentStreaming() {
                     })
                     queryClient.invalidateQueries({
                       queryKey: ['documents'],
+                      exact: false,
+                    })
+                    queryClient.invalidateQueries({
+                      queryKey: ['activeJobs'],
                       exact: false,
                     })
                     resolve()

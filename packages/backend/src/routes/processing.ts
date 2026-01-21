@@ -19,6 +19,7 @@ import { processDocumentBatch } from '../lib/processing/batch-processor'
 import { getDocument } from '../lib/db/document-operations'
 import {
   createBatch,
+  createJob,
   getBatch,
   getBatchWithJobs,
   getJob,
@@ -41,6 +42,7 @@ import {
   emitBatchCompleted,
   emitBatchFailed,
   emitJobStarted,
+  emitJobProgress,
   emitJobCompleted,
   emitJobFailed,
 } from '../lib/websocket'
@@ -63,6 +65,7 @@ export const processingRoutes = new Hono()
     ),
     async (c) => {
       const { documentId, model } = c.req.valid('json')
+      const user = c.get('user')
 
       // Verify document exists
       const doc = await getDocument(documentId)
@@ -70,11 +73,21 @@ export const processingRoutes = new Hono()
         return c.json({ error: 'Document not found' }, 404)
       }
 
+      // Create a job to track this streaming process
+      const job = await createJob({
+        documentId,
+        createdBy: user?.id,
+      })
+
       try {
         // Prepare document data for streaming
         const streamingContext = await prepareDocumentForStreaming(documentId, {
           overrideModel: model,
         })
+
+        // Mark job as processing and emit started event
+        await updateJobStatus(job.id, 'processing', { startedAt: new Date() })
+        emitJobStarted(job.id, documentId, doc.documentTypeId)
 
         // Build prompt with schema included in text (works with all models)
         const schemaPrompt = `Please analyze the attached document and extract the data according to the provided schema.
@@ -86,6 +99,12 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
 
         return streamSSE(c, async (stream) => {
           let fullText = ''
+
+          // Send job ID to frontend immediately
+          await stream.writeSSE({
+            event: 'started',
+            data: JSON.stringify({ jobId: job.id }),
+          })
 
           try {
             // Get image from prepared context
@@ -114,6 +133,8 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
               // Try to parse with bracket closing for partial updates
               const parsed = safeParseJson(fullText)
               if (parsed) {
+                // Emit progress via WebSocket with partial data
+                emitJobProgress(job.id, documentId, doc.documentTypeId, 50, parsed)
                 await stream.writeSSE({
                   event: 'partial',
                   data: JSON.stringify(parsed),
@@ -125,11 +146,18 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
             const finalData = safeParseJson(fullText)
             if (finalData) {
               await streamingContext.updateDocumentOnComplete(finalData)
+              await updateJobStatus(job.id, 'completed', { completedAt: new Date() })
+              emitJobCompleted(job.id, documentId, doc.documentTypeId)
               await stream.writeSSE({
                 event: 'complete',
                 data: JSON.stringify(finalData),
               })
             } else {
+              await updateJobStatus(job.id, 'failed', {
+                error: 'Failed to parse extracted data',
+                completedAt: new Date(),
+              })
+              emitJobFailed(job.id, documentId, doc.documentTypeId, 'Failed to parse extracted data')
               await stream.writeSSE({
                 event: 'error',
                 data: 'Failed to parse extracted data',
@@ -143,6 +171,11 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
           } catch (error) {
             const message =
               error instanceof Error ? error.message : 'Processing failed'
+            await updateJobStatus(job.id, 'failed', {
+              error: message,
+              completedAt: new Date(),
+            })
+            emitJobFailed(job.id, documentId, doc.documentTypeId, message)
             await stream.writeSSE({
               event: 'error',
               data: message,
@@ -153,6 +186,11 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
         console.error('Streaming error:', error)
         const message =
           error instanceof Error ? error.message : 'Processing failed'
+        await updateJobStatus(job.id, 'failed', {
+          error: message,
+          completedAt: new Date(),
+        })
+        emitJobFailed(job.id, documentId, doc.documentTypeId, message)
         return c.json({ error: message }, 500)
       }
     },
