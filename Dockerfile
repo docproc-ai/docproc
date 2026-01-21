@@ -1,4 +1,4 @@
-# Build stage - compile everything
+# Build stage
 FROM oven/bun:1 AS builder
 
 WORKDIR /app
@@ -8,37 +8,29 @@ COPY package.json bun.lock ./
 COPY packages/backend/package.json ./packages/backend/
 COPY packages/frontend/package.json ./packages/frontend/
 
-# Install all dependencies
+# Install dependencies
 RUN bun install --frozen-lockfile
 
 # Copy source code
 COPY . .
 
-# Build frontend
-RUN bun run build
+# Build frontend only
+RUN bun run --cwd packages/frontend build
 
-# Compile backend to single binary
-RUN bun build packages/backend/src/index.ts \
-    --compile \
-    --minify \
-    --target=bun-linux-x64 \
-    --outfile=server
-
-# Production stage - minimal Debian
-FROM debian:bookworm-slim AS runner
+# Production stage - bun runtime
+FROM oven/bun:1-slim AS runner
 
 WORKDIR /app
-
-# Install minimal runtime dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
 RUN groupadd -r docproc && useradd -r -g docproc docproc
 
-# Copy compiled binary
-COPY --from=builder /app/server ./server
+# Copy node_modules (includes sharp native bindings)
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/packages/backend/node_modules ./packages/backend/node_modules
+
+# Copy backend source
+COPY --from=builder /app/packages/backend ./packages/backend
 
 # Copy frontend build
 COPY --from=builder /app/dist/frontend ./dist/frontend
@@ -57,4 +49,4 @@ USER docproc
 
 EXPOSE 3000
 
-CMD ["./server"]
+CMD ["bun", "run", "packages/backend/src/index.ts"]
