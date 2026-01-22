@@ -273,6 +273,9 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
 
         // All documents must be same document type
         const documentTypeId = documents[0]?.documentTypeId
+        if (!documentTypeId) {
+          return c.json({ error: 'Could not determine document type' }, 400)
+        }
         const differentTypes = documents.filter(
           (d) => d?.documentTypeId !== documentTypeId,
         )
@@ -493,12 +496,13 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
  * Emits WebSocket events for real-time progress tracking
  * Processes concurrently with configurable limit and checks for cancellation
  */
-async function processBatchInBackground(
+export async function processBatchInBackground(
   batchId: string,
   documentTypeId: string,
   documentIds: string[],
   webhookUrl?: string,
   concurrency?: number,
+  overrideModel?: string,
 ) {
   try {
     // Update batch status to processing
@@ -518,7 +522,7 @@ async function processBatchInBackground(
     // Process concurrently with cancellation check before each document
     await processDocumentBatch(
       documentIds,
-      {},
+      { overrideModel },
       // Check if job should be processed (not cancelled)
       async (documentId) => {
         const jobId = jobMap.get(documentId)

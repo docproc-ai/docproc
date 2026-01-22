@@ -22,6 +22,8 @@ import {
   requireAuth,
   requirePermission,
 } from '../middleware/auth'
+import { createBatch } from '../lib/db/job-operations'
+import { processBatchInBackground } from './processing'
 
 // Param validator for slug or UUID
 const slugOrIdParam = z.object({ slugOrId: z.string().min(1) })
@@ -194,8 +196,9 @@ export const documentTypesRoutes = new Hono()
           return c.json({ error: 'Document type not found' }, 404)
         }
 
-        // Get autoProcess flag from query params
+        // Get autoProcess flag and model override from query params
         const autoProcess = c.req.query('autoProcess') === 'true'
+        const overrideModel = c.req.query('model') || undefined
 
         // Parse form data
         const formData = await c.req.formData()
@@ -211,7 +214,7 @@ export const documentTypesRoutes = new Hono()
           return c.json({ error: 'No files provided' }, 400)
         }
 
-        // Validate file types
+        // Allowed MIME types and extension-to-MIME mapping
         const allowedTypes = [
           'application/pdf',
           'image/jpeg',
@@ -220,6 +223,17 @@ export const documentTypesRoutes = new Hono()
           'image/webp',
           'image/tiff',
         ]
+
+        const extToMime: Record<string, string> = {
+          pdf: 'application/pdf',
+          jpg: 'image/jpeg',
+          jpeg: 'image/jpeg',
+          png: 'image/png',
+          gif: 'image/gif',
+          webp: 'image/webp',
+          tiff: 'image/tiff',
+          tif: 'image/tiff',
+        }
 
         const results: Array<{
           filename: string
@@ -231,12 +245,16 @@ export const documentTypesRoutes = new Hono()
         // Process each file
         for (const file of files) {
           try {
+            // Get MIME type from file or infer from extension
+            const ext = file.name.split('.').pop()?.toLowerCase() || ''
+            const mimeType = file.type || extToMime[ext] || ''
+
             // Validate file type
-            if (!allowedTypes.includes(file.type)) {
+            if (!allowedTypes.includes(mimeType)) {
               results.push({
                 filename: file.name,
                 success: false,
-                error: `Unsupported file type: ${file.type}`,
+                error: `Unsupported file type: ${mimeType || 'unknown'}`,
               })
               continue
             }
@@ -248,7 +266,7 @@ export const documentTypesRoutes = new Hono()
             const storageKey = await storage.upload(
               buffer,
               file.name,
-              file.type,
+              mimeType,
             )
 
             // Create document record
@@ -278,8 +296,41 @@ export const documentTypesRoutes = new Hono()
         const successful = results.filter((r) => r.success).length
         const failed = results.filter((r) => !r.success).length
 
-        // TODO: Implement auto-processing when processing engine is ready
-        void autoProcess
+        // Get successfully uploaded document IDs
+        const uploadedDocumentIds = results
+          .filter((r) => r.success && r.documentId)
+          .map((r) => r.documentId as string)
+
+        // Auto-process if requested
+        let jobIds: string[] = []
+        let batchId: string | undefined
+
+        if (autoProcess && uploadedDocumentIds.length > 0) {
+          try {
+            // Create batch and jobs
+            const { batch, jobs } = await createBatch({
+              documentTypeId: docType.id,
+              documentIds: uploadedDocumentIds,
+              createdBy: user?.id,
+            })
+
+            jobIds = jobs.map((j) => j.id)
+            batchId = batch.id
+
+            // Start processing in background (don't await)
+            processBatchInBackground(
+              batch.id,
+              docType.id,
+              uploadedDocumentIds,
+              undefined, // webhookUrl
+              undefined, // concurrency (use default)
+              overrideModel,
+            )
+          } catch (processError) {
+            console.error('Failed to queue processing jobs:', processError)
+            // Don't fail the upload if processing queue submission fails
+          }
+        }
 
         return c.json(
           {
@@ -287,6 +338,7 @@ export const documentTypesRoutes = new Hono()
             documentTypeId: docType.id,
             documentTypeSlug: docType.slug,
             results,
+            ...(autoProcess && jobIds.length > 0 ? { jobIds, batchId } : {}),
             summary: {
               total: files.length,
               uploaded: successful,
