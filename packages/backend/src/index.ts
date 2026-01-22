@@ -98,7 +98,7 @@ async function start() {
   // Start server with WebSocket support
   const server = Bun.serve<WebSocketData>({
     port: process.env.PORT ? Number(process.env.PORT) : 3001,
-    idleTimeout: 120, // 2 minutes for SSE streaming
+    idleTimeout: 255, // Max allowed by Bun for long-running AI processing
     fetch(req, server) {
       // Handle WebSocket upgrade for /ws path
       const url = new URL(req.url)

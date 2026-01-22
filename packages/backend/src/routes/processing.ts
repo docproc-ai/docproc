@@ -90,6 +90,7 @@ const processDocumentRoute = createRoute({
       description: 'Processing result',
       content: { 'application/json': { schema: z.object({
         success: z.boolean(),
+        jobId: z.string().openapi({ description: 'Job ID for tracking' }),
         documentId: z.string(),
         extractedData: z.any(),
         status: z.string().optional(),
@@ -331,26 +332,41 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
   })
 
   .openapi(processDocumentRoute, async (c) => {
+    const { documentId } = c.req.valid('param')
+    const body = c.req.valid('json')
+    const user = c.get('user')
+
+    const doc = await getDocument(documentId)
+    if (!doc) {
+      return c.json({ error: 'Document not found' }, 404)
+    }
+
+    if (doc.status === 'processed' || doc.status === 'approved') {
+      return c.json({ error: 'Document already processed' }, 400)
+    }
+
+    // Create job for tracking
+    const job = await createJob({
+      documentId,
+      documentTypeId: doc.documentTypeId,
+      createdBy: user?.id,
+    })
+
+    await updateJobStatus(job.id, 'processing', { startedAt: new Date() })
+    emitJobStarted(job.id, documentId, doc.documentTypeId)
+
     try {
-      const { documentId } = c.req.valid('param')
-      const body = c.req.valid('json')
-
-      const doc = await getDocument(documentId)
-      if (!doc) {
-        return c.json({ error: 'Document not found' }, 404)
-      }
-
-      if (doc.status === 'processed' || doc.status === 'approved') {
-        return c.json({ error: 'Document already processed' }, 400)
-      }
-
       const { data, document } = await processAndSaveDocument(documentId, {
         overrideModel: body?.model,
       })
 
+      await updateJobStatus(job.id, 'completed', { completedAt: new Date() })
+      emitJobCompleted(job.id, documentId, doc.documentTypeId)
+
       return c.json(
         {
           success: true,
+          jobId: job.id,
           documentId,
           extractedData: data,
           status: document?.status ?? undefined,
@@ -360,6 +376,10 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
     } catch (error) {
       console.error('Failed to process document:', error)
       const message = error instanceof Error ? error.message : 'Processing failed'
+
+      await updateJobStatus(job.id, 'failed', { error: message, completedAt: new Date() })
+      emitJobFailed(job.id, documentId, doc.documentTypeId, message)
+
       return c.json({ error: message }, 500)
     }
   })
