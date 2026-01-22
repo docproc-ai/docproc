@@ -109,6 +109,26 @@ export const requirePermission = (
 }
 
 /**
+ * Middleware that requires auth but redirects to login instead of 401
+ * Useful for browser-accessible pages like API docs
+ */
+export const requireAuthOrRedirect = createMiddleware(async (c, next) => {
+  const session = await auth.api.getSession({
+    headers: c.req.raw.headers,
+  })
+
+  if (!session) {
+    return c.redirect('/login')
+  }
+
+  c.set('session', session)
+  c.set('user', session.user)
+  c.set('isApiKey', false)
+
+  await next()
+})
+
+/**
  * Optional auth middleware - populates session if available but doesn't require it
  */
 export const optionalAuth = createMiddleware(async (c, next) => {

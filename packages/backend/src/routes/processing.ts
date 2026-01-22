@@ -1,7 +1,5 @@
-import { Hono } from 'hono'
+import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import { streamSSE } from 'hono/streaming'
-import { zValidator } from '@hono/zod-validator'
-import { z } from 'zod'
 import { streamText } from 'ai'
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { processDocumentRequest, createBatchRequest } from '../schemas'
@@ -47,448 +45,496 @@ import {
   emitJobFailed,
 } from '../lib/websocket'
 
-export const processingRoutes = new Hono()
-  .basePath('/api')
+// Shared schemas
+const errorResponse = z.object({ error: z.string() })
+const successResponse = z.object({ success: z.boolean() })
 
-  // POST /api/process/stream - Process with text streaming and bracket closing
-  // NOTE: Must come before /process/:documentId to avoid "stream" matching as a documentId
-  .post(
-    '/process/stream',
-    requireApiKeyOrAuth,
-    requirePermission('document', 'update'),
-    zValidator(
-      'json',
-      z.object({
-        documentId: z.string().uuid(),
-        model: z.string().optional(),
-      }),
-    ),
-    async (c) => {
-      const { documentId, model } = c.req.valid('json')
-      const user = c.get('user')
+// Route definitions
+const streamProcessRoute = createRoute({
+  method: 'post',
+  path: '/process/stream',
+  tags: ['Processing'],
+  summary: 'Process document with SSE streaming',
+  middleware: [requireApiKeyOrAuth, requirePermission('document', 'update')] as const,
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            documentId: z.string().uuid(),
+            model: z.string().optional(),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: { description: 'SSE stream of processing events' },
+    404: { description: 'Not found', content: { 'application/json': { schema: errorResponse } } },
+    500: { description: 'Server error', content: { 'application/json': { schema: errorResponse } } },
+  },
+})
 
-      // Verify document exists
-      const doc = await getDocument(documentId)
-      if (!doc) {
-        return c.json({ error: 'Document not found' }, 404)
-      }
+const processDocumentRoute = createRoute({
+  method: 'post',
+  path: '/process/{documentId}',
+  tags: ['Processing'],
+  summary: 'Process a single document (non-streaming)',
+  middleware: [requireApiKeyOrAuth, requirePermission('document', 'update')] as const,
+  request: {
+    params: z.object({ documentId: z.string().uuid() }),
+    body: { content: { 'application/json': { schema: processDocumentRequest.optional() } } },
+  },
+  responses: {
+    200: {
+      description: 'Processing result',
+      content: { 'application/json': { schema: z.object({
+        success: z.boolean(),
+        documentId: z.string(),
+        extractedData: z.any(),
+        status: z.string().optional(),
+      }) } },
+    },
+    400: { description: 'Bad request', content: { 'application/json': { schema: errorResponse } } },
+    404: { description: 'Not found', content: { 'application/json': { schema: errorResponse } } },
+    500: { description: 'Server error', content: { 'application/json': { schema: errorResponse } } },
+  },
+})
 
-      // Create a job to track this streaming process
-      const job = await createJob({
-        documentId,
-        documentTypeId: doc.documentTypeId,
-        createdBy: user?.id,
+const createBatchRoute = createRoute({
+  method: 'post',
+  path: '/batches',
+  tags: ['Batches'],
+  summary: 'Create and start batch processing',
+  middleware: [requireAuth, requirePermission('document', 'update')] as const,
+  request: {
+    body: { content: { 'application/json': { schema: createBatchRequest } } },
+  },
+  responses: {
+    201: {
+      description: 'Batch created',
+      content: { 'application/json': { schema: z.object({
+        success: z.boolean(),
+        batchId: z.string(),
+        total: z.number(),
+        jobs: z.array(z.object({ id: z.string(), documentId: z.string().nullable() })),
+      }) } },
+    },
+    400: { description: 'Bad request', content: { 'application/json': { schema: errorResponse } } },
+    500: { description: 'Server error', content: { 'application/json': { schema: errorResponse } } },
+  },
+})
+
+const getBatchRoute = createRoute({
+  method: 'get',
+  path: '/batches/{id}',
+  tags: ['Batches'],
+  summary: 'Get batch status',
+  middleware: [requireApiKeyOrAuth] as const,
+  request: {
+    params: z.object({ id: z.string() }),
+  },
+  responses: {
+    200: { description: 'Batch details', content: { 'application/json': { schema: z.any() } } },
+    404: { description: 'Not found', content: { 'application/json': { schema: errorResponse } } },
+    500: { description: 'Server error', content: { 'application/json': { schema: errorResponse } } },
+  },
+})
+
+const cancelBatchRoute = createRoute({
+  method: 'post',
+  path: '/batches/{id}/cancel',
+  tags: ['Batches'],
+  summary: 'Cancel a batch',
+  middleware: [requireAuth, requirePermission('document', 'update')] as const,
+  request: {
+    params: z.object({ id: z.string() }),
+  },
+  responses: {
+    200: { description: 'Batch cancelled', content: { 'application/json': { schema: successResponse } } },
+    400: { description: 'Bad request', content: { 'application/json': { schema: errorResponse } } },
+    404: { description: 'Not found', content: { 'application/json': { schema: errorResponse } } },
+    500: { description: 'Server error', content: { 'application/json': { schema: errorResponse } } },
+  },
+})
+
+const getActiveJobsRoute = createRoute({
+  method: 'get',
+  path: '/jobs/active',
+  tags: ['Jobs'],
+  summary: 'Get active jobs for a document type',
+  middleware: [requireApiKeyOrAuth] as const,
+  request: {
+    query: z.object({ documentTypeId: z.string().uuid() }),
+  },
+  responses: {
+    200: {
+      description: 'Active jobs',
+      content: { 'application/json': { schema: z.object({
+        jobs: z.array(z.object({
+          id: z.string(),
+          documentId: z.string().nullable(),
+          batchId: z.string().nullable(),
+          status: z.string(),
+        })),
+      }) } },
+    },
+    500: { description: 'Server error', content: { 'application/json': { schema: errorResponse } } },
+  },
+})
+
+const cancelJobRoute = createRoute({
+  method: 'post',
+  path: '/jobs/{id}/cancel',
+  tags: ['Jobs'],
+  summary: 'Cancel a specific job',
+  middleware: [requireAuth, requirePermission('document', 'update')] as const,
+  request: {
+    params: z.object({ id: z.string() }),
+  },
+  responses: {
+    200: {
+      description: 'Job cancelled',
+      content: { 'application/json': { schema: z.object({
+        success: z.boolean(),
+        job: z.object({
+          id: z.string(),
+          documentId: z.string().nullable(),
+          status: z.string(),
+        }),
+      }) } },
+    },
+    404: { description: 'Not found', content: { 'application/json': { schema: errorResponse } } },
+    500: { description: 'Server error', content: { 'application/json': { schema: errorResponse } } },
+  },
+})
+
+// Create router and register routes
+export const processingRoutes = new OpenAPIHono()
+
+  .openapi(streamProcessRoute, async (c) => {
+    const { documentId, model } = c.req.valid('json')
+    const user = c.get('user')
+
+    const doc = await getDocument(documentId)
+    if (!doc) {
+      return c.json({ error: 'Document not found' }, 404)
+    }
+
+    const job = await createJob({
+      documentId,
+      documentTypeId: doc.documentTypeId,
+      createdBy: user?.id,
+    })
+
+    await updateJobStatus(job.id, 'processing', { startedAt: new Date() })
+    emitJobStarted(job.id, documentId, doc.documentTypeId)
+
+    try {
+      const streamingContext = await prepareDocumentForStreaming(documentId, {
+        overrideModel: model,
       })
 
-      // Mark job as processing and emit started event IMMEDIATELY
-      // This shows the UI that processing has started before preparation
-      await updateJobStatus(job.id, 'processing', { startedAt: new Date() })
-      emitJobStarted(job.id, documentId, doc.documentTypeId)
-
-      try {
-        // Prepare document data for streaming (downloads file, runs validation)
-        const streamingContext = await prepareDocumentForStreaming(documentId, {
-          overrideModel: model,
-        })
-
-        // Build prompt with schema included in text (works with all models)
-        const schemaPrompt = `Please analyze the attached document and extract the data according to the provided schema.
+      const schemaPrompt = `Please analyze the attached document and extract the data according to the provided schema.
 
 Schema to follow:
 ${JSON.stringify(streamingContext.schema, null, 2)}
 
 Remember: Output ONLY valid JSON that matches this schema. No explanatory text. Start with { and end with }.`
 
-        return streamSSE(c, async (stream) => {
-          let fullText = ''
+      return streamSSE(c, async (stream) => {
+        let fullText = ''
 
-          // Send job ID to frontend immediately
-          await stream.writeSSE({
-            event: 'started',
-            data: JSON.stringify({ jobId: job.id }),
+        await stream.writeSSE({
+          event: 'started',
+          data: JSON.stringify({ jobId: job.id }),
+        })
+
+        try {
+          const imageContent = streamingContext.messages[0].content[1]
+          const imageData = imageContent.type === 'image' ? imageContent.image : ''
+
+          const result = streamText({
+            model: openrouterProvider(streamingContext.modelName),
+            system: streamingContext.systemPrompt,
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  { type: 'text', text: schemaPrompt },
+                  { type: 'image', image: imageData },
+                ],
+              },
+            ],
           })
 
-          try {
-            // Get image from prepared context
-            const imageContent = streamingContext.messages[0].content[1]
-            const imageData =
-              imageContent.type === 'image' ? imageContent.image : ''
-
-            const result = streamText({
-              model: openrouterProvider(streamingContext.modelName),
-              system: streamingContext.systemPrompt,
-              messages: [
-                {
-                  role: 'user',
-                  content: [
-                    { type: 'text', text: schemaPrompt },
-                    { type: 'image', image: imageData },
-                  ],
-                },
-              ],
-            })
-
-            // Stream text chunks
-            for await (const chunk of result.textStream) {
-              fullText += chunk
-
-              // Try to parse with bracket closing for partial updates
-              const parsed = safeParseJson(fullText)
-              if (parsed) {
-                // Emit progress via WebSocket with partial data
-                emitJobProgress(job.id, documentId, doc.documentTypeId, 50, parsed)
-                await stream.writeSSE({
-                  event: 'partial',
-                  data: JSON.stringify(parsed),
-                })
-              }
-            }
-
-            // Final parse and save
-            const finalData = safeParseJson(fullText)
-            if (finalData) {
-              await streamingContext.updateDocumentOnComplete(finalData)
-              await updateJobStatus(job.id, 'completed', { completedAt: new Date() })
-              emitJobCompleted(job.id, documentId, doc.documentTypeId)
+          for await (const chunk of result.textStream) {
+            fullText += chunk
+            const parsed = safeParseJson(fullText)
+            if (parsed) {
+              emitJobProgress(job.id, documentId, doc.documentTypeId, 50, parsed)
               await stream.writeSSE({
-                event: 'complete',
-                data: JSON.stringify(finalData),
-              })
-            } else {
-              await updateJobStatus(job.id, 'failed', {
-                error: 'Failed to parse extracted data',
-                completedAt: new Date(),
-              })
-              emitJobFailed(job.id, documentId, doc.documentTypeId, 'Failed to parse extracted data')
-              await stream.writeSSE({
-                event: 'error',
-                data: 'Failed to parse extracted data',
+                event: 'partial',
+                data: JSON.stringify(parsed),
               })
             }
+          }
 
+          const finalData = safeParseJson(fullText)
+          if (finalData) {
+            await streamingContext.updateDocumentOnComplete(finalData)
+            await updateJobStatus(job.id, 'completed', { completedAt: new Date() })
+            emitJobCompleted(job.id, documentId, doc.documentTypeId)
             await stream.writeSSE({
-              event: 'done',
-              data: 'Processing complete',
+              event: 'complete',
+              data: JSON.stringify(finalData),
             })
-          } catch (error) {
-            const message =
-              error instanceof Error ? error.message : 'Processing failed'
+          } else {
             await updateJobStatus(job.id, 'failed', {
-              error: message,
+              error: 'Failed to parse extracted data',
               completedAt: new Date(),
             })
-            emitJobFailed(job.id, documentId, doc.documentTypeId, message)
+            emitJobFailed(job.id, documentId, doc.documentTypeId, 'Failed to parse extracted data')
             await stream.writeSSE({
               event: 'error',
-              data: message,
+              data: 'Failed to parse extracted data',
             })
           }
-        })
-      } catch (error) {
-        console.error('Streaming error:', error)
-        const message =
-          error instanceof Error ? error.message : 'Processing failed'
-        await updateJobStatus(job.id, 'failed', {
-          error: message,
-          completedAt: new Date(),
-        })
-        emitJobFailed(job.id, documentId, doc.documentTypeId, message)
-        return c.json({ error: message }, 500)
+
+          await stream.writeSSE({
+            event: 'done',
+            data: 'Processing complete',
+          })
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Processing failed'
+          await updateJobStatus(job.id, 'failed', {
+            error: message,
+            completedAt: new Date(),
+          })
+          emitJobFailed(job.id, documentId, doc.documentTypeId, message)
+          await stream.writeSSE({
+            event: 'error',
+            data: message,
+          })
+        }
+      })
+    } catch (error) {
+      console.error('Streaming error:', error)
+      const message = error instanceof Error ? error.message : 'Processing failed'
+      await updateJobStatus(job.id, 'failed', {
+        error: message,
+        completedAt: new Date(),
+      })
+      emitJobFailed(job.id, documentId, doc.documentTypeId, message)
+      return c.json({ error: message }, 500)
+    }
+  })
+
+  .openapi(processDocumentRoute, async (c) => {
+    try {
+      const { documentId } = c.req.valid('param')
+      const body = c.req.valid('json')
+
+      const doc = await getDocument(documentId)
+      if (!doc) {
+        return c.json({ error: 'Document not found' }, 404)
       }
-    },
-  )
 
-  // POST /api/process/:documentId - Process single document (non-streaming)
-  .post(
-    '/process/:documentId',
-    requireApiKeyOrAuth,
-    requirePermission('document', 'update'),
-    zValidator('param', z.object({ documentId: z.uuid() })),
-    zValidator('json', processDocumentRequest.optional()),
-    async (c) => {
-      try {
-        const { documentId } = c.req.valid('param')
-        const body = c.req.valid('json')
-
-        // Verify document exists
-        const doc = await getDocument(documentId)
-        if (!doc) {
-          return c.json({ error: 'Document not found' }, 404)
-        }
-
-        // Check if already processed
-        if (doc.status === 'processed' || doc.status === 'approved') {
-          return c.json({ error: 'Document already processed' }, 400)
-        }
-
-        // Process document
-        const { data, document } = await processAndSaveDocument(documentId, {
-          overrideModel: body?.model,
-        })
-
-        return c.json(
-          {
-            success: true,
-            documentId,
-            extractedData: data,
-            status: document?.status,
-          },
-          200,
-        )
-      } catch (error) {
-        console.error('Failed to process document:', error)
-        const message =
-          error instanceof Error ? error.message : 'Processing failed'
-        return c.json({ error: message }, 500)
+      if (doc.status === 'processed' || doc.status === 'approved') {
+        return c.json({ error: 'Document already processed' }, 400)
       }
-    },
-  )
 
-  // POST /api/batches - Create and start batch processing
-  .post(
-    '/batches',
-    requireAuth,
-    requirePermission('document', 'update'),
-    zValidator('json', createBatchRequest),
-    async (c) => {
-      try {
-        const { documentIds, webhookUrl, concurrency } = c.req.valid('json')
-        const user = c.get('user')
+      const { data, document } = await processAndSaveDocument(documentId, {
+        overrideModel: body?.model,
+      })
 
-        // Verify all documents exist and get document type
-        const documents = await Promise.all(
-          documentIds.map((id) => getDocument(id)),
-        )
-        const missingDocs = documentIds.filter((_, i) => !documents[i])
+      return c.json(
+        {
+          success: true,
+          documentId,
+          extractedData: data,
+          status: document?.status ?? undefined,
+        },
+        200,
+      )
+    } catch (error) {
+      console.error('Failed to process document:', error)
+      const message = error instanceof Error ? error.message : 'Processing failed'
+      return c.json({ error: message }, 500)
+    }
+  })
 
-        if (missingDocs.length > 0) {
-          return c.json(
-            {
-              error: 'Some documents not found',
-              missing: missingDocs,
-            },
-            400,
-          )
-        }
+  .openapi(createBatchRoute, async (c) => {
+    try {
+      const { documentIds, webhookUrl, concurrency } = c.req.valid('json')
+      const user = c.get('user')
 
-        // All documents must be same document type
-        const documentTypeId = documents[0]?.documentTypeId
-        if (!documentTypeId) {
-          return c.json({ error: 'Could not determine document type' }, 400)
-        }
-        const differentTypes = documents.filter(
-          (d) => d?.documentTypeId !== documentTypeId,
-        )
-        if (differentTypes.length > 0) {
-          return c.json(
-            {
-              error: 'All documents must be of the same document type',
-            },
-            400,
-          )
-        }
+      const documents = await Promise.all(documentIds.map((id) => getDocument(id)))
+      const missingDocs = documentIds.filter((_, i) => !documents[i])
 
-        // Create batch and jobs
-        const { batch, jobs } = await createBatch({
-          documentTypeId,
-          documentIds,
-          webhookUrl,
-          createdBy: user?.id,
-        })
-
-        // Start batch processing in background (don't await)
-        processBatchInBackground(
-          batch.id,
-          documentTypeId,
-          documentIds,
-          webhookUrl,
-          concurrency,
-        )
-
-        return c.json(
-          {
-            success: true,
-            batchId: batch.id,
-            total: documentIds.length,
-            jobs: jobs.map((j) => ({ id: j.id, documentId: j.documentId })),
-          },
-          201,
-        )
-      } catch (error) {
-        console.error('Failed to create batch:', error)
-        return c.json({ error: 'Failed to create batch' }, 500)
+      if (missingDocs.length > 0) {
+        return c.json({ error: 'Some documents not found', missing: missingDocs }, 400)
       }
-    },
-  )
 
-  // GET /api/batches/:id - Get batch status
-  .get(
-    '/batches/:id',
-    requireApiKeyOrAuth,
-    zValidator('param', z.object({ id: z.string() })),
-    async (c) => {
-      try {
-        const { id } = c.req.valid('param')
-
-        const result = await getBatchWithJobs(id)
-        if (!result) {
-          return c.json({ error: 'Batch not found' }, 404)
-        }
-
-        return c.json(
-          {
-            id: result.batch.id,
-            status: result.batch.status,
-            total: parseInt(result.batch.total, 10),
-            completed: parseInt(result.batch.completed || '0', 10),
-            failed: parseInt(result.batch.failed || '0', 10),
-            webhookUrl: result.batch.webhookUrl,
-            createdAt: result.batch.createdAt,
-            completedAt: result.batch.completedAt,
-            jobs: result.jobs.map((j) => ({
-              id: j.id,
-              documentId: j.documentId,
-              status: j.status,
-              error: j.error,
-              progress: j.progress,
-            })),
-          },
-          200,
-        )
-      } catch (error) {
-        console.error('Failed to get batch:', error)
-        return c.json({ error: 'Failed to get batch' }, 500)
+      const documentTypeId = documents[0]?.documentTypeId
+      if (!documentTypeId) {
+        return c.json({ error: 'Could not determine document type' }, 400)
       }
-    },
-  )
+      const differentTypes = documents.filter((d) => d?.documentTypeId !== documentTypeId)
+      if (differentTypes.length > 0) {
+        return c.json({ error: 'All documents must be of the same document type' }, 400)
+      }
 
-  // POST /api/batches/:id/cancel - Cancel batch
-  .post(
-    '/batches/:id/cancel',
-    requireAuth,
-    requirePermission('document', 'update'),
-    zValidator('param', z.object({ id: z.string() })),
-    async (c) => {
-      try {
-        const { id } = c.req.valid('param')
+      const { batch, jobs } = await createBatch({
+        documentTypeId,
+        documentIds,
+        webhookUrl,
+        createdBy: user?.id,
+      })
 
-        const batch = await getBatch(id)
-        if (!batch) {
-          return c.json({ error: 'Batch not found' }, 404)
-        }
+      processBatchInBackground(batch.id, documentTypeId, documentIds, webhookUrl, concurrency)
 
-        if (batch.status === 'completed' || batch.status === 'cancelled') {
-          return c.json({ error: 'Batch already finished' }, 400)
-        }
+      return c.json(
+        {
+          success: true,
+          batchId: batch.id,
+          total: documentIds.length,
+          jobs: jobs.map((j) => ({ id: j.id, documentId: j.documentId })),
+        },
+        201,
+      )
+    } catch (error) {
+      console.error('Failed to create batch:', error)
+      return c.json({ error: 'Failed to create batch' }, 500)
+    }
+  })
 
-        const result = await cancelBatch(id)
-        if (!result) {
-          return c.json({ error: 'Failed to cancel batch' }, 500)
-        }
+  .openapi(getBatchRoute, async (c) => {
+    try {
+      const { id } = c.req.valid('param')
+      const result = await getBatchWithJobs(id)
+      if (!result) {
+        return c.json({ error: 'Batch not found' }, 404)
+      }
 
-        // Emit WebSocket events for each cancelled job
-        for (const job of result.cancelledJobs) {
-          if (job.documentId) {
-            emitJobFailed(
-              job.id,
-              job.documentId,
-              result.batch.documentTypeId,
-              'Batch cancelled',
-              job.batchId,
-            )
-          }
-        }
+      return c.json(
+        {
+          id: result.batch.id,
+          status: result.batch.status,
+          total: parseInt(result.batch.total, 10),
+          completed: parseInt(result.batch.completed || '0', 10),
+          failed: parseInt(result.batch.failed || '0', 10),
+          webhookUrl: result.batch.webhookUrl,
+          createdAt: result.batch.createdAt,
+          completedAt: result.batch.completedAt,
+          jobs: result.jobs.map((j) => ({
+            id: j.id,
+            documentId: j.documentId,
+            status: j.status,
+            error: j.error,
+            progress: j.progress,
+          })),
+        },
+        200,
+      )
+    } catch (error) {
+      console.error('Failed to get batch:', error)
+      return c.json({ error: 'Failed to get batch' }, 500)
+    }
+  })
 
-        return c.json({ success: true }, 200)
-      } catch (error) {
-        console.error('Failed to cancel batch:', error)
+  .openapi(cancelBatchRoute, async (c) => {
+    try {
+      const { id } = c.req.valid('param')
+      const batch = await getBatch(id)
+      if (!batch) {
+        return c.json({ error: 'Batch not found' }, 404)
+      }
+
+      if (batch.status === 'completed' || batch.status === 'cancelled') {
+        return c.json({ error: 'Batch already finished' }, 400)
+      }
+
+      const result = await cancelBatch(id)
+      if (!result) {
         return c.json({ error: 'Failed to cancel batch' }, 500)
       }
-    },
-  )
 
-  // GET /api/jobs/active - Get active jobs for a document type
-  .get(
-    '/jobs/active',
-    requireApiKeyOrAuth,
-    zValidator('query', z.object({ documentTypeId: z.string().uuid() })),
-    async (c) => {
-      try {
-        const { documentTypeId } = c.req.valid('query')
-        const jobs = await getActiveJobsForDocumentType(documentTypeId)
-
-        return c.json(
-          {
-            jobs: jobs.map((j) => ({
-              id: j.id,
-              documentId: j.documentId,
-              batchId: j.batchId,
-              status: j.status,
-            })),
-          },
-          200,
-        )
-      } catch (error) {
-        console.error('Failed to get active jobs:', error)
-        return c.json({ error: 'Failed to get active jobs' }, 500)
+      for (const job of result.cancelledJobs) {
+        if (job.documentId) {
+          emitJobFailed(job.id, job.documentId, result.batch.documentTypeId, 'Batch cancelled', job.batchId)
+        }
       }
-    },
-  )
-  // POST /api/jobs/:id/cancel - Cancel a specific job
-  .post(
-    '/jobs/:id/cancel',
-    requireAuth,
-    requirePermission('document', 'update'),
-    zValidator('param', z.object({ id: z.string() })),
-    async (c) => {
-      try {
-        const { id } = c.req.valid('param')
-        const job = await getJob(id)
 
-        if (!job) {
-          return c.json({ error: 'Job not found' }, 404)
-        }
+      return c.json({ success: true }, 200)
+    } catch (error) {
+      console.error('Failed to cancel batch:', error)
+      return c.json({ error: 'Failed to cancel batch' }, 500)
+    }
+  })
 
-        const cancelled = await cancelJob(id)
-        if (!cancelled) {
-          return c.json({ error: 'Failed to cancel job' }, 500)
-        }
+  .openapi(getActiveJobsRoute, async (c) => {
+    try {
+      const { documentTypeId } = c.req.valid('query')
+      const jobs = await getActiveJobsForDocumentType(documentTypeId)
 
-        // Get documentTypeId from batch if available
-        let documentTypeId: string | undefined
-        if (cancelled.batchId) {
-          const batch = await getBatch(cancelled.batchId)
-          documentTypeId = batch?.documentTypeId
-        }
+      return c.json(
+        {
+          jobs: jobs.map((j) => ({
+            id: j.id,
+            documentId: j.documentId ?? null,
+            batchId: j.batchId ?? null,
+            status: j.status,
+          })),
+        },
+        200,
+      )
+    } catch (error) {
+      console.error('Failed to get active jobs:', error)
+      return c.json({ error: 'Failed to get active jobs' }, 500)
+    }
+  })
 
-        // Emit WebSocket event for job cancellation (only if we have documentTypeId and documentId)
-        if (documentTypeId && cancelled.documentId) {
-          emitJobFailed(
-            cancelled.id,
-            cancelled.documentId,
-            documentTypeId,
-            'Job cancelled',
-            cancelled.batchId,
-          )
-        }
+  .openapi(cancelJobRoute, async (c) => {
+    try {
+      const { id } = c.req.valid('param')
+      const job = await getJob(id)
 
-        return c.json(
-          {
-            success: true,
-            job: {
-              id: cancelled.id,
-              documentId: cancelled.documentId,
-              status: cancelled.status,
-            },
-          },
-          200,
-        )
-      } catch (error) {
-        console.error('Failed to cancel job:', error)
+      if (!job) {
+        return c.json({ error: 'Job not found' }, 404)
+      }
+
+      const cancelled = await cancelJob(id)
+      if (!cancelled) {
         return c.json({ error: 'Failed to cancel job' }, 500)
       }
-    },
-  )
+
+      let documentTypeId: string | undefined
+      if (cancelled.batchId) {
+        const batch = await getBatch(cancelled.batchId)
+        documentTypeId = batch?.documentTypeId
+      }
+
+      if (documentTypeId && cancelled.documentId) {
+        emitJobFailed(cancelled.id, cancelled.documentId, documentTypeId, 'Job cancelled', cancelled.batchId)
+      }
+
+      return c.json(
+        {
+          success: true,
+          job: {
+            id: cancelled.id,
+            documentId: cancelled.documentId,
+            status: cancelled.status,
+          },
+        },
+        200,
+      )
+    } catch (error) {
+      console.error('Failed to cancel job:', error)
+      return c.json({ error: 'Failed to cancel job' }, 500)
+    }
+  })
 
 /**
  * Process batch in background
@@ -505,11 +551,9 @@ export async function processBatchInBackground(
   overrideModel?: string,
 ) {
   try {
-    // Update batch status to processing
     await updateBatchStatus(batchId, 'processing')
     emitBatchStarted(batchId, documentTypeId, documentIds.length)
 
-    // Get jobs for this batch
     const jobs = await getJobsByBatchId(batchId)
     const jobMap = new Map(
       jobs.filter((j) => j.documentId).map((j) => [j.documentId, j.id]),
@@ -519,85 +563,48 @@ export async function processBatchInBackground(
     let failed = 0
     let skipped = 0
 
-    // Process concurrently with cancellation check before each document
     await processDocumentBatch(
       documentIds,
       { overrideModel },
-      // Check if job should be processed (not cancelled)
       async (documentId) => {
         const jobId = jobMap.get(documentId)
         if (!jobId) return false
 
         const job = await getJob(jobId)
         if (!job || job.status === 'failed') {
-          // Job was cancelled - emit skipped event
           skipped++
           await updateBatchProgress(batchId, completed, failed + skipped)
-          emitBatchProgress(
-            batchId,
-            documentTypeId,
-            completed,
-            failed + skipped,
-            documentIds.length,
-          )
+          emitBatchProgress(batchId, documentTypeId, completed, failed + skipped, documentIds.length)
           return false
         }
 
-        // Job is still pending - mark as processing and emit started
         await updateJobStatus(jobId, 'processing', { startedAt: new Date() })
         emitJobStarted(jobId, documentId, documentTypeId, batchId)
         return true
       },
-      // Progress callback
       async (_completedCount, total, documentId, error) => {
         const jobId = jobMap.get(documentId)
         if (!jobId) return
 
         if (error) {
           failed++
-          await updateJobStatus(jobId, 'failed', {
-            error: error.message,
-            completedAt: new Date(),
-          })
-          emitJobFailed(
-            jobId,
-            documentId,
-            documentTypeId,
-            error.message,
-            batchId,
-          )
+          await updateJobStatus(jobId, 'failed', { error: error.message, completedAt: new Date() })
+          emitJobFailed(jobId, documentId, documentTypeId, error.message, batchId)
         } else {
           completed++
-          await updateJobStatus(jobId, 'completed', {
-            completedAt: new Date(),
-          })
+          await updateJobStatus(jobId, 'completed', { completedAt: new Date() })
           emitJobCompleted(jobId, documentId, documentTypeId, batchId)
         }
 
-        // Update batch progress
         await updateBatchProgress(batchId, completed, failed + skipped)
-        emitBatchProgress(
-          batchId,
-          documentTypeId,
-          completed,
-          failed + skipped,
-          total,
-        )
+        emitBatchProgress(batchId, documentTypeId, completed, failed + skipped, total)
       },
       concurrency,
     )
 
-    // Mark batch as complete
     await updateBatchStatus(batchId, 'completed')
-    emitBatchCompleted(
-      batchId,
-      documentTypeId,
-      completed,
-      failed + skipped,
-      documentIds.length,
-    )
+    emitBatchCompleted(batchId, documentTypeId, completed, failed + skipped, documentIds.length)
 
-    // Call webhook if configured
     if (webhookUrl) {
       const batchResult = await getBatchWithJobs(batchId)
       if (batchResult) {
@@ -622,10 +629,6 @@ export async function processBatchInBackground(
   } catch (error) {
     console.error('Batch processing failed:', error)
     await updateBatchStatus(batchId, 'failed')
-    emitBatchFailed(
-      batchId,
-      documentTypeId,
-      error instanceof Error ? error.message : 'Unknown error',
-    )
+    emitBatchFailed(batchId, documentTypeId, error instanceof Error ? error.message : 'Unknown error')
   }
 }

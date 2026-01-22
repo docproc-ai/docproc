@@ -1,10 +1,13 @@
-import { Hono } from 'hono'
+import { OpenAPIHono } from '@hono/zod-openapi'
+import { swaggerUI } from '@hono/swagger-ui'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import { serveStatic } from 'hono/bun'
 import { nanoid } from 'nanoid'
 import { resolve } from 'node:path'
+import type { Context } from 'hono'
 
+import { requireAuthOrRedirect } from './middleware/auth'
 import { runMigrations } from './db/migrate'
 import { initDefaultUser } from './lib/init-default-user'
 import { authRoutes } from './routes/auth'
@@ -16,16 +19,32 @@ import modelsRoutes from './routes/models'
 import { createWebSocketHandler, type WebSocketData } from './lib/websocket'
 
 // Base app with middleware
-const app = new Hono()
-  .use('*', logger())
-  .use('/api/*', cors())
-  .get('/health', (c) => c.json({ status: 'ok' }, 200))
-  .route('/', authRoutes)
-  .route('/', documentsRoutes)
-  .route('/', documentTypesRoutes)
-  .route('/', processingRoutes)
-  .route('/', usersRoutes)
-  .route('/api/models', modelsRoutes)
+const app = new OpenAPIHono()
+
+app.use('*', logger())
+app.use('/api/*', cors())
+app.get('/health', (c) => c.json({ status: 'ok' }, 200))
+
+// Register routes
+app.route('/api/auth', authRoutes)
+app.route('/api/documents', documentsRoutes)
+app.route('/api/document-types', documentTypesRoutes)
+app.route('/api', processingRoutes)
+app.route('/api/users', usersRoutes)
+app.route('/api/models', modelsRoutes)
+
+// OpenAPI documentation (auth protected, redirects to login)
+app.use('/api/doc', requireAuthOrRedirect)
+app.use('/api/docs', requireAuthOrRedirect)
+app.doc('/api/doc', {
+  openapi: '3.0.0',
+  info: {
+    title: 'DocProc API',
+    version: '1.0.0',
+    description: 'Document processing API for extracting structured data from documents',
+  },
+})
+app.get('/api/docs', swaggerUI({ url: '/api/doc' }))
 
 // Export type for Hono RPC client
 export type AppType = typeof app
@@ -38,7 +57,7 @@ if (process.env.NODE_ENV === 'production') {
   app.use('/assets/*', serveStatic({ root: staticRoot }))
 
   // SPA fallback - serve index.html for non-API routes
-  app.get('*', async (c) => {
+  app.get('*', async (c: Context) => {
     const path = c.req.path
     // Skip API routes
     if (path.startsWith('/api') || path.startsWith('/ws')) {

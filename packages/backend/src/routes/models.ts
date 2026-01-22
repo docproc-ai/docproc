@@ -1,8 +1,4 @@
-import { Hono } from 'hono'
-import { zValidator } from '@hono/zod-validator'
-import { z } from 'zod'
-
-const app = new Hono()
+import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 
 // OpenRouter model interface
 interface OpenRouterModel {
@@ -31,7 +27,6 @@ let cacheTimestamp: number = 0
 const CACHE_DURATION = 60 * 60 * 1000 // 1 hour
 
 async function fetchOpenRouterModels(): Promise<OpenRouterModel[]> {
-  // Return cached if valid
   if (cachedModels && Date.now() - cacheTimestamp < CACHE_DURATION) {
     return cachedModels
   }
@@ -65,43 +60,87 @@ async function fetchOpenRouterModels(): Promise<OpenRouterModel[]> {
   }
 }
 
-// Get all vision-capable models (filtered for document processing)
-app.get('/', async (c) => {
-  const models = await fetchOpenRouterModels()
-
-  // Filter to only models that support image input (for document processing)
-  const visionModels = models.filter((model) =>
-    model.architecture?.input_modalities?.includes('image'),
-  )
-
-  // Return simplified model list
-  const result = visionModels.map((model) => ({
-    id: model.id,
-    name: model.name,
-    contextLength: model.context_length,
-    pricing: {
-      prompt: model.pricing.prompt,
-      completion: model.pricing.completion,
-    },
-  }))
-
-  return c.json(result)
+// Response schemas
+const modelResponse = z.object({
+  id: z.string(),
+  name: z.string(),
+  contextLength: z.number(),
+  pricing: z.object({
+    prompt: z.string(),
+    completion: z.string(),
+  }).optional(),
 })
 
-// Search models by query
-app.get(
-  '/search',
-  zValidator('query', z.object({ q: z.string().optional() })),
-  async (c) => {
+const searchModelResponse = z.object({
+  id: z.string(),
+  name: z.string(),
+  contextLength: z.number(),
+})
+
+// Route definitions
+const listRoute = createRoute({
+  method: 'get',
+  path: '/',
+  tags: ['Models'],
+  summary: 'List all vision-capable models',
+  description: 'Returns models filtered for document processing (image input support)',
+  responses: {
+    200: {
+      description: 'List of vision-capable models',
+      content: { 'application/json': { schema: z.array(modelResponse) } },
+    },
+  },
+})
+
+const searchRoute = createRoute({
+  method: 'get',
+  path: '/search',
+  tags: ['Models'],
+  summary: 'Search models by query',
+  request: {
+    query: z.object({
+      q: z.string().optional().openapi({ description: 'Search query' }),
+    }),
+  },
+  responses: {
+    200: {
+      description: 'Filtered list of models',
+      content: { 'application/json': { schema: z.array(searchModelResponse) } },
+    },
+  },
+})
+
+// Create router and register routes
+const app = new OpenAPIHono()
+
+  .openapi(listRoute, async (c) => {
+    const models = await fetchOpenRouterModels()
+
+    const visionModels = models.filter((model) =>
+      model.architecture?.input_modalities?.includes('image'),
+    )
+
+    const result = visionModels.map((model) => ({
+      id: model.id,
+      name: model.name,
+      contextLength: model.context_length,
+      pricing: {
+        prompt: model.pricing.prompt,
+        completion: model.pricing.completion,
+      },
+    }))
+
+    return c.json(result)
+  })
+
+  .openapi(searchRoute, async (c) => {
     const { q } = c.req.valid('query')
     const models = await fetchOpenRouterModels()
 
-    // Filter to vision models
     let visionModels = models.filter((model) =>
       model.architecture?.input_modalities?.includes('image'),
     )
 
-    // Apply search filter if query provided
     if (q) {
       const query = q.toLowerCase()
       visionModels = visionModels.filter(
@@ -118,7 +157,6 @@ app.get(
     }))
 
     return c.json(result)
-  },
-)
+  })
 
 export default app

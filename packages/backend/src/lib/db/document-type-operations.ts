@@ -229,7 +229,7 @@ export async function createDocumentType(
 
   // Encrypt webhook config if provided
   const encryptedWebhookConfig = data.webhookConfig
-    ? encryptWebhookConfig(data.webhookConfig as DocumentWebhookConfig)
+    ? encryptWebhookConfig(data.webhookConfig as unknown as DocumentWebhookConfig)
     : null
 
   const [result] = await db
@@ -282,7 +282,7 @@ export async function updateDocumentType(
       // Merge: preserve existing encrypted values for unedited sensitive fields
       updateData.webhookConfig = mergeWebhookConfigs(
         existingConfig,
-        data.webhookConfig as DocumentWebhookConfig,
+        data.webhookConfig as unknown as DocumentWebhookConfig,
       )
     }
   }
