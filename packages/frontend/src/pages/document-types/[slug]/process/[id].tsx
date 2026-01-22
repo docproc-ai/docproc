@@ -1,35 +1,37 @@
 import { useNavigate, useParams } from '@tanstack/react-router'
-import { useState, useCallback, useEffect } from 'react'
-import { Button } from '@/components/ui/button'
+import { XCircle } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { DocumentViewer } from '@/components/document-viewer'
+import { DataEditorTab } from '@/components/editor-tabs'
+import { FormRenderer } from '@/components/form-renderer'
+import type { JsonSchema } from '@/components/schema-builder/types'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogFooter,
   AlertDialogAction,
   AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Spinner } from '@/components/ui/spinner'
-import { XCircle } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import {
-  ResizablePanelGroup,
-  ResizablePanel,
   ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
 } from '@/components/ui/resizable'
+import { Spinner } from '@/components/ui/spinner'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useDocumentEditorContext } from '@/lib/document-editor-context'
 import {
-  useDocumentType,
   useDocument,
   useDocuments,
-  useUpdateDocument,
+  useDocumentType,
   useRotateDocument,
+  useUpdateDocument,
 } from '@/lib/queries'
-import { FormRenderer } from '@/components/form-renderer'
-import { DocumentViewer } from '@/components/document-viewer'
-import { useDocumentEditorContext } from '@/lib/document-editor-context'
-import type { JsonSchema } from '@/components/schema-builder/types'
 
 export default function DocumentEditorPage() {
   const params = useParams({ strict: false })
@@ -196,41 +198,70 @@ export default function DocumentEditorPage() {
         {/* Form editor */}
         <ResizablePanel defaultSize={50} minSize={30}>
           <div className="h-full flex flex-col bg-background">
-            <div className="flex-1 overflow-y-auto p-6">
-              <div className="max-w-2xl space-y-6">
-                {/* Rejection reason */}
-                {currentDoc.status === 'rejected' && currentDoc.rejectionReason && (
-                  <Alert variant="destructive">
-                    <XCircle className="h-4 w-4" />
-                    <AlertTitle>Rejected</AlertTitle>
-                    <AlertDescription>
-                      {currentDoc.rejectionReason}
-                    </AlertDescription>
-                  </Alert>
-                )}
+            <Tabs defaultValue="form" className="flex-1 min-h-0 flex flex-col p-4 pb-0 gap-4">
+              <TabsList className="w-full shrink-0">
+                <TabsTrigger value="form">Form</TabsTrigger>
+                <TabsTrigger value="data">Data</TabsTrigger>
+              </TabsList>
 
-                {/* Streaming indicator */}
-                {isStreaming && (
-                  <Alert>
-                    <Spinner />
-                    <AlertDescription>Extracting data...</AlertDescription>
-                  </Alert>
-                )}
+              <TabsContent value="form" className="flex-1 min-h-0 overflow-y-auto m-0 -mx-4 px-4">
+                <div className="max-w-2xl space-y-6 pb-4">
+                  {/* Rejection reason */}
+                  {currentDoc.status === 'rejected' &&
+                    currentDoc.rejectionReason && (
+                      <Alert variant="destructive">
+                        <XCircle className="h-4 w-4" />
+                        <AlertTitle>Rejected</AlertTitle>
+                        <AlertDescription>
+                          {currentDoc.rejectionReason}
+                        </AlertDescription>
+                      </Alert>
+                    )}
 
-                {/* Form fields */}
-                <FormRenderer
-                  schema={schema}
-                  data={isStreaming ? displayData : editedData}
-                  onChange={(newData) => {
-                    if (!isStreaming) {
-                      setEditedData(newData)
-                      setHasChanges(true)
+                  {/* Streaming indicator */}
+                  {isStreaming && (
+                    <Alert>
+                      <Spinner />
+                      <AlertDescription>Extracting data...</AlertDescription>
+                    </Alert>
+                  )}
+
+                  {/* Form fields */}
+                  <FormRenderer
+                    schema={schema}
+                    data={isStreaming ? displayData : editedData}
+                    onChange={(newData) => {
+                      if (!isStreaming) {
+                        setEditedData(newData)
+                        setHasChanges(true)
+                      }
+                    }}
+                    isStreaming={isStreaming}
+                  />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="data" className="flex-1 min-h-0 m-0 -mx-4 px-4 pb-4 overflow-hidden">
+                <DataEditorTab
+                  value={JSON.stringify(
+                    isStreaming ? displayData : editedData,
+                    null,
+                    2,
+                  )}
+                  onChange={(value) => {
+                    if (!isStreaming && value) {
+                      try {
+                        const parsed = JSON.parse(value)
+                        setEditedData(parsed)
+                        setHasChanges(true)
+                      } catch {
+                        // Invalid JSON, ignore
+                      }
                     }
                   }}
-                  isStreaming={isStreaming}
                 />
-              </div>
-            </div>
+              </TabsContent>
+            </Tabs>
 
             {/* Save bar - fixed at bottom */}
             {hasChanges && !isStreaming && (

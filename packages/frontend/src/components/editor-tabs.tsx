@@ -26,7 +26,7 @@ const SchemaEditorTabComponent = ({ value, onChange }: EditorTabProps) => {
 
 const DataEditorTabComponent = ({ value, onChange }: EditorTabProps) => {
   return (
-    <div className="h-full">
+    <div className="h-full min-h-0 overflow-hidden">
       <Editor language="json" value={value} onChange={onChange} />
     </div>
   )
