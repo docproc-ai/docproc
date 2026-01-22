@@ -23,6 +23,7 @@ export default defineConfig({
     },
   },
   server: {
+    port: 3000,
     proxy: {
       // SSE streaming endpoint - needs special handling
       '/api/process': {

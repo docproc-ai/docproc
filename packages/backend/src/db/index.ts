@@ -1,18 +1,18 @@
-import { drizzle } from 'drizzle-orm/postgres-js'
-import postgres from 'postgres'
+import { SQL } from 'bun'
+import { drizzle } from 'drizzle-orm/bun-sql'
 import * as schema from './schema'
 
 // Lazy initialization - only connect when db is first accessed
 let _db: ReturnType<typeof drizzle<typeof schema>> | null = null
-let _client: ReturnType<typeof postgres> | null = null
+let _client: SQL | null = null
 
 export function getDb() {
   if (!_db) {
     if (!process.env.DATABASE_URL) {
       throw new Error('DATABASE_URL is not set')
     }
-    _client = postgres(process.env.DATABASE_URL)
-    _db = drizzle(_client, { schema })
+    _client = new SQL(process.env.DATABASE_URL)
+    _db = drizzle({ client: _client, schema })
   }
   return _db
 }

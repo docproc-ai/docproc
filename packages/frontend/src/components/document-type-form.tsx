@@ -181,7 +181,7 @@ export function DocumentTypeForm({
               Describe what the document should contain. If validation fails,
               processing will be skipped.
             </p>
-            <div className="h-[300px]">
+            <div className="h-75">
               <Editor
                 language="markdown"
                 value={validationInstructions}

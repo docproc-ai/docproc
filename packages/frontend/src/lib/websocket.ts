@@ -60,7 +60,13 @@ function getWebSocketUrl(): string {
 }
 
 function connect() {
-  if (globalWs?.readyState === WebSocket.OPEN) return
+  // Guard against both OPEN and CONNECTING states to prevent duplicate connections
+  if (
+    globalWs?.readyState === WebSocket.OPEN ||
+    globalWs?.readyState === WebSocket.CONNECTING
+  ) {
+    return
+  }
 
   notifyStatusChange('connecting')
   const ws = new WebSocket(getWebSocketUrl())

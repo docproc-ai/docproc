@@ -5,54 +5,54 @@ import {
   useParams,
   useSearch,
 } from '@tanstack/react-router'
-import { useCallback, useRef, useState } from 'react'
 import {
+  Check,
+  ChevronDown,
   ChevronLeft,
+  Keyboard,
+  Save,
   Settings,
   Square,
-  Check,
-  Undo2,
-  ChevronDown,
-  Save,
-  XCircle,
   Trash2,
-  Keyboard,
+  Undo2,
+  XCircle,
 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu'
-import {
-  ResizablePanelGroup,
-  ResizablePanel,
-  ResizableHandle,
-} from '@/components/ui/resizable'
-import {
-  useDocumentType,
-  useDocument,
-  useProcessDocumentStreaming,
-  useUpdateDocument,
-  useCancelJob,
-} from '@/lib/queries'
-import { useSession } from '@/lib/auth'
-import { ButtonGroup } from '@/components/ui/button-group'
-import { ModelSelector } from '@/components/model-selector'
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from '@/components/ui/popover'
-import { Kbd } from '@/components/ui/kbd'
-import { useDocumentTypeLiveUpdates } from '@/lib/websocket'
-import { DocumentEditorProvider } from '@/lib/document-editor-context'
+import { useCallback, useRef, useState } from 'react'
 import {
   DocumentQueue,
   useDocumentProcessingState,
 } from '@/components/document-queue'
+import { ModelSelector } from '@/components/model-selector'
+import { Button } from '@/components/ui/button'
+import { ButtonGroup } from '@/components/ui/button-group'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Kbd } from '@/components/ui/kbd'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from '@/components/ui/resizable'
+import { useSession } from '@/lib/auth'
+import { DocumentEditorProvider } from '@/lib/document-editor-context'
+import {
+  useCancelJob,
+  useDocument,
+  useDocumentType,
+  useProcessDocumentStreaming,
+  useUpdateDocument,
+} from '@/lib/queries'
+import { useDocumentTypeLiveUpdates } from '@/lib/websocket'
 
 export default function ProcessLayout() {
   const params = useParams({ strict: false })
@@ -100,9 +100,8 @@ export default function ProcessLayout() {
   const updateDocument = useUpdateDocument()
 
   // Track processing state for the selected document
-  const { isProcessing: isDocProcessing, activeJobsMap } = useDocumentProcessingState(
-    docType?.id || '',
-  )
+  const { isProcessing: isDocProcessing, activeJobsMap } =
+    useDocumentProcessingState(docType?.id || '')
   const cancelJob = useCancelJob()
 
   // WebSocket for live updates
@@ -361,7 +360,8 @@ export default function ProcessLayout() {
                   size="sm"
                   onClick={handleApprove}
                   disabled={updateDocument.isPending || isSelectedDocProcessing}
-                  className="bg-green-600 hover:bg-green-700 text-white"
+                  className=" text-white"
+                  variant="default"
                 >
                   <Check className="h-4 w-4 mr-1" />
                   Approve
@@ -371,12 +371,12 @@ export default function ProcessLayout() {
                 <DropdownMenuTrigger asChild>
                   <Button
                     size="icon"
-                    className={`h-8 w-8 ${currentDoc.status === 'approved' ? '' : 'bg-green-600 hover:bg-green-700 text-white'}`}
-                    disabled={
-                      updateDocument.isPending || isSelectedDocProcessing
-                    }
+                    className="h-8 w-8"
                     variant={
                       currentDoc.status === 'approved' ? 'secondary' : 'default'
+                    }
+                    disabled={
+                      updateDocument.isPending || isSelectedDocProcessing
                     }
                   >
                     <ChevronDown className="h-4 w-4" />

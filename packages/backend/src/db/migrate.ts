@@ -1,6 +1,6 @@
-import { migrate } from 'drizzle-orm/postgres-js/migrator'
-import { db } from './index'
 import { resolve } from 'node:path'
+import { migrate } from 'drizzle-orm/bun-sql/migrator'
+import { db } from './index'
 
 // Use MIGRATIONS_DIR env var, or default to ./drizzle relative to cwd
 // This works both in development and with compiled binaries

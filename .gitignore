@@ -37,3 +37,5 @@ src/frontend/node_modules
 count.txtllms.txt
 
 .playwright-mcp/
+
+.documents/
