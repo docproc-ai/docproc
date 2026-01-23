@@ -19,24 +19,28 @@ import modelsRoutes from './routes/models'
 import { createWebSocketHandler, type WebSocketData } from './lib/websocket'
 
 // Base app with middleware
-const app = new OpenAPIHono()
+const baseApp = new OpenAPIHono()
 
-app.use('*', logger())
-app.use('/api/*', cors())
-app.get('/health', (c) => c.json({ status: 'ok' }, 200))
+baseApp.use('*', logger())
+baseApp.use('/api/*', cors())
+baseApp.get('/health', (c) => c.json({ status: 'ok' }, 200))
 
-// Register routes
-app.route('/api/auth', authRoutes)
-app.route('/api/documents', documentsRoutes)
-app.route('/api/document-types', documentTypesRoutes)
-app.route('/api', processingRoutes)
-app.route('/api/users', usersRoutes)
-app.route('/api/models', modelsRoutes)
+// Register routes - chain them to preserve types
+const app = baseApp
+  .route('/api/auth', authRoutes)
+  .route('/api/documents', documentsRoutes)
+  .route('/api/document-types', documentTypesRoutes)
+  .route('/api', processingRoutes)
+  .route('/api/users', usersRoutes)
+  .route('/api/models', modelsRoutes)
+
+// Export type for Hono RPC client
+export type AppType = typeof app
 
 // OpenAPI documentation (auth protected, redirects to login)
-app.use('/api/doc', requireAuthOrRedirect)
-app.use('/api/docs', requireAuthOrRedirect)
-app.doc('/api/doc', {
+baseApp.use('/api/doc', requireAuthOrRedirect)
+baseApp.use('/api/docs', requireAuthOrRedirect)
+baseApp.doc('/api/doc', {
   openapi: '3.0.0',
   info: {
     title: 'DocProc API',
@@ -44,10 +48,7 @@ app.doc('/api/doc', {
     description: 'Document processing API for extracting structured data from documents',
   },
 })
-app.get('/api/docs', swaggerUI({ url: '/api/doc' }))
-
-// Export type for Hono RPC client
-export type AppType = typeof app
+baseApp.get('/api/docs', swaggerUI({ url: '/api/doc' }))
 
 // In production, serve static frontend files
 if (process.env.NODE_ENV === 'production') {
