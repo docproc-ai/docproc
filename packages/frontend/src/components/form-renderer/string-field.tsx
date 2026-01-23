@@ -19,6 +19,8 @@ export function StringField({
   isStreaming,
 }: FormFieldProps) {
   const fieldType = Array.isArray(schema.type) ? schema.type[0] : schema.type
+  // Convert value to string for form controls
+  const stringValue = typeof value === 'string' ? value : (value != null ? String(value) : '')
 
   // Handle enums for any type, not just strings
   if (schema.enum) {
@@ -66,9 +68,9 @@ export function StringField({
         )}
         <Textarea
           id={name}
-          value={value ?? ''}
+          value={stringValue}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={schema.default}
+          placeholder={schema.default != null ? String(schema.default) : undefined}
           rows={4}
           disabled={isStreaming}
         />
@@ -89,9 +91,9 @@ export function StringField({
         <Input
           id={name}
           type={isStreaming ? 'text' : 'date'}
-          value={value ?? ''}
+          value={stringValue}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={schema.default}
+          placeholder={schema.default != null ? String(schema.default) : undefined}
           disabled={isStreaming}
         />
       </Field>
@@ -110,9 +112,9 @@ export function StringField({
       <Input
         id={name}
         type="text"
-        value={value ?? ''}
+        value={stringValue}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={schema.default}
+        placeholder={schema.default != null ? String(schema.default) : undefined}
         disabled={isStreaming}
       />
     </Field>

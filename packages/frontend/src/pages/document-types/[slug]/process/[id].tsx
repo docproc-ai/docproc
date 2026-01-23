@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from '@tanstack/react-router'
+import { useNavigate, useParams, useSearch } from '@tanstack/react-router'
 import { XCircle } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { DocumentViewer } from '@/components/document-viewer'
@@ -38,6 +38,9 @@ export default function DocumentEditorPage() {
   const slug = params.slug as string
   const documentId = params.id as string
   const navigate = useNavigate()
+  const { q: urlSearch, status: urlStatus, page: urlPage } = useSearch({
+    from: '/document-types/$slug/process/$id',
+  })
 
   const [editedData, setEditedData] = useState<Record<string, unknown>>({})
   const [hasChanges, setHasChanges] = useState(false)
@@ -139,7 +142,7 @@ export default function DocumentEditorPage() {
         navigate({
           to: '/document-types/$slug/process/$id',
           params: { slug: docType.slug, id: nextDocId },
-          search: (prev) => prev,
+          search: { q: urlSearch, status: urlStatus, page: urlPage },
         })
       }
     },
@@ -150,18 +153,15 @@ export default function DocumentEditorPage() {
       docType?.slug,
       navigate,
       currentDoc,
+      urlSearch,
+      urlStatus,
+      urlPage,
     ],
   )
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement
-      const _isInput =
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.isContentEditable
-
       // Ctrl+S - Save (works in inputs)
       if (e.ctrlKey && e.key === 's') {
         e.preventDefault()
@@ -232,7 +232,7 @@ export default function DocumentEditorPage() {
                     data={isStreaming ? displayData : editedData}
                     onChange={(newData) => {
                       if (!isStreaming) {
-                        setEditedData(newData)
+                        setEditedData(newData as Record<string, unknown>)
                         setHasChanges(true)
                       }
                     }}
@@ -313,7 +313,7 @@ export default function DocumentEditorPage() {
                   navigate({
                     to: '/document-types/$slug/process/$id',
                     params: { slug: docType.slug, id: pendingDocId },
-                    search: (prev) => prev,
+                    search: { q: urlSearch, status: urlStatus, page: urlPage },
                   })
                 }
                 setPendingDocId(null)

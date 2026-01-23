@@ -235,7 +235,7 @@ export function SchemaBuilder({
                     <Field>
                       <FieldLabel>Items Type</FieldLabel>
                       <Select
-                        value={propertySchema.items?.type || 'string'}
+                        value={Array.isArray(propertySchema.items?.type) ? propertySchema.items?.type[0] : (propertySchema.items?.type || 'string')}
                         onValueChange={(type) => {
                           const newProperties = {
                             ...schema.properties,

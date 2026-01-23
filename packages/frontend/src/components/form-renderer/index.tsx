@@ -30,6 +30,11 @@ export function FormRenderer({
     )
   }
 
+  // Normalize data to object type
+  const dataObj = (typeof data === 'object' && data !== null)
+    ? data as Record<string, unknown>
+    : {}
+
   return (
     <div className="space-y-6">
       {Object.entries(schema.properties).map(([key, fieldSchema]) => (
@@ -37,8 +42,8 @@ export function FormRenderer({
           <FormField
             name={key}
             schema={fieldSchema}
-            value={data?.[key]}
-            onChange={(value) => onChange({ ...data, [key]: value })}
+            value={dataObj[key]}
+            onChange={(value) => onChange({ ...dataObj, [key]: value })}
             required={schema.required?.includes(key)}
             isStreaming={isStreaming}
           />

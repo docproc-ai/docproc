@@ -317,11 +317,11 @@ function UserRow({
 }: {
   user: {
     id: string
-    name: string
+    name?: string | null
     email: string
-    image: string | null
-    role: string
-    createdAt: string
+    image?: string | null
+    role?: string | null
+    createdAt: unknown
   }
   currentUserId: string | undefined
 }) {
@@ -333,6 +333,8 @@ function UserRow({
     deleteUser.mutate(user.id)
   }
 
+  const displayName = user.name || user.email
+
   return (
     <TableRow>
       <TableCell>
@@ -340,18 +342,18 @@ function UserRow({
           {user.image ? (
             <img
               src={user.image}
-              alt={user.name}
+              alt={displayName}
               className="w-8 h-8 rounded-full"
             />
           ) : (
             <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
               <span className="text-xs font-medium text-muted-foreground">
-                {user.name.charAt(0).toUpperCase()}
+                {displayName.charAt(0).toUpperCase()}
               </span>
             </div>
           )}
           <div>
-            <div className="font-medium">{user.name}</div>
+            <div className="font-medium">{displayName}</div>
             <div className="text-sm text-muted-foreground">{user.email}</div>
           </div>
         </div>
@@ -364,7 +366,7 @@ function UserRow({
         </span>
       </TableCell>
       <TableCell className="text-muted-foreground">
-        {new Date(user.createdAt).toLocaleDateString('en-US', {
+        {new Date(String(user.createdAt)).toLocaleDateString('en-US', {
           month: 'short',
           day: 'numeric',
           year: 'numeric',
@@ -372,7 +374,7 @@ function UserRow({
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-1">
-          <EditUserDialog user={user} isCurrentUser={isCurrentUser} />
+          <EditUserDialog user={{ id: user.id, name: user.name || '', email: user.email, role: (user.role || 'user') as Role }} isCurrentUser={isCurrentUser} />
           {!isCurrentUser && (
             <AlertDialog>
               <AlertDialogTrigger asChild>

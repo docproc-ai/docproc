@@ -271,12 +271,19 @@ function SpreadsheetCellInput({
     }
   }
 
+  // Convert value to string for display
+  const toStringValue = (val: unknown): string => {
+    if (typeof val === 'string') return val
+    if (val != null) return String(val)
+    return ''
+  }
+
   switch (fieldType) {
     case 'number':
     case 'integer': {
       // Display formatted value, parse on change
       const displayNum =
-        typeof value === 'number' ? value.toLocaleString() : (value ?? '')
+        typeof value === 'number' ? value.toLocaleString() : toStringValue(value)
       return (
         <Input
           type="text"
@@ -319,7 +326,7 @@ function SpreadsheetCellInput({
         // Native date inputs have browser-specific padding that ignores text-align
         return (
           <DateCellInput
-            value={value}
+            value={typeof value === 'string' ? value : undefined}
             onChange={onChange}
             onKeyDown={handleKeyDown}
             className={cn(inputClasses, 'text-right')}
@@ -330,7 +337,7 @@ function SpreadsheetCellInput({
       return (
         <Input
           type="text"
-          value={value ?? ''}
+          value={toStringValue(value)}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
           className={inputClasses}
@@ -341,7 +348,7 @@ function SpreadsheetCellInput({
       return (
         <Input
           type="text"
-          value={value ?? ''}
+          value={toStringValue(value)}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
           className={inputClasses}
@@ -361,13 +368,13 @@ function ArrayTableField({
 }: {
   name: string
   schema: JsonSchema
-  value: unknown[]
+  value: unknown
   onChange: (value: unknown[]) => void
   required?: boolean
   isStreaming?: boolean
 }) {
   const [isPivoted, setIsPivoted] = useState(schema['ui:pivoted'] ?? false)
-  const arrayValue = value || []
+  const arrayValue: unknown[] = Array.isArray(value) ? value : []
 
   const handleAddRecord = () => {
     const itemsSchema = schema.items || {}
@@ -401,7 +408,11 @@ function ArrayTableField({
   ) => {
     const newArray = [...arrayValue]
     if (fieldKey) {
-      newArray[recordIndex] = { ...newArray[recordIndex], [fieldKey]: newValue }
+      const currentRecord = newArray[recordIndex]
+      const recordObj = typeof currentRecord === 'object' && currentRecord !== null
+        ? currentRecord as Record<string, unknown>
+        : {}
+      newArray[recordIndex] = { ...recordObj, [fieldKey]: newValue }
     } else {
       newArray[recordIndex] = newValue
     }
@@ -413,6 +424,14 @@ function ArrayTableField({
   const fieldKeys = isObjectArray
     ? Object.keys(itemsSchema.properties || {})
     : [itemsSchema.title || 'Value']
+
+  // Helper to get field value from item
+  const getItemFieldValue = (item: unknown, fieldKey: string): unknown => {
+    if (typeof item === 'object' && item !== null && fieldKey in item) {
+      return (item as Record<string, unknown>)[fieldKey]
+    }
+    return undefined
+  }
 
   // Get field title from schema
   const getFieldTitle = (fieldKey: string) => {
@@ -447,7 +466,7 @@ function ArrayTableField({
                 const cellSchema = isObjectArray
                   ? (itemsSchema.properties?.[fieldKey] as JsonSchema) || {}
                   : itemsSchema
-                const cellValue = isObjectArray ? item[fieldKey] : item
+                const cellValue = isObjectArray ? getItemFieldValue(item, fieldKey) : item
                 const columnKey = isObjectArray ? fieldKey : null
                 // Set minWidth for date columns to prevent cutoff
                 const isDate = cellSchema.format === 'date'
@@ -541,16 +560,17 @@ function ArrayTableField({
                   {getFieldTitle(fieldKey)}
                 </TableCell>
                 {arrayValue.map((item, recordIndex) => {
-                  const cellValue = isObjectArray ? item[fieldKey] : item
+                  const cellValue = isObjectArray ? getItemFieldValue(item, fieldKey) : item
                   const columnKey = isObjectArray ? fieldKey : null
                   // Format display value - dates and numbers in locale format
                   const displayValue = (() => {
                     if (cellValue == null) return ''
                     if (cellSchema.format === 'date' && cellValue) {
                       try {
-                        return new Date(cellValue).toLocaleDateString()
+                        const dateStr = typeof cellValue === 'string' ? cellValue : String(cellValue)
+                        return new Date(dateStr).toLocaleDateString()
                       } catch {
-                        return cellValue
+                        return String(cellValue)
                       }
                     }
                     if (
@@ -656,29 +676,30 @@ export function ArrayField({
     })
   }
 
+  // Normalize value to array
+  const arrayValue: unknown[] = Array.isArray(value) ? value : []
+
   if (schema['ui:widget'] === 'table') {
     return (
       <ArrayTableField
         name={name}
         schema={schema}
-        value={value}
-        onChange={onChange}
+        value={arrayValue}
+        onChange={onChange as (value: unknown[]) => void}
         required={required}
         isStreaming={isStreaming}
       />
     )
   }
 
-  const arrayValue = value || []
-
-  const allExpanded = arrayValue.every((_: unknown, index: number) => {
+  const allExpanded = arrayValue.every((_, index) => {
     const itemKey = `${name}-${index}`
     return expandedArrayItems[itemKey] !== false
   })
 
   const toggleAll = () => {
     const newState: Record<string, boolean> = {}
-    arrayValue.forEach((_: unknown, index: number) => {
+    arrayValue.forEach((_, index) => {
       const itemKey = `${name}-${index}`
       newState[itemKey] = !allExpanded
     })
@@ -731,13 +752,14 @@ export function ArrayField({
             const template = itemsSchema['ui:displayTemplate']
 
             // For object items with template, use template
-            if (isObjectItem && template && typeof item === 'object') {
+            if (isObjectItem && template && typeof item === 'object' && item !== null) {
+              const itemObj = item as Record<string, unknown>
               const result = template.replace(
                 /\{\{\s*(\w+)\s*\}\}/g,
                 (match: string, fieldName: string) => {
-                  const value = item[fieldName]
-                  return value !== undefined && value !== null && value !== ''
-                    ? String(value)
+                  const fieldValue = itemObj[fieldName]
+                  return fieldValue !== undefined && fieldValue !== null && fieldValue !== ''
+                    ? String(fieldValue)
                     : match
                 },
               )

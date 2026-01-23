@@ -28,6 +28,23 @@ const idParam = z.object({ id: z.string().min(1).openapi({ description: 'Documen
 const errorResponse = z.object({ error: z.string() })
 const successResponse = z.object({ success: z.boolean() })
 
+// Document response schema
+const documentResponse = z.object({
+  id: z.string().uuid(),
+  documentTypeId: z.string().uuid(),
+  status: z.enum(['pending', 'processed', 'approved', 'rejected']).nullable(),
+  filename: z.string(),
+  storagePath: z.string(),
+  slug: z.string().nullable(),
+  extractedData: z.any().openapi({ type: 'object' }).nullable(),
+  schemaSnapshot: z.any().openapi({ type: 'object' }).nullable(),
+  rejectionReason: z.string().nullable(),
+  createdAt: z.any(),
+  updatedAt: z.any(),
+  createdBy: z.string().uuid().nullable(),
+  updatedBy: z.string().uuid().nullable(),
+})
+
 // Route definitions
 const listRoute = createRoute({
   method: 'get',
@@ -42,7 +59,7 @@ const listRoute = createRoute({
     200: {
       description: 'Paginated list of documents',
       content: { 'application/json': { schema: z.object({
-        documents: z.array(z.any()),
+        documents: z.array(documentResponse),
         pagination: z.object({
           page: z.number(),
           pageSize: z.number(),
@@ -126,7 +143,7 @@ const getRoute = createRoute({
   middleware: [requireApiKeyOrAuth, requirePermission('document', 'list')] as const,
   request: { params: idParam },
   responses: {
-    200: { description: 'Document details', content: { 'application/json': { schema: z.any() } } },
+    200: { description: 'Document details', content: { 'application/json': { schema: documentResponse } } },
     404: { description: 'Not found', content: { 'application/json': { schema: errorResponse } } },
     500: { description: 'Server error', content: { 'application/json': { schema: errorResponse } } },
   },
@@ -143,7 +160,7 @@ const updateRoute = createRoute({
     body: { content: { 'application/json': { schema: updateDocumentRequest } } },
   },
   responses: {
-    200: { description: 'Updated document', content: { 'application/json': { schema: z.any() } } },
+    200: { description: 'Updated document', content: { 'application/json': { schema: documentResponse } } },
     404: { description: 'Not found', content: { 'application/json': { schema: errorResponse } } },
     500: { description: 'Server error', content: { 'application/json': { schema: errorResponse } } },
   },

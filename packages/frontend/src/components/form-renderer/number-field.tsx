@@ -13,18 +13,21 @@ export function NumberField({
 }: FormFieldProps) {
   const fieldType = schema.type
 
+  // Convert value to display string
+  const toDisplayString = (val: unknown): string => {
+    if (typeof val === 'number') return val.toLocaleString()
+    if (typeof val === 'string') return val
+    return ''
+  }
+
   // Track the raw input string to allow intermediate states like "12." or "12.0"
-  const [rawInput, setRawInput] = useState<string>(() =>
-    typeof value === 'number' ? value.toLocaleString() : (value ?? ''),
-  )
+  const [rawInput, setRawInput] = useState<string>(() => toDisplayString(value))
   const [isFocused, setIsFocused] = useState(false)
 
   // Sync rawInput when value changes externally (e.g., from streaming or reset)
   useEffect(() => {
     if (!isFocused) {
-      setRawInput(
-        typeof value === 'number' ? value.toLocaleString() : (value ?? ''),
-      )
+      setRawInput(toDisplayString(value))
     }
   }, [value, isFocused])
 

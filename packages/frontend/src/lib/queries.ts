@@ -10,8 +10,8 @@ export class PermissionError extends Error {
   }
 }
 
-// Helper to handle API errors
-async function handleApiError(res: Response, defaultMessage: string) {
+// Helper to handle API errors - returns never to help TypeScript narrow types
+async function handleApiError(res: Response, defaultMessage: string): Promise<never> {
   if (res.status === 403) {
     throw new PermissionError()
   }
@@ -21,6 +21,19 @@ async function handleApiError(res: Response, defaultMessage: string) {
   throw new Error(defaultMessage)
 }
 
+// Type guard to check if response is an error
+function isErrorResponse(data: unknown): data is { error: string } {
+  return typeof data === 'object' && data !== null && 'error' in data
+}
+
+// Helper to extract success data from API response
+function extractData<T>(data: T | { error: string }, defaultMessage: string): T {
+  if (isErrorResponse(data)) {
+    throw new Error(data.error || defaultMessage)
+  }
+  return data
+}
+
 // Document Types
 export function useDocumentTypes() {
   return useQuery({
@@ -28,7 +41,8 @@ export function useDocumentTypes() {
     queryFn: async () => {
       const res = await api.api['document-types'].$get()
       if (!res.ok) await handleApiError(res, 'Failed to fetch document types')
-      return res.json()
+      const data = await res.json()
+      return extractData(data, 'Failed to fetch document types')
     },
   })
 }
@@ -40,8 +54,9 @@ export function useDocumentType(slugOrId: string) {
       const res = await api.api['document-types'][':slugOrId'].$get({
         param: { slugOrId },
       })
-      if (!res.ok) throw new Error('Failed to fetch document type')
-      return res.json()
+      if (!res.ok) await handleApiError(res, 'Failed to fetch document type')
+      const data = await res.json()
+      return extractData(data, 'Failed to fetch document type')
     },
     enabled: !!slugOrId,
   })
@@ -134,8 +149,9 @@ export function useDocuments(
           ...(options?.search && { search: options.search }),
         },
       })
-      if (!res.ok) throw new Error('Failed to fetch documents')
-      return res.json()
+      if (!res.ok) await handleApiError(res, 'Failed to fetch documents')
+      const data = await res.json()
+      return extractData(data, 'Failed to fetch documents')
     },
     enabled: !!documentTypeId,
     // Keep showing previous results while new search results load
@@ -150,8 +166,9 @@ export function useDocument(id: string) {
       const res = await api.api.documents[':id'].$get({
         param: { id },
       })
-      if (!res.ok) throw new Error('Failed to fetch document')
-      return res.json()
+      if (!res.ok) await handleApiError(res, 'Failed to fetch document')
+      const data = await res.json()
+      return extractData(data, 'Failed to fetch document')
     },
     enabled: !!id,
   })

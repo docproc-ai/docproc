@@ -109,6 +109,7 @@ function DocumentTypeCard({
             <Link
               to="/document-types/$slug/process"
               params={{ slug: docType.slug }}
+              search={{ q: '', status: 'all', page: 1 }}
             >
               Process
               <ArrowRight className="size-3.5" />

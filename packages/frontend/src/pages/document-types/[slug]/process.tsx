@@ -117,41 +117,47 @@ export default function ProcessLayout() {
         navigate({
           to: '/document-types/$slug/process/$id',
           params: { slug: docType.slug, id: docId },
-          search: (prev) => prev,
+          search: { q: urlSearch, status: urlStatus, page: urlPage },
         })
       }
     },
-    [docType?.slug, navigate],
+    [docType?.slug, navigate, urlSearch, urlStatus, urlPage],
   )
 
   const handleSearchChange = useCallback(
     (search: string) => {
       navigate({
-        search: (prev) => ({ ...prev, q: search || undefined, page: 1 }),
+        to: '/document-types/$slug/process',
+        params: { slug },
+        search: { q: search || '', status: urlStatus, page: 1 },
         replace: true,
       })
     },
-    [navigate],
+    [navigate, slug, urlStatus],
   )
 
   const handleStatusChange = useCallback(
     (status: string) => {
       navigate({
-        search: (prev) => ({ ...prev, status, page: 1 }),
+        to: '/document-types/$slug/process',
+        params: { slug },
+        search: { q: urlSearch, status, page: 1 },
         replace: true,
       })
     },
-    [navigate],
+    [navigate, slug, urlSearch],
   )
 
   const handlePageChange = useCallback(
     (page: number) => {
       navigate({
-        search: (prev) => ({ ...prev, page }),
+        to: '/document-types/$slug/process',
+        params: { slug },
+        search: { q: urlSearch, status: urlStatus, page },
         replace: true,
       })
     },
-    [navigate],
+    [navigate, slug, urlSearch, urlStatus],
   )
 
   // ============================================

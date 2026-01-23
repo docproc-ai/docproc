@@ -77,6 +77,9 @@ function DocumentViewerComponent({
       setIsRendering(true)
       try {
         const page = await pdfRef.current?.getPage(currentPage)
+        if (!page) {
+          throw new Error('Could not load page')
+        }
         const scale = 2
         const viewport = page.getViewport({ scale })
 

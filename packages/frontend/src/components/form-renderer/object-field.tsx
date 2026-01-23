@@ -123,7 +123,10 @@ export function ObjectField({
 }: FormFieldProps) {
   if (schema.type !== 'object') return null
 
-  const objectValue = value || {}
+  // Normalize value to object type
+  const objectValue: Record<string, unknown> = (typeof value === 'object' && value !== null)
+    ? value as Record<string, unknown>
+    : {}
 
   const objectContent = (
     <>

@@ -16,7 +16,7 @@ export function BooleanField({
     <Field orientation="horizontal">
       <Checkbox
         id={name}
-        checked={value || false}
+        checked={typeof value === 'boolean' ? value : false}
         onCheckedChange={onChange}
         disabled={isStreaming}
       />

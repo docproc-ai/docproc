@@ -43,7 +43,17 @@ const documentTypeResponse = z.object({
   webhookConfig: z.any().openapi({ type: 'object' }).nullish(),
   createdAt: z.any(),
   updatedAt: z.any(),
-}).passthrough()
+})
+
+const documentTypeWithCountsResponse = documentTypeResponse.extend({
+  documentCount: z.number(),
+  statusCounts: z.object({
+    pending: z.number(),
+    processed: z.number(),
+    approved: z.number(),
+    rejected: z.number(),
+  }),
+})
 
 // Route definitions
 const listRoute = createRoute({
@@ -54,8 +64,8 @@ const listRoute = createRoute({
   middleware: [requireApiKeyOrAuth, requirePermission('documentType', 'list')] as const,
   responses: {
     200: {
-      description: 'List of document types',
-      content: { 'application/json': { schema: z.array(documentTypeResponse) } },
+      description: 'List of document types with document counts',
+      content: { 'application/json': { schema: z.array(documentTypeWithCountsResponse) } },
     },
     500: {
       description: 'Server error',

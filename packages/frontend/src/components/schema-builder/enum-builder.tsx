@@ -33,7 +33,7 @@ export function EnumBuilder({ value, onChange }: EnumBuilderProps) {
           className="flex items-center gap-2"
         >
           <Input
-            value={option}
+            value={option != null ? String(option) : ''}
             onChange={(e) => handleOptionChange(index, e.target.value)}
             placeholder={`Option ${index + 1}`}
           />
