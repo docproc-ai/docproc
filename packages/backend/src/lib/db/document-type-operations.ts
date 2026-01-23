@@ -5,7 +5,7 @@
 
 import { db } from '../../db'
 import { documentType, document } from '../../db/schema/app'
-import { eq, desc, count, and } from 'drizzle-orm'
+import { eq, asc, count, and } from 'drizzle-orm'
 import { generateSlug } from '../generate-slug'
 import {
   encryptWebhookConfig,
@@ -59,7 +59,7 @@ export async function getDocumentTypes(): Promise<DocumentTypeWithCount[]> {
   const documentTypes = await db
     .select()
     .from(documentType)
-    .orderBy(desc(documentType.createdAt))
+    .orderBy(asc(documentType.createdAt))
 
   const typesWithCounts = await Promise.all(
     documentTypes.map(async (type) => {

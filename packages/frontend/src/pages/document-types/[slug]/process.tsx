@@ -310,7 +310,7 @@ export default function ProcessLayout() {
             {/* Process/Stop ButtonGroup */}
             {isSelectedDocProcessing ? (
               <Button variant="outline" size="sm" onClick={handleStop}>
-                <Square className="h-4 w-4 mr-1 fill-current" />
+                <Square className="h-4 w-4 fill-current" />
                 Stop
               </Button>
             ) : (
@@ -352,7 +352,7 @@ export default function ProcessLayout() {
                   onClick={handleUnapprove}
                   disabled={updateDocument.isPending}
                 >
-                  <Undo2 className="h-4 w-4 mr-1" />
+                  <Undo2 className="h-4 w-4" />
                   Unapprove
                 </Button>
               ) : (
@@ -363,7 +363,7 @@ export default function ProcessLayout() {
                   className=" text-white"
                   variant="default"
                 >
-                  <Check className="h-4 w-4 mr-1" />
+                  <Check className="h-4 w-4" />
                   Approve
                 </Button>
               )}

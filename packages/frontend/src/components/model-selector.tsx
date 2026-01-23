@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { ChevronsUpDown, Plus } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Command,
@@ -16,7 +16,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
-import { useQuery } from '@tanstack/react-query'
+import { cn } from '@/lib/utils'
 
 interface Model {
   id: string
@@ -125,7 +125,7 @@ export function ModelSelector({
                         onSelect={handleCreateCustom}
                         className="cursor-pointer"
                       >
-                        <Plus className="mr-2 h-4 w-4" />
+                        <Plus className="h-4 w-4" />
                         <span>Use custom: </span>
                         <span className="font-mono font-medium">
                           {searchValue}

@@ -10,9 +10,11 @@ import {
   Pencil,
   Plus,
 } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { useDocumentTypes, PermissionError } from '@/lib/queries'
+import { Input } from '@/components/ui/input'
 import { authClient, useSession } from '@/lib/auth'
+import { PermissionError, useDocumentTypes } from '@/lib/queries'
 
 // Document type card with distinctive styling
 function DocumentTypeCard({
@@ -95,7 +97,7 @@ function DocumentTypeCard({
               to="/document-types/$slug/settings"
               params={{ slug: docType.slug }}
             >
-              <Pencil className="size-3.5 mr-1.5" />
+              <Pencil className="size-3.5" />
               Edit
             </Link>
           </Button>
@@ -107,7 +109,7 @@ function DocumentTypeCard({
               params={{ slug: docType.slug }}
             >
               Process
-              <ArrowRight className="size-3.5 ml-1.5" />
+              <ArrowRight className="size-3.5" />
             </Link>
           </Button>
         )}
@@ -151,6 +153,7 @@ function LoadingSkeleton() {
 }
 
 export default function DocumentTypesPage() {
+  const [search, setSearch] = useState('')
   const { data: documentTypes, isLoading, error } = useDocumentTypes()
   const { data: session } = useSession()
   const userRole =
@@ -171,6 +174,16 @@ export default function DocumentTypesPage() {
     role: userRole as 'admin' | 'user' | 'none',
   })
 
+  const filteredDocumentTypes = useMemo(() => {
+    if (!documentTypes || !search.trim()) return documentTypes
+    const searchLower = search.toLowerCase()
+    return documentTypes.filter(
+      (docType) =>
+        docType.name.toLowerCase().includes(searchLower) ||
+        docType.slug.toLowerCase().includes(searchLower),
+    )
+  }, [documentTypes, search])
+
   return (
     <div className="container mx-auto px-6 py-8">
       {/* Page Header */}
@@ -189,6 +202,18 @@ export default function DocumentTypesPage() {
           </Button>
         )}
       </div>
+
+      {/* Search */}
+      {documentTypes && documentTypes.length > 0 && (
+        <div className="mb-6">
+          <Input
+            placeholder="Search document types..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="max-w-sm"
+          />
+        </div>
+      )}
 
       {/* Content */}
       {isLoading ? (
@@ -212,9 +237,21 @@ export default function DocumentTypesPage() {
         </div>
       ) : documentTypes && documentTypes.length === 0 ? (
         <EmptyState />
+      ) : filteredDocumentTypes && filteredDocumentTypes.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20">
+          <div className="w-24 h-24 mb-6 flex items-center justify-center">
+            <FileText className="size-16 text-muted-foreground" />
+          </div>
+          <h3 className="font-sans text-xl font-semibold mb-2">
+            No results found
+          </h3>
+          <p className="text-muted-foreground text-center max-w-sm">
+            No document types match "{search}". Try a different search term.
+          </p>
+        </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {documentTypes?.map((docType) => (
+          {filteredDocumentTypes?.map((docType) => (
             <DocumentTypeCard
               key={docType.id}
               docType={docType}

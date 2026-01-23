@@ -1,30 +1,5 @@
-import { useState } from 'react'
 import { Pencil, Trash2, UserPlus, Users } from 'lucide-react'
-import {
-  useUsers,
-  useDeleteUser,
-  useCreateUser,
-  useUpdateUser,
-} from '@/lib/queries'
-import { useSession } from '@/lib/auth'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { useState } from 'react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,6 +11,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -45,6 +21,30 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { useSession } from '@/lib/auth'
+import {
+  useCreateUser,
+  useDeleteUser,
+  useUpdateUser,
+  useUsers,
+} from '@/lib/queries'
 
 type Role = 'admin' | 'user' | 'none'
 
@@ -100,7 +100,7 @@ function CreateUserDialog() {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button>
-          <UserPlus className="size-4 mr-2" />
+          <UserPlus className="size-4" />
           Add User
         </Button>
       </DialogTrigger>
@@ -495,9 +495,6 @@ export default function UsersPage() {
           <h1 className="text-3xl font-sans font-semibold tracking-tight">
             Users
           </h1>
-          <p className="text-muted-foreground mt-1">
-            Manage user accounts and permissions
-          </p>
         </div>
         <CreateUserDialog />
       </div>

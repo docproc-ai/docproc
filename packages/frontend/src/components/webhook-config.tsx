@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import {
   ChevronDown,
   Eye,
@@ -8,17 +7,8 @@ import {
   Trash2,
   Webhook,
 } from 'lucide-react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import {
   Card,
   CardContent,
@@ -31,6 +21,16 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 
 export interface WebhookHeader {
   name: string
@@ -310,7 +310,7 @@ export function WebhookConfigComponent({
                             className="h-7 text-xs"
                             onClick={() => addHeader(eventName)}
                           >
-                            <Plus className="size-3 mr-1" />
+                            <Plus className="size-3" />
                             Custom
                           </Button>
                         </div>

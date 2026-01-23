@@ -1,17 +1,17 @@
-import { useState, useEffect } from 'react'
 import { useNavigate, useParams, useRouter } from '@tanstack/react-router'
 import { ArrowLeft, Loader2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { DocumentTypeForm } from '@/components/document-type-form'
+import type { JsonSchema } from '@/components/schema-builder'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
+import type { WebhookConfig } from '@/components/webhook-config'
 import {
+  useDeleteDocumentType,
   useDocumentType,
   useUpdateDocumentType,
-  useDeleteDocumentType,
 } from '@/lib/queries'
-import { DocumentTypeForm } from '@/components/document-type-form'
-import { Skeleton } from '@/components/ui/skeleton'
-import type { JsonSchema } from '@/components/schema-builder'
-import type { WebhookConfig } from '@/components/webhook-config'
 
 export default function DocumentTypeSettingsPage() {
   const params = useParams({ strict: false })
@@ -200,7 +200,7 @@ export default function DocumentTypeSettingsPage() {
           >
             {updateDocumentType.isPending ? (
               <>
-                <Loader2 className="animate-spin -ml-1 mr-2 size-4" />
+                <Loader2 className="animate-spin size-4" />
                 Saving...
               </>
             ) : (
