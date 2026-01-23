@@ -12,6 +12,13 @@ import {
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { authClient, useSession } from '@/lib/auth'
 import { PermissionError, useDocumentTypes } from '@/lib/queries'
@@ -42,27 +49,22 @@ function DocumentTypeCard({
     360
 
   return (
-    <div className="group relative bg-card border rounded-xl p-6 hover:border-primary/30 transition-colors">
-      <div className="flex items-start justify-between mb-2">
-        <div className="flex items-center gap-3">
-          <div
-            className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
-            style={{ background: `oklch(0.95 0.03 ${hue})` }}
-          >
-            <FileText
-              className="size-5"
-              strokeWidth={1.5}
-              style={{ color: `oklch(0.5 0.15 ${hue})` }}
-            />
-          </div>
-          <h3 className="font-sans text-lg font-semibold tracking-tight">
-            {docType.name}
-          </h3>
+    <Card className="group gap-4 py-4 hover:border-primary/30 transition-colors">
+      <CardHeader className="flex flex-row items-center gap-3 py-0 h-12">
+        <div
+          className="size-10 rounded-lg flex items-center justify-center shrink-0"
+          style={{ background: `oklch(0.95 0.03 ${hue})` }}
+        >
+          <FileText
+            className="size-5"
+            strokeWidth={1.5}
+            style={{ color: `oklch(0.5 0.15 ${hue})` }}
+          />
         </div>
-      </div>
+        <CardTitle className="text-lg line-clamp-2">{docType.name}</CardTitle>
+      </CardHeader>
 
-      {/* Status chips */}
-      <div className="flex items-center justify-between py-4">
+      <CardContent className="mt-auto flex items-center justify-between py-0">
         <div
           className="flex items-center gap-1 text-muted-foreground"
           title="Pending"
@@ -88,9 +90,9 @@ function DocumentTypeCard({
           <FileX className="size-4" />
           <span className="text-sm">{docType.statusCounts.rejected}</span>
         </div>
-      </div>
+      </CardContent>
 
-      <div className="flex items-center justify-end gap-2 pt-4 border-t border-border/50">
+      <CardFooter className="justify-end border-t pt-4">
         {canEdit && (
           <Button variant="ghost" size="sm" asChild>
             <Link
@@ -113,8 +115,8 @@ function DocumentTypeCard({
             </Link>
           </Button>
         )}
-      </div>
-    </div>
+      </CardFooter>
+    </Card>
   )
 }
 
@@ -223,11 +225,10 @@ export default function DocumentTypesPage() {
           <div className="w-24 h-24 mb-6 flex items-center justify-center rounded-full bg-muted">
             <FileText className="size-12 text-muted-foreground" />
           </div>
-          <h3 className="font-sans text-xl font-semibold mb-2">
-            No Access
-          </h3>
+          <h3 className="font-sans text-xl font-semibold mb-2">No Access</h3>
           <p className="text-muted-foreground text-center max-w-sm">
-            You don't have permission to view document types. Contact an administrator to request access.
+            You don't have permission to view document types. Contact an
+            administrator to request access.
           </p>
         </div>
       ) : error ? (
@@ -250,7 +251,7 @@ export default function DocumentTypesPage() {
           </p>
         </div>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filteredDocumentTypes?.map((docType) => (
             <DocumentTypeCard
               key={docType.id}
