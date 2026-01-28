@@ -34,13 +34,19 @@ function DocumentViewerComponent({
   const [isRendering, setIsRendering] = useState(false)
   const [fileVersion, setFileVersion] = useState(0)
   const [showSpinner, setShowSpinner] = useState(false)
-  // For images: optimistic rotated data URL
-  const [rotatedImageSrc, setRotatedImageSrc] = useState<string | null>(null)
+  // For images: optimistic rotation angle (CSS transform)
+  const [imageRotation, setImageRotation] = useState(0)
+  // Track if we're actively rotating (vs resetting on document change) for transition
+  const [isRotating, setIsRotating] = useState(false)
+  // Track image natural dimensions for proper scaling when rotated sideways
+  const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null)
+  // Track container dimensions for proper scale calculation
+  const [containerDimensions, setContainerDimensions] = useState<{ width: number; height: number } | null>(null)
+  const imageContainerRef = useRef<HTMLDivElement>(null)
 
   const pdfRef = useRef<pdfjs.PDFDocumentProxy | null>(null)
   const transformWrapperRef = useRef<ReactZoomPanPinchRef | null>(null)
   const skipNextRenderRef = useRef(false)
-  const imageRef = useRef<HTMLImageElement | null>(null)
 
   // Build file URL with cache busting
   const fileUrl = `/api/documents/${documentId}/file?v=${fileVersion}`
@@ -60,8 +66,32 @@ function DocumentViewerComponent({
     pdfRef.current = null
     skipNextRenderRef.current = false
     setFileVersion(0)
-    setRotatedImageSrc(null)
+    setImageRotation(0)
+    setImageDimensions(null)
+    // Don't reset containerDimensions - it's independent of the document
+    // Clear any pending rotation request
+    if (rotateDebounceRef.current) {
+      clearTimeout(rotateDebounceRef.current)
+      rotateDebounceRef.current = null
+    }
+    pendingRotationRef.current = 0
   }, [documentId])
+
+  // Track container size for proper rotation scaling
+  useEffect(() => {
+    if (!imageContainerRef.current) return
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0]
+      if (entry) {
+        setContainerDimensions({
+          width: entry.contentRect.width,
+          height: entry.contentRect.height,
+        })
+      }
+    })
+    observer.observe(imageContainerRef.current)
+    return () => observer.disconnect()
+  }, [])
 
   const onDocumentLoadSuccess = useCallback((pdf: pdfjs.PDFDocumentProxy) => {
     pdfRef.current = pdf
@@ -129,7 +159,7 @@ function DocumentViewerComponent({
       transformWrapperRef.current?.centerView()
     }, 50)
     return () => clearTimeout(timer)
-  }, [pageImage, rotatedImageSrc])
+  }, [pageImage, imageRotation])
 
   // Delay showing spinner to avoid flash on quick loads
   useEffect(() => {
@@ -163,11 +193,16 @@ function DocumentViewerComponent({
     ctx.rotate((normalizedDegrees * Math.PI) / 180)
     ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2)
 
-    return canvas.toDataURL('image/png')
+    // JPEG encoding is much faster than PNG for large images
+    return canvas.toDataURL('image/jpeg', 0.92)
   }
 
   // Cumulative rotation tracking for canvas operations
   const cumulativeRotationRef = useRef(0)
+  // Debounce timer for backend rotation requests
+  const rotateDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Pending rotation degrees to send to backend
+  const pendingRotationRef = useRef(0)
 
   const handleRotate = (degrees: number) => {
     if (!onRotate) return
@@ -190,31 +225,31 @@ function DocumentViewerComponent({
       img.src = pageImage
     }
 
-    // For images: rotate using the displayed image
+    // For images: just update the CSS rotation angle (instant)
+    // Don't normalize - let it accumulate so CSS transitions go the right direction
     if (isImage) {
-      const sourceImg = rotatedImageSrc
-        ? (() => {
-            // Create image from current rotated state
-            const img = new Image()
-            img.src = rotatedImageSrc
-            return img
-          })()
-        : imageRef.current
-
-      if (sourceImg && sourceImg.complete && sourceImg.naturalWidth > 0) {
-        try {
-          const rotated = rotateWithCanvas(sourceImg, degrees)
-          setRotatedImageSrc(rotated)
-        } catch (e) {
-          console.error('Failed to rotate image:', e)
-        }
-      }
+      setIsRotating(true)
+      setImageRotation((prev) => prev + degrees)
+      // Reset after transition completes (150ms)
+      setTimeout(() => setIsRotating(false), 200)
     }
 
-    // Fire and forget - backend processes in background
-    onRotate(degrees, isPdf ? currentPage : undefined).catch((error) => {
-      console.error('Failed to rotate on backend:', error)
-    })
+    // Debounce backend request - accumulate rotations and send once
+    pendingRotationRef.current += degrees
+    if (rotateDebounceRef.current) {
+      clearTimeout(rotateDebounceRef.current)
+    }
+    rotateDebounceRef.current = setTimeout(() => {
+      const totalRotation = pendingRotationRef.current
+      pendingRotationRef.current = 0
+      // Normalize to -270 to 270 range (skip full rotations)
+      const normalized = ((totalRotation % 360) + 360) % 360
+      if (normalized !== 0) {
+        onRotate(normalized > 180 ? normalized - 360 : normalized, isPdf ? currentPage : undefined).catch((error) => {
+          console.error('Failed to rotate on backend:', error)
+        })
+      }
+    }, 300)
   }
 
   // Render controls bar
@@ -325,37 +360,59 @@ function DocumentViewerComponent({
   )
 
   // Image rendering
-  const renderImage = () => (
-    <div className="flex h-full w-full flex-col">
-      <div className="relative grow overflow-hidden bg-muted/30">
-        <TransformWrapper
-          ref={transformWrapperRef}
-          limitToBounds={false}
-          panning={{ velocityDisabled: true }}
-        >
-          <TransformComponent
-            wrapperStyle={{ width: '100%', height: '100%' }}
-            contentStyle={{
-              width: '100%',
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+  const renderImage = () => {
+    // For 90°/270° rotations, calculate scale to fit the swapped dimensions
+    const normalizedRotation = ((imageRotation % 360) + 360) % 360
+    const isRotatedSideways = normalizedRotation === 90 || normalizedRotation === 270
+
+    let scale = 1
+    if (isRotatedSideways && imageDimensions && containerDimensions) {
+      const { width: iw, height: ih } = imageDimensions
+      const { width: cw, height: ch } = containerDimensions
+      // Original fit scale (how the image fits before rotation)
+      const originalFit = Math.min(cw / iw, ch / ih)
+      // Rotated fit scale (how the image should fit after rotation, with swapped dimensions)
+      const rotatedFit = Math.min(cw / ih, ch / iw)
+      // CSS scale to apply = ratio of the two
+      scale = rotatedFit / originalFit
+    }
+
+    return (
+      <div className="flex h-full w-full flex-col">
+        <div ref={imageContainerRef} className="relative grow overflow-hidden bg-muted/30">
+          <TransformWrapper
+            ref={transformWrapperRef}
+            limitToBounds={false}
+            panning={{ velocityDisabled: true }}
           >
-            <img
-              ref={rotatedImageSrc ? undefined : imageRef}
-              key={rotatedImageSrc || fileUrl}
-              src={rotatedImageSrc || fileUrl}
-              alt={filename}
-              className="max-w-full max-h-full object-contain"
-            />
-          </TransformComponent>
-        </TransformWrapper>
+            <TransformComponent
+              wrapperStyle={{ width: '100%', height: '100%' }}
+              contentStyle={{
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <img
+                key={fileUrl}
+                src={fileUrl}
+                alt={filename}
+                className={`max-w-full max-h-full object-contain ${isRotating ? 'transition-transform duration-150' : ''}`}
+                style={{ transform: `rotate(${imageRotation}deg) scale(${scale})` }}
+                onLoad={(e) => {
+                  const img = e.currentTarget
+                  setImageDimensions({ width: img.naturalWidth, height: img.naturalHeight })
+                }}
+              />
+            </TransformComponent>
+          </TransformWrapper>
+        </div>
+        {renderControls(false)}
       </div>
-      {renderControls(false)}
-    </div>
-  )
+    )
+  }
 
   // Unsupported file type
   const renderUnsupported = () => (
