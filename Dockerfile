@@ -22,8 +22,7 @@ FROM oven/bun:1-slim AS runner
 
 WORKDIR /app
 
-# Create non-root user
-RUN groupadd -r docproc && useradd -r -g docproc docproc
+# Use existing bun user (UID/GID 1000) from base image
 
 # Copy node_modules (includes sharp native bindings)
 COPY --from=builder /app/node_modules ./node_modules
@@ -39,13 +38,13 @@ COPY --from=builder /app/dist/frontend ./dist/frontend
 COPY --from=builder /app/drizzle ./drizzle
 
 # Create documents directory
-RUN mkdir -p /documents && chown -R docproc:docproc /documents /app
+RUN mkdir -p /documents && chown -R bun:bun /documents /app
 
 ENV NODE_ENV="production"
 ENV STORAGE_LOCAL_DIR="/documents"
 ENV PORT=3000
 
-USER docproc
+USER bun
 
 EXPOSE 3000
 
