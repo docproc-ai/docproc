@@ -220,23 +220,8 @@ const uploadRoute = createRoute({
         .optional()
         .openapi({ description: 'Override AI model for processing' }),
     }),
-    body: {
-      content: {
-        'multipart/form-data': {
-          schema: z.object({
-            files: z
-              .array(z.any().openapi({ type: 'string', format: 'binary' }))
-              .optional()
-              .openapi({ description: 'Multiple files to upload' }),
-            file: z
-              .any()
-              .openapi({ type: 'string', format: 'binary' })
-              .optional()
-              .openapi({ description: 'Single file to upload' }),
-          }),
-        },
-      },
-    },
+    // Note: Body validation removed - zod-openapi validator consumes the stream
+    // before the handler can read it, causing status 0 errors in Bun
   },
   responses: {
     200: {
