@@ -663,6 +663,7 @@ export function ArrayField({
   const [expandedArrayItems, setExpandedArrayItems] = useState<
     Record<string, boolean>
   >({})
+  const [newItemValue, setNewItemValue] = useState('')
 
   if (schema.type !== 'array') return null
 
@@ -692,6 +693,13 @@ export function ArrayField({
     )
   }
 
+  const itemsSchema = schema.items || { type: 'string' }
+  const itemType = Array.isArray(itemsSchema.type)
+    ? itemsSchema.type[0]
+    : itemsSchema.type
+  const isPrimitiveArray =
+    itemType !== 'object' && itemType !== 'array'
+
   const allExpanded = arrayValue.every((_, index) => {
     const itemKey = `${name}-${index}`
     return expandedArrayItems[itemKey] !== false
@@ -706,6 +714,89 @@ export function ArrayField({
     setExpandedArrayItems(newState)
   }
 
+  // Simple list rendering for primitive arrays (strings, numbers, booleans)
+  if (isPrimitiveArray) {
+    return (
+      <Field>
+        <div>
+          <FieldLabel>
+            {schema.title || name}
+            {required && <span className="ml-1 text-red-500">*</span>}
+          </FieldLabel>
+          {schema.description && (
+            <FieldDescription>{schema.description}</FieldDescription>
+          )}
+        </div>
+        <div className="flex flex-col gap-2">
+          {arrayValue.map((item: unknown, index: number) => (
+            <div key={index} className="flex items-center gap-2">
+              <div className="flex-1">
+                <FormField
+                  name={`${name}[${index}]`}
+                  schema={itemsSchema}
+                  value={item}
+                  onChange={(newValue: unknown) => {
+                    const newArray = [...arrayValue]
+                    newArray[index] = newValue
+                    onChange(newArray)
+                  }}
+                  isArrayItem={true}
+                  isStreaming={isStreaming}
+                />
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  const newArray = arrayValue.filter(
+                    (_: unknown, i: number) => i !== index,
+                  )
+                  onChange(newArray)
+                }}
+                disabled={isStreaming}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+          {!isStreaming && (
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <Input
+                  type="text"
+                  placeholder="Add new item..."
+                  value={newItemValue}
+                  onChange={(e) => setNewItemValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newItemValue.trim()) {
+                      e.preventDefault()
+                      onChange([...arrayValue, newItemValue])
+                      setNewItemValue('')
+                    }
+                  }}
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  onChange([...arrayValue, newItemValue])
+                  setNewItemValue('')
+                }}
+                disabled={!newItemValue.trim()}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+      </Field>
+    )
+  }
+
+  // Complex item rendering with collapsibles for objects/arrays
   return (
     <Field>
       <div className="flex items-center justify-between">
@@ -718,27 +809,11 @@ export function ArrayField({
             <FieldDescription>{schema.description}</FieldDescription>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          {arrayValue.length > 1 && (
-            <Button type="button" variant="ghost" size="sm" onClick={toggleAll}>
-              {allExpanded ? 'Collapse All' : 'Expand All'}
-            </Button>
-          )}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              const newIndex = arrayValue.length
-              const itemKey = `${name}-${newIndex}`
-              setExpandedArrayItems((prev) => ({ ...prev, [itemKey]: true }))
-              onChange([...arrayValue, schema.items?.default ?? ''])
-            }}
-          >
-            <Plus className="h-4 w-4" />
-            Add
+        {arrayValue.length > 1 && (
+          <Button type="button" variant="ghost" size="sm" onClick={toggleAll}>
+            {allExpanded ? 'Collapse All' : 'Expand All'}
           </Button>
-        </div>
+        )}
       </div>
       <ItemGroup>
         {arrayValue.map((item: unknown, index: number) => {
@@ -747,7 +822,6 @@ export function ArrayField({
 
           // Generate display text from template or value
           const displayText = (() => {
-            const itemsSchema = schema.items || { type: 'string' }
             const isObjectItem = itemsSchema.type === 'object'
             const template = itemsSchema['ui:displayTemplate']
 
@@ -820,7 +894,7 @@ export function ArrayField({
                 <CollapsibleContent className="w-full pt-4">
                   <FormField
                     name={`${name}[${index}]`}
-                    schema={schema.items || { type: 'string' }}
+                    schema={itemsSchema}
                     value={item}
                     onChange={(newValue: unknown) => {
                       const newArray = [...arrayValue]
@@ -836,6 +910,23 @@ export function ArrayField({
           )
         })}
       </ItemGroup>
+      {!isStreaming && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            const newIndex = arrayValue.length
+            const itemKey = `${name}-${newIndex}`
+            setExpandedArrayItems((prev) => ({ ...prev, [itemKey]: true }))
+            onChange([...arrayValue, itemsSchema.default ?? ''])
+          }}
+          className="w-fit"
+        >
+          <Plus className="h-4 w-4" />
+          Add
+        </Button>
+      )}
     </Field>
   )
 }

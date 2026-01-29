@@ -16,6 +16,7 @@ export function StringField({
   value,
   onChange,
   required,
+  isArrayItem,
   isStreaming,
 }: FormFieldProps) {
   const fieldType = Array.isArray(schema.type) ? schema.type[0] : schema.type
@@ -24,6 +25,27 @@ export function StringField({
 
   // Handle enums for any type, not just strings
   if (schema.enum) {
+    const select = (
+      <Select
+        value={String(value ?? '')}
+        onValueChange={onChange}
+        disabled={isStreaming}
+      >
+        <SelectTrigger id={name}>
+          <SelectValue placeholder="Select an option" />
+        </SelectTrigger>
+        <SelectContent>
+          {schema.enum.map((option, index) => (
+            <SelectItem key={index} value={String(option)}>
+              {String(option)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    )
+
+    if (isArrayItem) return select
+
     return (
       <Field>
         <FieldLabel htmlFor={name}>
@@ -33,22 +55,7 @@ export function StringField({
         {schema.description && (
           <FieldDescription>{schema.description}</FieldDescription>
         )}
-        <Select
-          value={String(value ?? '')}
-          onValueChange={onChange}
-          disabled={isStreaming}
-        >
-          <SelectTrigger id={name}>
-            <SelectValue placeholder="Select an option" />
-          </SelectTrigger>
-          <SelectContent>
-            {schema.enum.map((option, index) => (
-              <SelectItem key={index} value={String(option)}>
-                {String(option)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {select}
       </Field>
     )
   }
@@ -57,6 +64,19 @@ export function StringField({
   if (fieldType !== 'string') return null
 
   if (schema['ui:widget'] === 'textarea') {
+    const textarea = (
+      <Textarea
+        id={name}
+        value={stringValue}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={schema.default != null ? String(schema.default) : undefined}
+        rows={4}
+        disabled={isStreaming}
+      />
+    )
+
+    if (isArrayItem) return textarea
+
     return (
       <Field>
         <FieldLabel htmlFor={name}>
@@ -66,19 +86,25 @@ export function StringField({
         {schema.description && (
           <FieldDescription>{schema.description}</FieldDescription>
         )}
-        <Textarea
-          id={name}
-          value={stringValue}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={schema.default != null ? String(schema.default) : undefined}
-          rows={4}
-          disabled={isStreaming}
-        />
+        {textarea}
       </Field>
     )
   }
 
   if (schema.format === 'date') {
+    const input = (
+      <Input
+        id={name}
+        type={isStreaming ? 'text' : 'date'}
+        value={stringValue}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={schema.default != null ? String(schema.default) : undefined}
+        disabled={isStreaming}
+      />
+    )
+
+    if (isArrayItem) return input
+
     return (
       <Field>
         <FieldLabel htmlFor={name}>
@@ -88,17 +114,23 @@ export function StringField({
         {schema.description && (
           <FieldDescription>{schema.description}</FieldDescription>
         )}
-        <Input
-          id={name}
-          type={isStreaming ? 'text' : 'date'}
-          value={stringValue}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={schema.default != null ? String(schema.default) : undefined}
-          disabled={isStreaming}
-        />
+        {input}
       </Field>
     )
   }
+
+  const input = (
+    <Input
+      id={name}
+      type="text"
+      value={stringValue}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={schema.default != null ? String(schema.default) : undefined}
+      disabled={isStreaming}
+    />
+  )
+
+  if (isArrayItem) return input
 
   return (
     <Field>
@@ -109,14 +141,7 @@ export function StringField({
       {schema.description && (
         <FieldDescription>{schema.description}</FieldDescription>
       )}
-      <Input
-        id={name}
-        type="text"
-        value={stringValue}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={schema.default != null ? String(schema.default) : undefined}
-        disabled={isStreaming}
-      />
+      {input}
     </Field>
   )
 }

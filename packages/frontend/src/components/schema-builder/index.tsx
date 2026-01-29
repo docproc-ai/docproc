@@ -167,14 +167,14 @@ export function SchemaBuilder({
                   type: 'object',
                   properties: propertySchema.properties || {},
                   required: propertySchema.required || [],
+                  additionalProperties: propertySchema.additionalProperties,
                 }}
                 onChange={(updates) => {
                   const newProperties = {
                     ...schema.properties,
                     [key]: {
                       ...propertySchema,
-                      properties: updates.properties || {},
-                      required: updates.required || [],
+                      ...updates,
                     },
                   }
                   updateSchema({ properties: newProperties })
@@ -328,6 +328,7 @@ export function SchemaBuilder({
                       type: 'object',
                       properties: propertySchema.items?.properties || {},
                       required: propertySchema.items?.required || [],
+                      additionalProperties: propertySchema.items?.additionalProperties,
                     }}
                     onChange={(updates) => {
                       const newProperties = {
@@ -337,14 +338,7 @@ export function SchemaBuilder({
                           items: {
                             ...propertySchema.items,
                             type: 'object',
-                            properties:
-                              updates.properties ||
-                              propertySchema.items?.properties ||
-                              {},
-                            required:
-                              updates.required ||
-                              propertySchema.items?.required ||
-                              [],
+                            ...updates,
                           },
                         },
                       }

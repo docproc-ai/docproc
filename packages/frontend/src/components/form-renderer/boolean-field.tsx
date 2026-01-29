@@ -8,18 +8,25 @@ export function BooleanField({
   value,
   onChange,
   required,
+  isArrayItem,
   isStreaming,
 }: FormFieldProps) {
   if (schema.type !== 'boolean') return null
 
+  const checkbox = (
+    <Checkbox
+      id={name}
+      checked={typeof value === 'boolean' ? value : false}
+      onCheckedChange={onChange}
+      disabled={isStreaming}
+    />
+  )
+
+  if (isArrayItem) return checkbox
+
   return (
     <Field orientation="horizontal">
-      <Checkbox
-        id={name}
-        checked={typeof value === 'boolean' ? value : false}
-        onCheckedChange={onChange}
-        disabled={isStreaming}
-      />
+      {checkbox}
       <div className="flex flex-col gap-1">
         <FieldLabel htmlFor={name}>
           {schema.title || name}

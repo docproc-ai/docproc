@@ -9,6 +9,7 @@ export function NumberField({
   value,
   onChange,
   required,
+  isArrayItem,
   isStreaming,
 }: FormFieldProps) {
   const fieldType = schema.type
@@ -33,6 +34,49 @@ export function NumberField({
 
   if (schema.type !== 'number' && schema.type !== 'integer') return null
 
+  const input = (
+    <Input
+      id={name}
+      type="text"
+      inputMode="decimal"
+      value={rawInput}
+      onFocus={() => setIsFocused(true)}
+      onBlur={() => {
+        setIsFocused(false)
+        // On blur, format the display value
+        if (typeof value === 'number') {
+          setRawInput(value.toLocaleString())
+        }
+      }}
+      onChange={(e) => {
+        const raw = e.target.value.replace(/[^\d.-]/g, '')
+        setRawInput(raw)
+
+        if (raw === '' || raw === '-') {
+          onChange(raw === '-' ? raw : undefined)
+          return
+        }
+
+        // Only parse and update if it's a complete number (not ending with . or -)
+        if (!raw.endsWith('.') && !raw.endsWith('-')) {
+          const parsed =
+            fieldType === 'integer'
+              ? Number.parseInt(raw, 10)
+              : Number.parseFloat(raw)
+          if (!Number.isNaN(parsed)) {
+            onChange(parsed)
+          }
+        }
+      }}
+      onWheel={(e) => e.currentTarget.blur()}
+      min={schema.minimum}
+      max={schema.maximum}
+      disabled={isStreaming}
+    />
+  )
+
+  if (isArrayItem) return input
+
   return (
     <Field>
       <FieldLabel htmlFor={name}>
@@ -42,45 +86,7 @@ export function NumberField({
       {schema.description && (
         <FieldDescription>{schema.description}</FieldDescription>
       )}
-      <Input
-        id={name}
-        type="text"
-        inputMode="decimal"
-        value={rawInput}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => {
-          setIsFocused(false)
-          // On blur, format the display value
-          if (typeof value === 'number') {
-            setRawInput(value.toLocaleString())
-          }
-        }}
-        onChange={(e) => {
-          const raw = e.target.value.replace(/[^\d.-]/g, '')
-          setRawInput(raw)
-
-          if (raw === '' || raw === '-') {
-            onChange(raw === '-' ? raw : undefined)
-            return
-          }
-
-          // Only parse and update if it's a complete number (not ending with . or -)
-          if (!raw.endsWith('.') && !raw.endsWith('-')) {
-            const parsed =
-              fieldType === 'integer'
-                ? Number.parseInt(raw, 10)
-                : Number.parseFloat(raw)
-            if (!Number.isNaN(parsed)) {
-              onChange(parsed)
-            }
-          }
-        }}
-        onWheel={(e) => e.currentTarget.blur()}
-        min={schema.minimum}
-        max={schema.maximum}
-        className=""
-        disabled={isStreaming}
-      />
+      {input}
     </Field>
   )
 }

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import { FieldBuilder } from './field-builder'
 import type { JsonSchema } from './types'
 
@@ -219,8 +220,25 @@ export function ObjectFieldBuilder({
 
   if (schema.type !== 'object') return null
 
+  const handleAdditionalPropertiesChange = (checked: boolean) => {
+    onChange({
+      additionalProperties: checked ? true : undefined,
+    })
+  }
+
   return (
     <div className="space-y-4">
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id="additional-properties"
+          checked={schema.additionalProperties === true}
+          onCheckedChange={handleAdditionalPropertiesChange}
+        />
+        <Label htmlFor="additional-properties" className="cursor-pointer text-sm">
+          Allow extra properties (AI can add properties not listed below)
+        </Label>
+      </div>
+
       <div className="flex items-center justify-between">
         <Label className="text-base font-semibold">Properties</Label>
         <Button variant="outline" size="sm" onClick={addProperty}>

@@ -3,6 +3,7 @@ export interface JsonSchema {
   title?: string
   description?: string
   properties?: Record<string, JsonSchema>
+  additionalProperties?: boolean | JsonSchema
   items?: JsonSchema
   required?: string[]
   enum?: (string | number | boolean | null)[]
