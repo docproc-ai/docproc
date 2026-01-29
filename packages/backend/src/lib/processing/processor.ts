@@ -3,16 +3,16 @@ import { jsonrepair } from 'jsonrepair'
 import { storage } from '../../storage'
 import { getDocument, updateDocument } from '../db/document-operations'
 import { getDocumentType } from '../db/document-type-operations'
+import { generateSlugFromPattern } from '../slug-template'
 import {
-  getSystemPrompt,
-  getMimeType,
   getFileExtension,
+  getMimeType,
   getModelForProcessing,
-  type ValidationResult,
+  getSystemPrompt,
   type ProcessingOptions,
   type ProcessingResult,
+  type ValidationResult,
 } from './shared'
-import { generateSlugFromPattern } from '../slug-template'
 
 // Initialize OpenRouter client (for non-streaming)
 const openrouter = new OpenRouter({

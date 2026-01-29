@@ -1,4 +1,7 @@
+import { Checkbox } from '@/components/ui/checkbox'
+import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -6,13 +9,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Field, FieldLabel, FieldDescription } from '@/components/ui/field'
-import { Label } from '@/components/ui/label'
-import { StringFieldBuilder } from './string-field-builder'
-import { NumberFieldBuilder } from './number-field-builder'
 import { ArrayFieldBuilder } from './array-field-builder'
+import { NumberFieldBuilder } from './number-field-builder'
 import { ObjectFieldBuilder } from './object-field-builder'
+import { StringFieldBuilder } from './string-field-builder'
 import type { JsonSchema, SchemaBuilderProps } from './types'
 
 export function SchemaBuilder({
@@ -235,7 +235,11 @@ export function SchemaBuilder({
                     <Field>
                       <FieldLabel>Items Type</FieldLabel>
                       <Select
-                        value={Array.isArray(propertySchema.items?.type) ? propertySchema.items?.type[0] : (propertySchema.items?.type || 'string')}
+                        value={
+                          Array.isArray(propertySchema.items?.type)
+                            ? propertySchema.items?.type[0]
+                            : propertySchema.items?.type || 'string'
+                        }
                         onValueChange={(type) => {
                           const newProperties = {
                             ...schema.properties,
@@ -328,7 +332,8 @@ export function SchemaBuilder({
                       type: 'object',
                       properties: propertySchema.items?.properties || {},
                       required: propertySchema.items?.required || [],
-                      additionalProperties: propertySchema.items?.additionalProperties,
+                      additionalProperties:
+                        propertySchema.items?.additionalProperties,
                     }}
                     onChange={(updates) => {
                       const newProperties = {

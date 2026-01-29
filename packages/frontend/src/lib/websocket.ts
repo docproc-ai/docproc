@@ -1,5 +1,5 @@
-import { useEffect, useRef, useCallback, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 // Event types from backend
 export type JobEventType =

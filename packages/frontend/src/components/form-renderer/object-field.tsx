@@ -1,14 +1,14 @@
-import { useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
-import { Field, FieldLabel, FieldDescription } from '@/components/ui/field'
-import type { FormFieldProps } from './types'
-import { StringField } from './string-field'
-import { NumberField } from './number-field'
-import { BooleanField } from './boolean-field'
-import { ArrayField } from './array-field'
 import type { JsonSchema } from '../schema-builder/types'
+import { ArrayField } from './array-field'
+import { BooleanField } from './boolean-field'
+import { NumberField } from './number-field'
+import { StringField } from './string-field'
+import type { FormFieldProps } from './types'
 
 // Forward declaration to avoid circular dependency
 function FormField({
@@ -132,7 +132,8 @@ function KeyValueRow({
   disabled?: boolean
 }) {
   const [editingKey, setEditingKey] = useState(propertyKey)
-  const stringValue = typeof value === 'string' ? value : (value != null ? String(value) : '')
+  const stringValue =
+    typeof value === 'string' ? value : value != null ? String(value) : ''
 
   return (
     <div className="flex items-center gap-2">
@@ -184,18 +185,23 @@ export function ObjectField({
   if (schema.type !== 'object') return null
 
   // Normalize value to object type
-  const objectValue: Record<string, unknown> = (typeof value === 'object' && value !== null)
-    ? value as Record<string, unknown>
-    : {}
+  const objectValue: Record<string, unknown> =
+    typeof value === 'object' && value !== null
+      ? (value as Record<string, unknown>)
+      : {}
 
   // Get defined property keys
   const definedKeys = new Set(Object.keys(schema.properties || {}))
 
   // Find additional keys (in value but not in schema)
-  const additionalKeys = Object.keys(objectValue).filter(key => !definedKeys.has(key))
+  const additionalKeys = Object.keys(objectValue).filter(
+    (key) => !definedKeys.has(key),
+  )
 
   // Check if additional properties are explicitly enabled (for adding new ones)
-  const allowsAddingProperties = schema.additionalProperties === true || typeof schema.additionalProperties === 'object'
+  const allowsAddingProperties =
+    schema.additionalProperties === true ||
+    typeof schema.additionalProperties === 'object'
 
   const handleAddProperty = () => {
     if (!newKeyName.trim()) return
@@ -209,7 +215,11 @@ export function ObjectField({
   const handleRenameProperty = (oldKey: string, newKey: string) => {
     if (!newKey.trim() || oldKey === newKey.trim()) return
     const trimmedKey = newKey.trim()
-    if (definedKeys.has(trimmedKey) || (objectValue[trimmedKey] !== undefined && trimmedKey !== oldKey)) return
+    if (
+      definedKeys.has(trimmedKey) ||
+      (objectValue[trimmedKey] !== undefined && trimmedKey !== oldKey)
+    )
+      return
     const newValue = { ...objectValue }
     const val = newValue[oldKey]
     delete newValue[oldKey]

@@ -1,15 +1,15 @@
-import { StringField } from './string-field'
-import { NumberField } from './number-field'
-import { BooleanField } from './boolean-field'
-import { ArrayField } from './array-field'
-import { ObjectField } from './object-field'
 import {
   Empty,
+  EmptyDescription,
   EmptyHeader,
   EmptyTitle,
-  EmptyDescription,
 } from '@/components/ui/empty'
-import type { FormRendererProps, FormFieldProps } from './types'
+import { ArrayField } from './array-field'
+import { BooleanField } from './boolean-field'
+import { NumberField } from './number-field'
+import { ObjectField } from './object-field'
+import { StringField } from './string-field'
+import type { FormFieldProps, FormRendererProps } from './types'
 
 export function FormRenderer({
   schema,
@@ -31,9 +31,10 @@ export function FormRenderer({
   }
 
   // Normalize data to object type
-  const dataObj = (typeof data === 'object' && data !== null)
-    ? data as Record<string, unknown>
-    : {}
+  const dataObj =
+    typeof data === 'object' && data !== null
+      ? (data as Record<string, unknown>)
+      : {}
 
   return (
     <div className="space-y-6">
@@ -163,4 +164,4 @@ function FormField({
 }
 
 // Re-export types for convenience
-export type { FormRendererProps, FormFieldProps } from './types'
+export type { FormFieldProps, FormRendererProps } from './types'

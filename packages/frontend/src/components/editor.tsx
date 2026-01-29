@@ -1,8 +1,8 @@
-import { useRef, useEffect } from 'react'
 import { Editor as MonacoEditor, type OnMount } from '@monaco-editor/react'
-import { useTheme } from '@/lib/theme'
-import { Skeleton } from '@/components/ui/skeleton'
 import type * as monaco from 'monaco-editor'
+import { useEffect, useRef } from 'react'
+import { Skeleton } from '@/components/ui/skeleton'
+import { useTheme } from '@/lib/theme'
 
 interface EditorProps {
   value: string

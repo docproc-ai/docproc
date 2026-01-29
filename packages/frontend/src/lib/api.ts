@@ -1,5 +1,5 @@
-import { hc } from 'hono/client'
 import type { AppType } from '@docproc/backend'
+import { hc } from 'hono/client'
 
 // Create typed API client
 export const api = hc<AppType>('/')

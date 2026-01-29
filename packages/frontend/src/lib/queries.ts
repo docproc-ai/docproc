@@ -1,5 +1,5 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRef } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from './api'
 
 // Custom error class for permission errors
@@ -11,7 +11,10 @@ export class PermissionError extends Error {
 }
 
 // Helper to handle API errors - returns never to help TypeScript narrow types
-async function handleApiError(res: Response, defaultMessage: string): Promise<never> {
+async function handleApiError(
+  res: Response,
+  defaultMessage: string,
+): Promise<never> {
   if (res.status === 403) {
     throw new PermissionError()
   }
@@ -27,7 +30,10 @@ function isErrorResponse(data: unknown): data is { error: string } {
 }
 
 // Helper to extract success data from API response
-function extractData<T>(data: T | { error: string }, defaultMessage: string): T {
+function extractData<T>(
+  data: T | { error: string },
+  defaultMessage: string,
+): T {
   if (isErrorResponse(data)) {
     throw new Error(data.error || defaultMessage)
   }

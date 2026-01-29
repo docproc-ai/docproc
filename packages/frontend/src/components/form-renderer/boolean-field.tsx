@@ -1,5 +1,5 @@
 import { Checkbox } from '@/components/ui/checkbox'
-import { Field, FieldLabel, FieldDescription } from '@/components/ui/field'
+import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
 import type { FormFieldProps } from './types'
 
 export function BooleanField({

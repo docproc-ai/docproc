@@ -1,9 +1,9 @@
-import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
+import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
+import { desc, eq, ilike, or, sql } from 'drizzle-orm'
 import { db } from '../db'
 import { user } from '../db/schema/auth'
-import { eq, desc, ilike, or, sql } from 'drizzle-orm'
-import { requireAuth, requirePermission } from '../middleware/auth'
 import { auth } from '../lib/auth'
+import { requireAuth, requirePermission } from '../middleware/auth'
 
 // Shared schemas
 const idParam = z.object({
@@ -72,7 +72,10 @@ const listRoute = createRoute({
         },
       },
     },
-    500: { description: 'Server error', content: { 'application/json': { schema: errorResponse } } },
+    500: {
+      description: 'Server error',
+      content: { 'application/json': { schema: errorResponse } },
+    },
   },
 })
 
@@ -86,9 +89,18 @@ const createRoute_ = createRoute({
     body: { content: { 'application/json': { schema: createUserSchema } } },
   },
   responses: {
-    201: { description: 'Created user', content: { 'application/json': { schema: userResponse } } },
-    400: { description: 'Bad request', content: { 'application/json': { schema: errorResponse } } },
-    500: { description: 'Server error', content: { 'application/json': { schema: errorResponse } } },
+    201: {
+      description: 'Created user',
+      content: { 'application/json': { schema: userResponse } },
+    },
+    400: {
+      description: 'Bad request',
+      content: { 'application/json': { schema: errorResponse } },
+    },
+    500: {
+      description: 'Server error',
+      content: { 'application/json': { schema: errorResponse } },
+    },
   },
 })
 
@@ -100,9 +112,18 @@ const getRoute = createRoute({
   middleware: [requireAuth, requirePermission('user', 'list')] as const,
   request: { params: idParam },
   responses: {
-    200: { description: 'User details', content: { 'application/json': { schema: userResponse } } },
-    404: { description: 'Not found', content: { 'application/json': { schema: errorResponse } } },
-    500: { description: 'Server error', content: { 'application/json': { schema: errorResponse } } },
+    200: {
+      description: 'User details',
+      content: { 'application/json': { schema: userResponse } },
+    },
+    404: {
+      description: 'Not found',
+      content: { 'application/json': { schema: errorResponse } },
+    },
+    500: {
+      description: 'Server error',
+      content: { 'application/json': { schema: errorResponse } },
+    },
   },
 })
 
@@ -117,10 +138,22 @@ const updateRoleRoute = createRoute({
     body: { content: { 'application/json': { schema: updateUserRoleSchema } } },
   },
   responses: {
-    200: { description: 'Updated user', content: { 'application/json': { schema: userResponse } } },
-    400: { description: 'Bad request', content: { 'application/json': { schema: errorResponse } } },
-    404: { description: 'Not found', content: { 'application/json': { schema: errorResponse } } },
-    500: { description: 'Server error', content: { 'application/json': { schema: errorResponse } } },
+    200: {
+      description: 'Updated user',
+      content: { 'application/json': { schema: userResponse } },
+    },
+    400: {
+      description: 'Bad request',
+      content: { 'application/json': { schema: errorResponse } },
+    },
+    404: {
+      description: 'Not found',
+      content: { 'application/json': { schema: errorResponse } },
+    },
+    500: {
+      description: 'Server error',
+      content: { 'application/json': { schema: errorResponse } },
+    },
   },
 })
 
@@ -135,10 +168,22 @@ const updateRoute = createRoute({
     body: { content: { 'application/json': { schema: updateUserSchema } } },
   },
   responses: {
-    200: { description: 'Updated user', content: { 'application/json': { schema: userResponse } } },
-    400: { description: 'Bad request', content: { 'application/json': { schema: errorResponse } } },
-    404: { description: 'Not found', content: { 'application/json': { schema: errorResponse } } },
-    500: { description: 'Server error', content: { 'application/json': { schema: errorResponse } } },
+    200: {
+      description: 'Updated user',
+      content: { 'application/json': { schema: userResponse } },
+    },
+    400: {
+      description: 'Bad request',
+      content: { 'application/json': { schema: errorResponse } },
+    },
+    404: {
+      description: 'Not found',
+      content: { 'application/json': { schema: errorResponse } },
+    },
+    500: {
+      description: 'Server error',
+      content: { 'application/json': { schema: errorResponse } },
+    },
   },
 })
 
@@ -150,10 +195,22 @@ const deleteRoute = createRoute({
   middleware: [requireAuth, requirePermission('user', 'delete')] as const,
   request: { params: idParam },
   responses: {
-    200: { description: 'Deleted', content: { 'application/json': { schema: successResponse } } },
-    400: { description: 'Bad request', content: { 'application/json': { schema: errorResponse } } },
-    404: { description: 'Not found', content: { 'application/json': { schema: errorResponse } } },
-    500: { description: 'Server error', content: { 'application/json': { schema: errorResponse } } },
+    200: {
+      description: 'Deleted',
+      content: { 'application/json': { schema: successResponse } },
+    },
+    400: {
+      description: 'Bad request',
+      content: { 'application/json': { schema: errorResponse } },
+    },
+    404: {
+      description: 'Not found',
+      content: { 'application/json': { schema: errorResponse } },
+    },
+    500: {
+      description: 'Server error',
+      content: { 'application/json': { schema: errorResponse } },
+    },
   },
 })
 
@@ -166,10 +223,7 @@ export const usersRoutes = new OpenAPIHono()
       const offset = (page - 1) * pageSize
 
       const searchCondition = search
-        ? or(
-            ilike(user.name, `%${search}%`),
-            ilike(user.email, `%${search}%`),
-          )
+        ? or(ilike(user.name, `%${search}%`), ilike(user.email, `%${search}%`))
         : undefined
 
       const [{ count }] = await db
@@ -339,10 +393,7 @@ export const usersRoutes = new OpenAPIHono()
           .limit(1)
 
         if (existingUser && existingUser.id !== id) {
-          return c.json(
-            { error: 'A user with this email already exists' },
-            400,
-          )
+          return c.json({ error: 'A user with this email already exists' }, 400)
         }
       }
 

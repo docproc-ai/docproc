@@ -1,11 +1,11 @@
 import type { ServerWebSocket } from 'bun'
 import {
-  subscribeToJob,
+  registerClient,
   subscribeToBatch,
   subscribeToDocumentType,
-  unsubscribeFromDocumentType,
+  subscribeToJob,
   unsubscribeAll,
-  registerClient,
+  unsubscribeFromDocumentType,
 } from './job-events'
 
 export interface WebSocketData {

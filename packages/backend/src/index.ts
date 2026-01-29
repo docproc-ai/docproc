@@ -1,22 +1,21 @@
-import { OpenAPIHono } from '@hono/zod-openapi'
+import { resolve } from 'node:path'
 import { swaggerUI } from '@hono/swagger-ui'
+import { OpenAPIHono } from '@hono/zod-openapi'
+import type { Context } from 'hono'
+import { serveStatic } from 'hono/bun'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
-import { serveStatic } from 'hono/bun'
 import { nanoid } from 'nanoid'
-import { resolve } from 'node:path'
-import type { Context } from 'hono'
-
-import { requireAuthOrRedirect } from './middleware/auth'
 import { runMigrations } from './db/migrate'
 import { initDefaultUser } from './lib/init-default-user'
+import { createWebSocketHandler, type WebSocketData } from './lib/websocket'
+import { requireAuthOrRedirect } from './middleware/auth'
 import { authRoutes } from './routes/auth'
-import { documentsRoutes } from './routes/documents'
 import { documentTypesRoutes } from './routes/document-types'
+import { documentsRoutes } from './routes/documents'
+import modelsRoutes from './routes/models'
 import { processingRoutes } from './routes/processing'
 import { usersRoutes } from './routes/users'
-import modelsRoutes from './routes/models'
-import { createWebSocketHandler, type WebSocketData } from './lib/websocket'
 
 // Base app with middleware
 const baseApp = new OpenAPIHono()
@@ -45,7 +44,8 @@ baseApp.doc('/api/doc', {
   info: {
     title: 'DocProc API',
     version: '1.0.0',
-    description: 'Document processing API for extracting structured data from documents',
+    description:
+      'Document processing API for extracting structured data from documents',
   },
 })
 baseApp.get('/api/docs', swaggerUI({ url: '/api/doc' }))

@@ -38,7 +38,11 @@ export default function DocumentEditorPage() {
   const slug = params.slug as string
   const documentId = params.id as string
   const navigate = useNavigate()
-  const { q: urlSearch, status: urlStatus, page: urlPage } = useSearch({
+  const {
+    q: urlSearch,
+    status: urlStatus,
+    page: urlPage,
+  } = useSearch({
     from: '/document-types/$slug/process/$id',
   })
 
@@ -198,13 +202,19 @@ export default function DocumentEditorPage() {
         {/* Form editor */}
         <ResizablePanel defaultSize={50} minSize={30}>
           <div className="h-full flex flex-col bg-background">
-            <Tabs defaultValue="form" className="flex-1 min-h-0 flex flex-col p-4 pb-0 gap-4">
+            <Tabs
+              defaultValue="form"
+              className="flex-1 min-h-0 flex flex-col p-4 pb-0 gap-4"
+            >
               <TabsList className="w-full shrink-0">
                 <TabsTrigger value="form">Form</TabsTrigger>
                 <TabsTrigger value="data">Data</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="form" className="flex-1 min-h-0 overflow-y-auto m-0 -mx-4 px-4">
+              <TabsContent
+                value="form"
+                className="flex-1 min-h-0 overflow-y-auto m-0 -mx-4 px-4"
+              >
                 <div className="max-w-2xl space-y-6 pb-4">
                   {/* Rejection reason */}
                   {currentDoc.status === 'rejected' &&
@@ -241,7 +251,10 @@ export default function DocumentEditorPage() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="data" className="flex-1 min-h-0 m-0 -mx-4 px-4 pb-4 overflow-hidden">
+              <TabsContent
+                value="data"
+                className="flex-1 min-h-0 m-0 -mx-4 px-4 pb-4 overflow-hidden"
+              >
                 <DataEditorTab
                   value={JSON.stringify(
                     isStreaming ? displayData : editedData,

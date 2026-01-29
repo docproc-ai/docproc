@@ -3,21 +3,21 @@
  * Context-free - can be called from API routes or background jobs
  */
 
+import { and, asc, count, eq } from 'drizzle-orm'
 import { db } from '../../db'
-import { documentType, document } from '../../db/schema/app'
-import { eq, asc, count, and } from 'drizzle-orm'
+import type {
+  DocumentTypeInsert,
+  DocumentTypeSelect,
+} from '../../db/schema/app'
+import { document, documentType } from '../../db/schema/app'
 import { generateSlug } from '../generate-slug'
 import {
-  encryptWebhookConfig,
   createSafeWebhookConfig,
-  mergeWebhookConfigs,
-  decryptWebhookConfig,
   type DocumentWebhookConfig,
+  decryptWebhookConfig,
+  encryptWebhookConfig,
+  mergeWebhookConfigs,
 } from '../webhook-encryption'
-import type {
-  DocumentTypeSelect,
-  DocumentTypeInsert,
-} from '../../db/schema/app'
 
 export type { DocumentTypeSelect, DocumentTypeInsert }
 
@@ -229,7 +229,9 @@ export async function createDocumentType(
 
   // Encrypt webhook config if provided
   const encryptedWebhookConfig = data.webhookConfig
-    ? encryptWebhookConfig(data.webhookConfig as unknown as DocumentWebhookConfig)
+    ? encryptWebhookConfig(
+        data.webhookConfig as unknown as DocumentWebhookConfig,
+      )
     : null
 
   const [result] = await db

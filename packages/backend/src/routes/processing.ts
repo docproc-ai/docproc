@@ -1,49 +1,50 @@
-import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
-import { streamSSE } from 'hono/streaming'
-import { streamText } from 'ai'
+import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
-import { processDocumentRequest, createBatchRequest } from '../schemas'
+import { streamText } from 'ai'
+import { streamSSE } from 'hono/streaming'
 import {
-  processAndSaveDocument,
   prepareDocumentForStreaming,
+  processAndSaveDocument,
   safeParseJson,
 } from '../lib/processing'
+import { createBatchRequest, processDocumentRequest } from '../schemas'
 
 // Initialize AI SDK OpenRouter provider for streaming
 const openrouterProvider = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
 })
-import { processDocumentBatch } from '../lib/processing/batch-processor'
+
 import { getDocument } from '../lib/db/document-operations'
 import {
+  cancelBatch,
+  cancelJob,
   createBatch,
   createJob,
+  getActiveJobsForDocumentType,
   getBatch,
   getBatchWithJobs,
   getJob,
-  updateBatchStatus,
-  updateBatchProgress,
-  cancelBatch,
-  cancelJob,
-  updateJobStatus,
   getJobsByBatchId,
-  getActiveJobsForDocumentType,
+  updateBatchProgress,
+  updateBatchStatus,
+  updateJobStatus,
 } from '../lib/db/job-operations'
+import { processDocumentBatch } from '../lib/processing/batch-processor'
+import {
+  emitBatchCompleted,
+  emitBatchFailed,
+  emitBatchProgress,
+  emitBatchStarted,
+  emitJobCompleted,
+  emitJobFailed,
+  emitJobProgress,
+  emitJobStarted,
+} from '../lib/websocket'
 import {
   requireApiKeyOrAuth,
   requireAuth,
   requirePermission,
 } from '../middleware/auth'
-import {
-  emitBatchStarted,
-  emitBatchProgress,
-  emitBatchCompleted,
-  emitBatchFailed,
-  emitJobStarted,
-  emitJobProgress,
-  emitJobCompleted,
-  emitJobFailed,
-} from '../lib/websocket'
 
 // Shared schemas
 const errorResponse = z.object({ error: z.string() })
@@ -55,7 +56,10 @@ const streamProcessRoute = createRoute({
   path: '/process/stream',
   tags: ['Processing'],
   summary: 'Process document with SSE streaming',
-  middleware: [requireApiKeyOrAuth, requirePermission('document', 'update')] as const,
+  middleware: [
+    requireApiKeyOrAuth,
+    requirePermission('document', 'update'),
+  ] as const,
   request: {
     body: {
       content: {
@@ -70,8 +74,14 @@ const streamProcessRoute = createRoute({
   },
   responses: {
     200: { description: 'SSE stream of processing events' },
-    404: { description: 'Not found', content: { 'application/json': { schema: errorResponse } } },
-    500: { description: 'Server error', content: { 'application/json': { schema: errorResponse } } },
+    404: {
+      description: 'Not found',
+      content: { 'application/json': { schema: errorResponse } },
+    },
+    500: {
+      description: 'Server error',
+      content: { 'application/json': { schema: errorResponse } },
+    },
   },
 })
 
@@ -80,25 +90,45 @@ const processDocumentRoute = createRoute({
   path: '/process/{documentId}',
   tags: ['Processing'],
   summary: 'Process a single document (non-streaming)',
-  middleware: [requireApiKeyOrAuth, requirePermission('document', 'update')] as const,
+  middleware: [
+    requireApiKeyOrAuth,
+    requirePermission('document', 'update'),
+  ] as const,
   request: {
     params: z.object({ documentId: z.string().uuid() }),
-    body: { content: { 'application/json': { schema: processDocumentRequest.optional() } } },
+    body: {
+      content: {
+        'application/json': { schema: processDocumentRequest.optional() },
+      },
+    },
   },
   responses: {
     200: {
       description: 'Processing result',
-      content: { 'application/json': { schema: z.object({
-        success: z.boolean(),
-        jobId: z.string().openapi({ description: 'Job ID for tracking' }),
-        documentId: z.string(),
-        extractedData: z.any(),
-        status: z.string().optional(),
-      }) } },
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean(),
+            jobId: z.string().openapi({ description: 'Job ID for tracking' }),
+            documentId: z.string(),
+            extractedData: z.any(),
+            status: z.string().optional(),
+          }),
+        },
+      },
     },
-    400: { description: 'Bad request', content: { 'application/json': { schema: errorResponse } } },
-    404: { description: 'Not found', content: { 'application/json': { schema: errorResponse } } },
-    500: { description: 'Server error', content: { 'application/json': { schema: errorResponse } } },
+    400: {
+      description: 'Bad request',
+      content: { 'application/json': { schema: errorResponse } },
+    },
+    404: {
+      description: 'Not found',
+      content: { 'application/json': { schema: errorResponse } },
+    },
+    500: {
+      description: 'Server error',
+      content: { 'application/json': { schema: errorResponse } },
+    },
   },
 })
 
@@ -114,15 +144,27 @@ const createBatchRoute = createRoute({
   responses: {
     201: {
       description: 'Batch created',
-      content: { 'application/json': { schema: z.object({
-        success: z.boolean(),
-        batchId: z.string(),
-        total: z.number(),
-        jobs: z.array(z.object({ id: z.string(), documentId: z.string().nullable() })),
-      }) } },
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean(),
+            batchId: z.string(),
+            total: z.number(),
+            jobs: z.array(
+              z.object({ id: z.string(), documentId: z.string().nullable() }),
+            ),
+          }),
+        },
+      },
     },
-    400: { description: 'Bad request', content: { 'application/json': { schema: errorResponse } } },
-    500: { description: 'Server error', content: { 'application/json': { schema: errorResponse } } },
+    400: {
+      description: 'Bad request',
+      content: { 'application/json': { schema: errorResponse } },
+    },
+    500: {
+      description: 'Server error',
+      content: { 'application/json': { schema: errorResponse } },
+    },
   },
 })
 
@@ -136,9 +178,18 @@ const getBatchRoute = createRoute({
     params: z.object({ id: z.string() }),
   },
   responses: {
-    200: { description: 'Batch details', content: { 'application/json': { schema: z.any() } } },
-    404: { description: 'Not found', content: { 'application/json': { schema: errorResponse } } },
-    500: { description: 'Server error', content: { 'application/json': { schema: errorResponse } } },
+    200: {
+      description: 'Batch details',
+      content: { 'application/json': { schema: z.any() } },
+    },
+    404: {
+      description: 'Not found',
+      content: { 'application/json': { schema: errorResponse } },
+    },
+    500: {
+      description: 'Server error',
+      content: { 'application/json': { schema: errorResponse } },
+    },
   },
 })
 
@@ -152,10 +203,22 @@ const cancelBatchRoute = createRoute({
     params: z.object({ id: z.string() }),
   },
   responses: {
-    200: { description: 'Batch cancelled', content: { 'application/json': { schema: successResponse } } },
-    400: { description: 'Bad request', content: { 'application/json': { schema: errorResponse } } },
-    404: { description: 'Not found', content: { 'application/json': { schema: errorResponse } } },
-    500: { description: 'Server error', content: { 'application/json': { schema: errorResponse } } },
+    200: {
+      description: 'Batch cancelled',
+      content: { 'application/json': { schema: successResponse } },
+    },
+    400: {
+      description: 'Bad request',
+      content: { 'application/json': { schema: errorResponse } },
+    },
+    404: {
+      description: 'Not found',
+      content: { 'application/json': { schema: errorResponse } },
+    },
+    500: {
+      description: 'Server error',
+      content: { 'application/json': { schema: errorResponse } },
+    },
   },
 })
 
@@ -171,16 +234,25 @@ const getActiveJobsRoute = createRoute({
   responses: {
     200: {
       description: 'Active jobs',
-      content: { 'application/json': { schema: z.object({
-        jobs: z.array(z.object({
-          id: z.string(),
-          documentId: z.string().nullable(),
-          batchId: z.string().nullable(),
-          status: z.string(),
-        })),
-      }) } },
+      content: {
+        'application/json': {
+          schema: z.object({
+            jobs: z.array(
+              z.object({
+                id: z.string(),
+                documentId: z.string().nullable(),
+                batchId: z.string().nullable(),
+                status: z.string(),
+              }),
+            ),
+          }),
+        },
+      },
     },
-    500: { description: 'Server error', content: { 'application/json': { schema: errorResponse } } },
+    500: {
+      description: 'Server error',
+      content: { 'application/json': { schema: errorResponse } },
+    },
   },
 })
 
@@ -196,17 +268,27 @@ const cancelJobRoute = createRoute({
   responses: {
     200: {
       description: 'Job cancelled',
-      content: { 'application/json': { schema: z.object({
-        success: z.boolean(),
-        job: z.object({
-          id: z.string(),
-          documentId: z.string().nullable(),
-          status: z.string(),
-        }),
-      }) } },
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean(),
+            job: z.object({
+              id: z.string(),
+              documentId: z.string().nullable(),
+              status: z.string(),
+            }),
+          }),
+        },
+      },
     },
-    404: { description: 'Not found', content: { 'application/json': { schema: errorResponse } } },
-    500: { description: 'Server error', content: { 'application/json': { schema: errorResponse } } },
+    404: {
+      description: 'Not found',
+      content: { 'application/json': { schema: errorResponse } },
+    },
+    500: {
+      description: 'Server error',
+      content: { 'application/json': { schema: errorResponse } },
+    },
   },
 })
 
@@ -253,7 +335,8 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
 
         try {
           const imageContent = streamingContext.messages[0].content[1]
-          const imageData = imageContent.type === 'image' ? imageContent.image : ''
+          const imageData =
+            imageContent.type === 'image' ? imageContent.image : ''
 
           const result = streamText({
             model: openrouterProvider(streamingContext.modelName),
@@ -273,7 +356,13 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
             fullText += chunk
             const parsed = safeParseJson(fullText)
             if (parsed) {
-              emitJobProgress(job.id, documentId, doc.documentTypeId, 50, parsed)
+              emitJobProgress(
+                job.id,
+                documentId,
+                doc.documentTypeId,
+                50,
+                parsed,
+              )
               await stream.writeSSE({
                 event: 'partial',
                 data: JSON.stringify(parsed),
@@ -284,7 +373,9 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
           const finalData = safeParseJson(fullText)
           if (finalData) {
             await streamingContext.updateDocumentOnComplete(finalData)
-            await updateJobStatus(job.id, 'completed', { completedAt: new Date() })
+            await updateJobStatus(job.id, 'completed', {
+              completedAt: new Date(),
+            })
             emitJobCompleted(job.id, documentId, doc.documentTypeId)
             await stream.writeSSE({
               event: 'complete',
@@ -295,7 +386,12 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
               error: 'Failed to parse extracted data',
               completedAt: new Date(),
             })
-            emitJobFailed(job.id, documentId, doc.documentTypeId, 'Failed to parse extracted data')
+            emitJobFailed(
+              job.id,
+              documentId,
+              doc.documentTypeId,
+              'Failed to parse extracted data',
+            )
             await stream.writeSSE({
               event: 'error',
               data: 'Failed to parse extracted data',
@@ -307,7 +403,8 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
             data: 'Processing complete',
           })
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Processing failed'
+          const message =
+            error instanceof Error ? error.message : 'Processing failed'
           await updateJobStatus(job.id, 'failed', {
             error: message,
             completedAt: new Date(),
@@ -321,7 +418,8 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
       })
     } catch (error) {
       console.error('Streaming error:', error)
-      const message = error instanceof Error ? error.message : 'Processing failed'
+      const message =
+        error instanceof Error ? error.message : 'Processing failed'
       await updateJobStatus(job.id, 'failed', {
         error: message,
         completedAt: new Date(),
@@ -375,9 +473,13 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
       )
     } catch (error) {
       console.error('Failed to process document:', error)
-      const message = error instanceof Error ? error.message : 'Processing failed'
+      const message =
+        error instanceof Error ? error.message : 'Processing failed'
 
-      await updateJobStatus(job.id, 'failed', { error: message, completedAt: new Date() })
+      await updateJobStatus(job.id, 'failed', {
+        error: message,
+        completedAt: new Date(),
+      })
       emitJobFailed(job.id, documentId, doc.documentTypeId, message)
 
       return c.json({ error: message }, 500)
@@ -389,20 +491,30 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
       const { documentIds, webhookUrl, concurrency } = c.req.valid('json')
       const user = c.get('user')
 
-      const documents = await Promise.all(documentIds.map((id) => getDocument(id)))
+      const documents = await Promise.all(
+        documentIds.map((id) => getDocument(id)),
+      )
       const missingDocs = documentIds.filter((_, i) => !documents[i])
 
       if (missingDocs.length > 0) {
-        return c.json({ error: 'Some documents not found', missing: missingDocs }, 400)
+        return c.json(
+          { error: 'Some documents not found', missing: missingDocs },
+          400,
+        )
       }
 
       const documentTypeId = documents[0]?.documentTypeId
       if (!documentTypeId) {
         return c.json({ error: 'Could not determine document type' }, 400)
       }
-      const differentTypes = documents.filter((d) => d?.documentTypeId !== documentTypeId)
+      const differentTypes = documents.filter(
+        (d) => d?.documentTypeId !== documentTypeId,
+      )
       if (differentTypes.length > 0) {
-        return c.json({ error: 'All documents must be of the same document type' }, 400)
+        return c.json(
+          { error: 'All documents must be of the same document type' },
+          400,
+        )
       }
 
       const { batch, jobs } = await createBatch({
@@ -412,7 +524,13 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
         createdBy: user?.id,
       })
 
-      processBatchInBackground(batch.id, documentTypeId, documentIds, webhookUrl, concurrency)
+      processBatchInBackground(
+        batch.id,
+        documentTypeId,
+        documentIds,
+        webhookUrl,
+        concurrency,
+      )
 
       return c.json(
         {
@@ -482,7 +600,13 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
 
       for (const job of result.cancelledJobs) {
         if (job.documentId) {
-          emitJobFailed(job.id, job.documentId, result.batch.documentTypeId, 'Batch cancelled', job.batchId)
+          emitJobFailed(
+            job.id,
+            job.documentId,
+            result.batch.documentTypeId,
+            'Batch cancelled',
+            job.batchId,
+          )
         }
       }
 
@@ -536,7 +660,13 @@ Remember: Output ONLY valid JSON that matches this schema. No explanatory text. 
       }
 
       if (documentTypeId && cancelled.documentId) {
-        emitJobFailed(cancelled.id, cancelled.documentId, documentTypeId, 'Job cancelled', cancelled.batchId)
+        emitJobFailed(
+          cancelled.id,
+          cancelled.documentId,
+          documentTypeId,
+          'Job cancelled',
+          cancelled.batchId,
+        )
       }
 
       return c.json(
@@ -594,7 +724,13 @@ export async function processBatchInBackground(
         if (!job || job.status === 'failed') {
           skipped++
           await updateBatchProgress(batchId, completed, failed + skipped)
-          emitBatchProgress(batchId, documentTypeId, completed, failed + skipped, documentIds.length)
+          emitBatchProgress(
+            batchId,
+            documentTypeId,
+            completed,
+            failed + skipped,
+            documentIds.length,
+          )
           return false
         }
 
@@ -608,8 +744,17 @@ export async function processBatchInBackground(
 
         if (error) {
           failed++
-          await updateJobStatus(jobId, 'failed', { error: error.message, completedAt: new Date() })
-          emitJobFailed(jobId, documentId, documentTypeId, error.message, batchId)
+          await updateJobStatus(jobId, 'failed', {
+            error: error.message,
+            completedAt: new Date(),
+          })
+          emitJobFailed(
+            jobId,
+            documentId,
+            documentTypeId,
+            error.message,
+            batchId,
+          )
         } else {
           completed++
           await updateJobStatus(jobId, 'completed', { completedAt: new Date() })
@@ -617,13 +762,25 @@ export async function processBatchInBackground(
         }
 
         await updateBatchProgress(batchId, completed, failed + skipped)
-        emitBatchProgress(batchId, documentTypeId, completed, failed + skipped, total)
+        emitBatchProgress(
+          batchId,
+          documentTypeId,
+          completed,
+          failed + skipped,
+          total,
+        )
       },
       concurrency,
     )
 
     await updateBatchStatus(batchId, 'completed')
-    emitBatchCompleted(batchId, documentTypeId, completed, failed + skipped, documentIds.length)
+    emitBatchCompleted(
+      batchId,
+      documentTypeId,
+      completed,
+      failed + skipped,
+      documentIds.length,
+    )
 
     if (webhookUrl) {
       const batchResult = await getBatchWithJobs(batchId)
@@ -649,6 +806,10 @@ export async function processBatchInBackground(
   } catch (error) {
     console.error('Batch processing failed:', error)
     await updateBatchStatus(batchId, 'failed')
-    emitBatchFailed(batchId, documentTypeId, error instanceof Error ? error.message : 'Unknown error')
+    emitBatchFailed(
+      batchId,
+      documentTypeId,
+      error instanceof Error ? error.message : 'Unknown error',
+    )
   }
 }

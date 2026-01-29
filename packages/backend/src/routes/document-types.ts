@@ -1,31 +1,34 @@
-import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
+import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
 import {
-  createDocumentTypeRequest,
-  updateDocumentTypeRequest,
-} from '../schemas'
-import {
-  getDocumentTypes,
-  getDocumentTypeBySlugOrId,
-  createDocumentType,
-  updateDocumentType,
-  deleteDocumentType,
-} from '../lib/db/document-type-operations'
-import {
-  getDocumentsByType,
   createDocument,
+  getDocumentsByType,
 } from '../lib/db/document-operations'
-import { storage } from '../storage'
+import {
+  createDocumentType,
+  deleteDocumentType,
+  getDocumentTypeBySlugOrId,
+  getDocumentTypes,
+  updateDocumentType,
+} from '../lib/db/document-type-operations'
+import { createBatch } from '../lib/db/job-operations'
 import {
   requireApiKeyOrAuth,
   requireAuth,
   requirePermission,
 } from '../middleware/auth'
-import { createBatch } from '../lib/db/job-operations'
+import {
+  createDocumentTypeRequest,
+  updateDocumentTypeRequest,
+} from '../schemas'
+import { storage } from '../storage'
 import { processBatchInBackground } from './processing'
 
 // Shared schemas
 const slugOrIdParam = z.object({
-  slugOrId: z.string().min(1).openapi({ description: 'Document type slug or UUID' }),
+  slugOrId: z
+    .string()
+    .min(1)
+    .openapi({ description: 'Document type slug or UUID' }),
 })
 
 const errorResponse = z.object({
@@ -61,11 +64,16 @@ const listRoute = createRoute({
   path: '/',
   tags: ['Document Types'],
   summary: 'List all document types',
-  middleware: [requireApiKeyOrAuth, requirePermission('documentType', 'list')] as const,
+  middleware: [
+    requireApiKeyOrAuth,
+    requirePermission('documentType', 'list'),
+  ] as const,
   responses: {
     200: {
       description: 'List of document types with document counts',
-      content: { 'application/json': { schema: z.array(documentTypeWithCountsResponse) } },
+      content: {
+        'application/json': { schema: z.array(documentTypeWithCountsResponse) },
+      },
     },
     500: {
       description: 'Server error',
@@ -79,9 +87,14 @@ const createRoute_ = createRoute({
   path: '/',
   tags: ['Document Types'],
   summary: 'Create a new document type',
-  middleware: [requireAuth, requirePermission('documentType', 'create')] as const,
+  middleware: [
+    requireAuth,
+    requirePermission('documentType', 'create'),
+  ] as const,
   request: {
-    body: { content: { 'application/json': { schema: createDocumentTypeRequest } } },
+    body: {
+      content: { 'application/json': { schema: createDocumentTypeRequest } },
+    },
   },
   responses: {
     201: {
@@ -100,7 +113,10 @@ const getRoute = createRoute({
   path: '/{slugOrId}',
   tags: ['Document Types'],
   summary: 'Get a document type by slug or ID',
-  middleware: [requireApiKeyOrAuth, requirePermission('documentType', 'list')] as const,
+  middleware: [
+    requireApiKeyOrAuth,
+    requirePermission('documentType', 'list'),
+  ] as const,
   request: {
     params: slugOrIdParam,
   },
@@ -125,10 +141,15 @@ const updateRoute = createRoute({
   path: '/{slugOrId}',
   tags: ['Document Types'],
   summary: 'Update a document type',
-  middleware: [requireAuth, requirePermission('documentType', 'update')] as const,
+  middleware: [
+    requireAuth,
+    requirePermission('documentType', 'update'),
+  ] as const,
   request: {
     params: slugOrIdParam,
-    body: { content: { 'application/json': { schema: updateDocumentTypeRequest } } },
+    body: {
+      content: { 'application/json': { schema: updateDocumentTypeRequest } },
+    },
   },
   responses: {
     200: {
@@ -151,14 +172,19 @@ const deleteRoute = createRoute({
   path: '/{slugOrId}',
   tags: ['Document Types'],
   summary: 'Delete a document type',
-  middleware: [requireAuth, requirePermission('documentType', 'delete')] as const,
+  middleware: [
+    requireAuth,
+    requirePermission('documentType', 'delete'),
+  ] as const,
   request: {
     params: slugOrIdParam,
   },
   responses: {
     200: {
       description: 'Deletion successful',
-      content: { 'application/json': { schema: z.object({ success: z.boolean() }) } },
+      content: {
+        'application/json': { schema: z.object({ success: z.boolean() }) },
+      },
     },
     404: {
       description: 'Not found',
@@ -176,21 +202,36 @@ const uploadRoute = createRoute({
   path: '/{slugOrId}/upload',
   tags: ['Document Types'],
   summary: 'Upload documents to a document type',
-  description: 'Upload one or more files. Use autoProcess=true to automatically queue processing.',
-  middleware: [requireApiKeyOrAuth, requirePermission('document', 'create')] as const,
+  description:
+    'Upload one or more files. Use autoProcess=true to automatically queue processing.',
+  middleware: [
+    requireApiKeyOrAuth,
+    requirePermission('document', 'create'),
+  ] as const,
   request: {
     params: slugOrIdParam,
     query: z.object({
-      autoProcess: z.string().optional().openapi({ description: 'Set to "true" to auto-process uploads' }),
-      model: z.string().optional().openapi({ description: 'Override AI model for processing' }),
+      autoProcess: z
+        .string()
+        .optional()
+        .openapi({ description: 'Set to "true" to auto-process uploads' }),
+      model: z
+        .string()
+        .optional()
+        .openapi({ description: 'Override AI model for processing' }),
     }),
     body: {
       content: {
         'multipart/form-data': {
           schema: z.object({
-            files: z.array(z.any().openapi({ type: 'string', format: 'binary' })).optional()
+            files: z
+              .array(z.any().openapi({ type: 'string', format: 'binary' }))
+              .optional()
               .openapi({ description: 'Multiple files to upload' }),
-            file: z.any().openapi({ type: 'string', format: 'binary' }).optional()
+            file: z
+              .any()
+              .openapi({ type: 'string', format: 'binary' })
+              .optional()
               .openapi({ description: 'Single file to upload' }),
           }),
         },
@@ -206,12 +247,14 @@ const uploadRoute = createRoute({
             success: z.boolean(),
             documentTypeId: z.string().uuid(),
             documentTypeSlug: z.string(),
-            results: z.array(z.object({
-              filename: z.string(),
-              success: z.boolean(),
-              documentId: z.string().uuid().optional(),
-              error: z.string().optional(),
-            })),
+            results: z.array(
+              z.object({
+                filename: z.string(),
+                success: z.boolean(),
+                documentId: z.string().uuid().optional(),
+                error: z.string().optional(),
+              }),
+            ),
             jobIds: z.array(z.string()).optional(),
             batchId: z.string().optional(),
             summary: z.object({
@@ -262,11 +305,13 @@ export const documentTypesRoutes = new OpenAPIHono()
         validationInstructions: data.validationInstructions,
         modelName: data.modelName,
         slugPattern: data.slugPattern,
-        webhookConfig: data.webhookConfig as Record<string, unknown> | undefined,
+        webhookConfig: data.webhookConfig as
+          | Record<string, unknown>
+          | undefined,
         createdBy: user?.id,
       })
 
-      return c.json(result , 201)
+      return c.json(result, 201)
     } catch (error) {
       console.error('Failed to create document type:', error)
       return c.json({ error: 'Failed to create document type' }, 500)
@@ -282,7 +327,7 @@ export const documentTypesRoutes = new OpenAPIHono()
         return c.json({ error: 'Document type not found' }, 404)
       }
 
-      return c.json(result , 200)
+      return c.json(result, 200)
     } catch (error) {
       console.error('Failed to get document type:', error)
       return c.json({ error: 'Failed to get document type' }, 500)
@@ -306,7 +351,9 @@ export const documentTypesRoutes = new OpenAPIHono()
         validationInstructions: data.validationInstructions,
         modelName: data.modelName,
         slugPattern: data.slugPattern,
-        webhookConfig: data.webhookConfig as Record<string, unknown> | undefined,
+        webhookConfig: data.webhookConfig as
+          | Record<string, unknown>
+          | undefined,
         updatedBy: user?.id,
       })
 
@@ -314,7 +361,7 @@ export const documentTypesRoutes = new OpenAPIHono()
         return c.json({ error: 'Document type not found' }, 404)
       }
 
-      return c.json(result , 200)
+      return c.json(result, 200)
     } catch (error) {
       console.error('Failed to update document type:', error)
       return c.json({ error: 'Failed to update document type' }, 500)
@@ -352,7 +399,8 @@ export const documentTypesRoutes = new OpenAPIHono()
   .openapi(uploadRoute, async (c) => {
     try {
       const { slugOrId } = c.req.valid('param')
-      const { autoProcess: autoProcessStr, model: overrideModel } = c.req.valid('query')
+      const { autoProcess: autoProcessStr, model: overrideModel } =
+        c.req.valid('query')
       const user = c.get('user')
 
       const docType = await getDocumentTypeBySlugOrId(slugOrId)

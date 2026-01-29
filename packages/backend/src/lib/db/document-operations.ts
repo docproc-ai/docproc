@@ -3,10 +3,10 @@
  * Context-free - can be called from API routes or background jobs
  */
 
+import { and, count, desc, eq, like, or } from 'drizzle-orm'
 import { db } from '../../db'
+import type { DocumentInsert, DocumentSelect } from '../../db/schema/app'
 import { document, documentType } from '../../db/schema/app'
-import { eq, desc, and, or, count, like } from 'drizzle-orm'
-import type { DocumentSelect, DocumentInsert } from '../../db/schema/app'
 
 export type { DocumentSelect, DocumentInsert }
 

@@ -1,10 +1,10 @@
 import {
+  index,
+  json,
+  pgEnum,
   pgTable,
   text,
-  json,
   timestamp,
-  index,
-  pgEnum,
   uuid,
 } from 'drizzle-orm/pg-core'
 import { user } from './auth'

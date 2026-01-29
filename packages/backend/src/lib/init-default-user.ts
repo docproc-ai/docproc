@@ -1,7 +1,7 @@
-import { auth } from './auth'
+import { eq } from 'drizzle-orm'
 import { db } from '../db'
 import { user } from '../db/schema/auth'
-import { eq } from 'drizzle-orm'
+import { auth } from './auth'
 
 export async function initDefaultUser() {
   const defaultEmail = process.env.AUTH_ADMIN_EMAIL

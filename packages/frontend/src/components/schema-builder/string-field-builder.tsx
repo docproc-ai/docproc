@@ -1,3 +1,5 @@
+import { Checkbox } from '@/components/ui/checkbox'
+import { Field, FieldLabel } from '@/components/ui/field'
 import {
   Select,
   SelectContent,
@@ -5,8 +7,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Field, FieldLabel } from '@/components/ui/field'
 import { EnumBuilder } from './enum-builder'
 import type { JsonSchema } from './types'
 

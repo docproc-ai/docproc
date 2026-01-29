@@ -3,10 +3,10 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { admin as adminPlugin } from 'better-auth/plugins'
 import { db } from '../db'
 import * as schema from '../db/schema/auth'
-import { checkMicrosoftAuth } from './auth/providers/microsoft'
-import { checkGoogleAuth } from './auth/providers/google'
-import { checkGitHubAuth } from './auth/providers/github'
 import { ac, roles } from './auth/permissions'
+import { checkGitHubAuth } from './auth/providers/github'
+import { checkGoogleAuth } from './auth/providers/google'
+import { checkMicrosoftAuth } from './auth/providers/microsoft'
 
 const ADMIN_EMAILS = process.env.AUTH_ADMIN_EMAILS?.split(',') || []
 

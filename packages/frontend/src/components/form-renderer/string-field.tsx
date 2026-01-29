@@ -1,3 +1,4 @@
+import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -7,7 +8,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { Field, FieldLabel, FieldDescription } from '@/components/ui/field'
 import type { FormFieldProps } from './types'
 
 export function StringField({
@@ -21,7 +21,8 @@ export function StringField({
 }: FormFieldProps) {
   const fieldType = Array.isArray(schema.type) ? schema.type[0] : schema.type
   // Convert value to string for form controls
-  const stringValue = typeof value === 'string' ? value : (value != null ? String(value) : '')
+  const stringValue =
+    typeof value === 'string' ? value : value != null ? String(value) : ''
 
   // Handle enums for any type, not just strings
   if (schema.enum) {
@@ -69,7 +70,9 @@ export function StringField({
         id={name}
         value={stringValue}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={schema.default != null ? String(schema.default) : undefined}
+        placeholder={
+          schema.default != null ? String(schema.default) : undefined
+        }
         rows={4}
         disabled={isStreaming}
       />
@@ -98,7 +101,9 @@ export function StringField({
         type={isStreaming ? 'text' : 'date'}
         value={stringValue}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={schema.default != null ? String(schema.default) : undefined}
+        placeholder={
+          schema.default != null ? String(schema.default) : undefined
+        }
         disabled={isStreaming}
       />
     )

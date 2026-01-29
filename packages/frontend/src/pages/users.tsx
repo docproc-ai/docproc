@@ -374,7 +374,15 @@ function UserRow({
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-1">
-          <EditUserDialog user={{ id: user.id, name: user.name || '', email: user.email, role: (user.role || 'user') as Role }} isCurrentUser={isCurrentUser} />
+          <EditUserDialog
+            user={{
+              id: user.id,
+              name: user.name || '',
+              email: user.email,
+              role: (user.role || 'user') as Role,
+            }}
+            isCurrentUser={isCurrentUser}
+          />
           {!isCurrentUser && (
             <AlertDialog>
               <AlertDialogTrigger asChild>

@@ -1,30 +1,32 @@
-import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
+import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
+import { degrees, PDFDocument } from 'pdf-lib'
 import sharp from 'sharp'
-import { PDFDocument, degrees } from 'pdf-lib'
 import {
-  getDocumentsQuery,
-  updateDocumentRequest,
-  bulkStatusUpdateRequest,
-  bulkDeleteRequest,
-} from '../schemas'
-import {
-  getDocuments,
+  bulkDeleteDocuments,
+  bulkUpdateDocumentStatus,
+  deleteDocument,
   getDocument,
   getDocumentBySlugOrId,
+  getDocuments,
   updateDocument,
-  deleteDocument,
-  bulkUpdateDocumentStatus,
-  bulkDeleteDocuments,
 } from '../lib/db/document-operations'
-import { storage } from '../storage'
 import {
   requireApiKeyOrAuth,
   requireAuth,
   requirePermission,
 } from '../middleware/auth'
+import {
+  bulkDeleteRequest,
+  bulkStatusUpdateRequest,
+  getDocumentsQuery,
+  updateDocumentRequest,
+} from '../schemas'
+import { storage } from '../storage'
 
 // Shared schemas
-const idParam = z.object({ id: z.string().min(1).openapi({ description: 'Document ID or slug' }) })
+const idParam = z.object({
+  id: z.string().min(1).openapi({ description: 'Document ID or slug' }),
+})
 const errorResponse = z.object({ error: z.string() })
 const successResponse = z.object({ success: z.boolean() })
 
@@ -51,24 +53,34 @@ const listRoute = createRoute({
   path: '/',
   tags: ['Documents'],
   summary: 'List documents with pagination',
-  middleware: [requireApiKeyOrAuth, requirePermission('document', 'list')] as const,
+  middleware: [
+    requireApiKeyOrAuth,
+    requirePermission('document', 'list'),
+  ] as const,
   request: {
     query: getDocumentsQuery,
   },
   responses: {
     200: {
       description: 'Paginated list of documents',
-      content: { 'application/json': { schema: z.object({
-        documents: z.array(documentResponse),
-        pagination: z.object({
-          page: z.number(),
-          pageSize: z.number(),
-          total: z.number(),
-          totalPages: z.number(),
-        }),
-      }) } },
+      content: {
+        'application/json': {
+          schema: z.object({
+            documents: z.array(documentResponse),
+            pagination: z.object({
+              page: z.number(),
+              pageSize: z.number(),
+              total: z.number(),
+              totalPages: z.number(),
+            }),
+          }),
+        },
+      },
     },
-    500: { description: 'Server error', content: { 'application/json': { schema: errorResponse } } },
+    500: {
+      description: 'Server error',
+      content: { 'application/json': { schema: errorResponse } },
+    },
   },
 })
 
@@ -79,14 +91,23 @@ const bulkStatusRoute = createRoute({
   summary: 'Bulk update document status',
   middleware: [requireAuth, requirePermission('document', 'update')] as const,
   request: {
-    body: { content: { 'application/json': { schema: bulkStatusUpdateRequest } } },
+    body: {
+      content: { 'application/json': { schema: bulkStatusUpdateRequest } },
+    },
   },
   responses: {
     200: {
       description: 'Status updated',
-      content: { 'application/json': { schema: z.object({ success: z.boolean(), updated: z.number() }) } },
+      content: {
+        'application/json': {
+          schema: z.object({ success: z.boolean(), updated: z.number() }),
+        },
+      },
     },
-    500: { description: 'Server error', content: { 'application/json': { schema: errorResponse } } },
+    500: {
+      description: 'Server error',
+      content: { 'application/json': { schema: errorResponse } },
+    },
   },
 })
 
@@ -102,9 +123,16 @@ const bulkDeleteRoute = createRoute({
   responses: {
     200: {
       description: 'Documents deleted',
-      content: { 'application/json': { schema: z.object({ success: z.boolean(), deleted: z.number() }) } },
+      content: {
+        'application/json': {
+          schema: z.object({ success: z.boolean(), deleted: z.number() }),
+        },
+      },
     },
-    500: { description: 'Server error', content: { 'application/json': { schema: errorResponse } } },
+    500: {
+      description: 'Server error',
+      content: { 'application/json': { schema: errorResponse } },
+    },
   },
 })
 
@@ -120,18 +148,34 @@ const rotateRoute = createRoute({
       content: {
         'application/json': {
           schema: z.object({
-            degrees: z.number().multipleOf(90).openapi({ description: 'Rotation in degrees (must be multiple of 90)' }),
-            pageNumber: z.number().int().positive().optional().openapi({ description: 'Page number for single-page PDF rotation' }),
+            degrees: z.number().multipleOf(90).openapi({
+              description: 'Rotation in degrees (must be multiple of 90)',
+            }),
+            pageNumber: z.number().int().positive().optional().openapi({
+              description: 'Page number for single-page PDF rotation',
+            }),
           }),
         },
       },
     },
   },
   responses: {
-    200: { description: 'Document rotated', content: { 'application/json': { schema: successResponse } } },
-    400: { description: 'Bad request', content: { 'application/json': { schema: errorResponse } } },
-    404: { description: 'Not found', content: { 'application/json': { schema: errorResponse } } },
-    500: { description: 'Server error', content: { 'application/json': { schema: errorResponse } } },
+    200: {
+      description: 'Document rotated',
+      content: { 'application/json': { schema: successResponse } },
+    },
+    400: {
+      description: 'Bad request',
+      content: { 'application/json': { schema: errorResponse } },
+    },
+    404: {
+      description: 'Not found',
+      content: { 'application/json': { schema: errorResponse } },
+    },
+    500: {
+      description: 'Server error',
+      content: { 'application/json': { schema: errorResponse } },
+    },
   },
 })
 
@@ -140,12 +184,24 @@ const getRoute = createRoute({
   path: '/{id}',
   tags: ['Documents'],
   summary: 'Get a document by ID or slug',
-  middleware: [requireApiKeyOrAuth, requirePermission('document', 'list')] as const,
+  middleware: [
+    requireApiKeyOrAuth,
+    requirePermission('document', 'list'),
+  ] as const,
   request: { params: idParam },
   responses: {
-    200: { description: 'Document details', content: { 'application/json': { schema: documentResponse } } },
-    404: { description: 'Not found', content: { 'application/json': { schema: errorResponse } } },
-    500: { description: 'Server error', content: { 'application/json': { schema: errorResponse } } },
+    200: {
+      description: 'Document details',
+      content: { 'application/json': { schema: documentResponse } },
+    },
+    404: {
+      description: 'Not found',
+      content: { 'application/json': { schema: errorResponse } },
+    },
+    500: {
+      description: 'Server error',
+      content: { 'application/json': { schema: errorResponse } },
+    },
   },
 })
 
@@ -157,12 +213,23 @@ const updateRoute = createRoute({
   middleware: [requireAuth, requirePermission('document', 'update')] as const,
   request: {
     params: idParam,
-    body: { content: { 'application/json': { schema: updateDocumentRequest } } },
+    body: {
+      content: { 'application/json': { schema: updateDocumentRequest } },
+    },
   },
   responses: {
-    200: { description: 'Updated document', content: { 'application/json': { schema: documentResponse } } },
-    404: { description: 'Not found', content: { 'application/json': { schema: errorResponse } } },
-    500: { description: 'Server error', content: { 'application/json': { schema: errorResponse } } },
+    200: {
+      description: 'Updated document',
+      content: { 'application/json': { schema: documentResponse } },
+    },
+    404: {
+      description: 'Not found',
+      content: { 'application/json': { schema: errorResponse } },
+    },
+    500: {
+      description: 'Server error',
+      content: { 'application/json': { schema: errorResponse } },
+    },
   },
 })
 
@@ -174,9 +241,18 @@ const deleteRoute = createRoute({
   middleware: [requireAuth, requirePermission('document', 'delete')] as const,
   request: { params: idParam },
   responses: {
-    200: { description: 'Deleted', content: { 'application/json': { schema: successResponse } } },
-    404: { description: 'Not found', content: { 'application/json': { schema: errorResponse } } },
-    500: { description: 'Server error', content: { 'application/json': { schema: errorResponse } } },
+    200: {
+      description: 'Deleted',
+      content: { 'application/json': { schema: successResponse } },
+    },
+    404: {
+      description: 'Not found',
+      content: { 'application/json': { schema: errorResponse } },
+    },
+    500: {
+      description: 'Server error',
+      content: { 'application/json': { schema: errorResponse } },
+    },
   },
 })
 
@@ -185,12 +261,21 @@ const fileRoute = createRoute({
   path: '/{id}/file',
   tags: ['Documents'],
   summary: 'Download document file',
-  middleware: [requireApiKeyOrAuth, requirePermission('document', 'list')] as const,
+  middleware: [
+    requireApiKeyOrAuth,
+    requirePermission('document', 'list'),
+  ] as const,
   request: { params: idParam },
   responses: {
     200: { description: 'File content' },
-    404: { description: 'Not found', content: { 'application/json': { schema: errorResponse } } },
-    500: { description: 'Server error', content: { 'application/json': { schema: errorResponse } } },
+    404: {
+      description: 'Not found',
+      content: { 'application/json': { schema: errorResponse } },
+    },
+    500: {
+      description: 'Server error',
+      content: { 'application/json': { schema: errorResponse } },
+    },
   },
 })
 
@@ -199,17 +284,26 @@ export const documentsRoutes = new OpenAPIHono()
 
   .openapi(listRoute, async (c) => {
     try {
-      const { documentTypeId, page, pageSize, status, search } = c.req.valid('query')
-      const result = await getDocuments(documentTypeId, { page, pageSize, status, search })
-      return c.json({
-        documents: result.documents,
-        pagination: {
-          page: result.page,
-          pageSize: result.pageSize,
-          total: result.total,
-          totalPages: result.totalPages,
+      const { documentTypeId, page, pageSize, status, search } =
+        c.req.valid('query')
+      const result = await getDocuments(documentTypeId, {
+        page,
+        pageSize,
+        status,
+        search,
+      })
+      return c.json(
+        {
+          documents: result.documents,
+          pagination: {
+            page: result.page,
+            pageSize: result.pageSize,
+            total: result.total,
+            totalPages: result.totalPages,
+          },
         },
-      }, 200)
+        200,
+      )
     } catch (error) {
       console.error('Failed to get documents:', error)
       return c.json({ error: 'Failed to get documents' }, 500)
@@ -220,7 +314,11 @@ export const documentsRoutes = new OpenAPIHono()
     try {
       const { documentIds, status } = c.req.valid('json')
       const user = c.get('user')
-      const count = await bulkUpdateDocumentStatus(documentIds, status, user?.id)
+      const count = await bulkUpdateDocumentStatus(
+        documentIds,
+        status,
+        user?.id,
+      )
       return c.json({ success: true, updated: count }, 200)
     } catch (error) {
       console.error('Failed to bulk update status:', error)
@@ -259,7 +357,9 @@ export const documentsRoutes = new OpenAPIHono()
         return c.json({ error: 'Document not found' }, 404)
       }
 
-      const { buffer: fileBuffer, mimeType } = await storage.download(doc.storagePath)
+      const { buffer: fileBuffer, mimeType } = await storage.download(
+        doc.storagePath,
+      )
       let rotatedBuffer: Buffer
       const fileExtension = doc.filename.toLowerCase().split('.').pop()
 
@@ -281,8 +381,14 @@ export const documentsRoutes = new OpenAPIHono()
           }
         }
         rotatedBuffer = Buffer.from(await pdfDoc.save())
-      } else if (['jpg', 'jpeg', 'png', 'webp', 'tiff', 'bmp', 'gif'].includes(fileExtension || '')) {
-        rotatedBuffer = await sharp(fileBuffer).rotate(rotationDegrees).toBuffer()
+      } else if (
+        ['jpg', 'jpeg', 'png', 'webp', 'tiff', 'bmp', 'gif'].includes(
+          fileExtension || '',
+        )
+      ) {
+        rotatedBuffer = await sharp(fileBuffer)
+          .rotate(rotationDegrees)
+          .toBuffer()
       } else {
         return c.json({ error: 'Unsupported file type for rotation' }, 400)
       }
@@ -321,8 +427,12 @@ export const documentsRoutes = new OpenAPIHono()
       }
 
       const result = await updateDocument(doc.id, {
-        extractedData: data.extractedData as Record<string, unknown> | undefined,
-        schemaSnapshot: data.schemaSnapshot as Record<string, unknown> | undefined,
+        extractedData: data.extractedData as
+          | Record<string, unknown>
+          | undefined,
+        schemaSnapshot: data.schemaSnapshot as
+          | Record<string, unknown>
+          | undefined,
         status: data.status,
         rejectionReason: data.rejectionReason,
         updatedBy: user?.id,

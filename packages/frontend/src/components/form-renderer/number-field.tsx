@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
-import { Field, FieldLabel, FieldDescription } from '@/components/ui/field'
 import type { FormFieldProps } from './types'
 
 export function NumberField({

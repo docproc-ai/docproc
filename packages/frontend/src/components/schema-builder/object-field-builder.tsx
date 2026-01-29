@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect } from 'react'
 import { Plus } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
 import { FieldBuilder } from './field-builder'
 import type { JsonSchema } from './types'
 
@@ -234,7 +234,10 @@ export function ObjectFieldBuilder({
           checked={schema.additionalProperties === true}
           onCheckedChange={handleAdditionalPropertiesChange}
         />
-        <Label htmlFor="additional-properties" className="cursor-pointer text-sm">
+        <Label
+          htmlFor="additional-properties"
+          className="cursor-pointer text-sm"
+        >
           Allow extra properties (AI can add properties not listed below)
         </Label>
       </div>

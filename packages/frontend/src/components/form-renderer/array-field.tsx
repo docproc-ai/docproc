@@ -1,19 +1,27 @@
-import { useState, useEffect } from 'react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Checkbox } from '@/components/ui/checkbox'
 import {
-  Trash2,
-  Plus,
+  ArrowLeftRight,
   ChevronDown,
   ChevronRight,
-  ArrowLeftRight,
+  Plus,
+  Trash2,
 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
+import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
+import { Input } from '@/components/ui/input'
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemGroup,
+  ItemTitle,
+} from '@/components/ui/item'
 import {
   Table,
   TableBody,
@@ -22,21 +30,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Field, FieldLabel, FieldDescription } from '@/components/ui/field'
-import {
-  Item,
-  ItemContent,
-  ItemTitle,
-  ItemActions,
-  ItemGroup,
-} from '@/components/ui/item'
 import { cn } from '@/lib/utils'
-import type { FormFieldProps } from './types'
 import type { JsonSchema } from '../schema-builder/types'
-import { StringField } from './string-field'
-import { NumberField } from './number-field'
 import { BooleanField } from './boolean-field'
+import { NumberField } from './number-field'
 import { ObjectField } from './object-field'
+import { StringField } from './string-field'
+import type { FormFieldProps } from './types'
 
 // Forward declaration to avoid circular dependency
 function FormField({
@@ -283,7 +283,9 @@ function SpreadsheetCellInput({
     case 'integer': {
       // Display formatted value, parse on change
       const displayNum =
-        typeof value === 'number' ? value.toLocaleString() : toStringValue(value)
+        typeof value === 'number'
+          ? value.toLocaleString()
+          : toStringValue(value)
       return (
         <Input
           type="text"
@@ -409,9 +411,10 @@ function ArrayTableField({
     const newArray = [...arrayValue]
     if (fieldKey) {
       const currentRecord = newArray[recordIndex]
-      const recordObj = typeof currentRecord === 'object' && currentRecord !== null
-        ? currentRecord as Record<string, unknown>
-        : {}
+      const recordObj =
+        typeof currentRecord === 'object' && currentRecord !== null
+          ? (currentRecord as Record<string, unknown>)
+          : {}
       newArray[recordIndex] = { ...recordObj, [fieldKey]: newValue }
     } else {
       newArray[recordIndex] = newValue
@@ -466,7 +469,9 @@ function ArrayTableField({
                 const cellSchema = isObjectArray
                   ? (itemsSchema.properties?.[fieldKey] as JsonSchema) || {}
                   : itemsSchema
-                const cellValue = isObjectArray ? getItemFieldValue(item, fieldKey) : item
+                const cellValue = isObjectArray
+                  ? getItemFieldValue(item, fieldKey)
+                  : item
                 const columnKey = isObjectArray ? fieldKey : null
                 // Set minWidth for date columns to prevent cutoff
                 const isDate = cellSchema.format === 'date'
@@ -560,14 +565,19 @@ function ArrayTableField({
                   {getFieldTitle(fieldKey)}
                 </TableCell>
                 {arrayValue.map((item, recordIndex) => {
-                  const cellValue = isObjectArray ? getItemFieldValue(item, fieldKey) : item
+                  const cellValue = isObjectArray
+                    ? getItemFieldValue(item, fieldKey)
+                    : item
                   const columnKey = isObjectArray ? fieldKey : null
                   // Format display value - dates and numbers in locale format
                   const displayValue = (() => {
                     if (cellValue == null) return ''
                     if (cellSchema.format === 'date' && cellValue) {
                       try {
-                        const dateStr = typeof cellValue === 'string' ? cellValue : String(cellValue)
+                        const dateStr =
+                          typeof cellValue === 'string'
+                            ? cellValue
+                            : String(cellValue)
                         return new Date(dateStr).toLocaleDateString()
                       } catch {
                         return String(cellValue)
@@ -697,8 +707,7 @@ export function ArrayField({
   const itemType = Array.isArray(itemsSchema.type)
     ? itemsSchema.type[0]
     : itemsSchema.type
-  const isPrimitiveArray =
-    itemType !== 'object' && itemType !== 'array'
+  const isPrimitiveArray = itemType !== 'object' && itemType !== 'array'
 
   const allExpanded = arrayValue.every((_, index) => {
     const itemKey = `${name}-${index}`
@@ -826,13 +835,20 @@ export function ArrayField({
             const template = itemsSchema['ui:displayTemplate']
 
             // For object items with template, use template
-            if (isObjectItem && template && typeof item === 'object' && item !== null) {
+            if (
+              isObjectItem &&
+              template &&
+              typeof item === 'object' &&
+              item !== null
+            ) {
               const itemObj = item as Record<string, unknown>
               const result = template.replace(
                 /\{\{\s*(\w+)\s*\}\}/g,
                 (match: string, fieldName: string) => {
                   const fieldValue = itemObj[fieldName]
-                  return fieldValue !== undefined && fieldValue !== null && fieldValue !== ''
+                  return fieldValue !== undefined &&
+                    fieldValue !== null &&
+                    fieldValue !== ''
                     ? String(fieldValue)
                     : match
                 },

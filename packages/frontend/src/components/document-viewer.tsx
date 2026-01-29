@@ -39,9 +39,15 @@ function DocumentViewerComponent({
   // Track if we're actively rotating (vs resetting on document change) for transition
   const [isRotating, setIsRotating] = useState(false)
   // Track image natural dimensions for proper scaling when rotated sideways
-  const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null)
+  const [imageDimensions, setImageDimensions] = useState<{
+    width: number
+    height: number
+  } | null>(null)
   // Track container dimensions for proper scale calculation
-  const [containerDimensions, setContainerDimensions] = useState<{ width: number; height: number } | null>(null)
+  const [containerDimensions, setContainerDimensions] = useState<{
+    width: number
+    height: number
+  } | null>(null)
   const imageContainerRef = useRef<HTMLDivElement>(null)
 
   const pdfRef = useRef<pdfjs.PDFDocumentProxy | null>(null)
@@ -245,7 +251,10 @@ function DocumentViewerComponent({
       // Normalize to -270 to 270 range (skip full rotations)
       const normalized = ((totalRotation % 360) + 360) % 360
       if (normalized !== 0) {
-        onRotate(normalized > 180 ? normalized - 360 : normalized, isPdf ? currentPage : undefined).catch((error) => {
+        onRotate(
+          normalized > 180 ? normalized - 360 : normalized,
+          isPdf ? currentPage : undefined,
+        ).catch((error) => {
           console.error('Failed to rotate on backend:', error)
         })
       }
@@ -363,7 +372,8 @@ function DocumentViewerComponent({
   const renderImage = () => {
     // For 90°/270° rotations, calculate scale to fit the swapped dimensions
     const normalizedRotation = ((imageRotation % 360) + 360) % 360
-    const isRotatedSideways = normalizedRotation === 90 || normalizedRotation === 270
+    const isRotatedSideways =
+      normalizedRotation === 90 || normalizedRotation === 270
 
     let scale = 1
     if (isRotatedSideways && imageDimensions && containerDimensions) {
@@ -379,7 +389,10 @@ function DocumentViewerComponent({
 
     return (
       <div className="flex h-full w-full flex-col">
-        <div ref={imageContainerRef} className="relative grow overflow-hidden bg-muted/30">
+        <div
+          ref={imageContainerRef}
+          className="relative grow overflow-hidden bg-muted/30"
+        >
           <TransformWrapper
             ref={transformWrapperRef}
             limitToBounds={false}
@@ -400,10 +413,15 @@ function DocumentViewerComponent({
                 src={fileUrl}
                 alt={filename}
                 className={`max-w-full max-h-full object-contain ${isRotating ? 'transition-transform duration-150' : ''}`}
-                style={{ transform: `rotate(${imageRotation}deg) scale(${scale})` }}
+                style={{
+                  transform: `rotate(${imageRotation}deg) scale(${scale})`,
+                }}
                 onLoad={(e) => {
                   const img = e.currentTarget
-                  setImageDimensions({ width: img.naturalWidth, height: img.naturalHeight })
+                  setImageDimensions({
+                    width: img.naturalWidth,
+                    height: img.naturalHeight,
+                  })
                 }}
               />
             </TransformComponent>

@@ -1,5 +1,5 @@
-import type { StorageProvider } from './types'
 import { LocalStorageProvider } from './local'
+import type { StorageProvider } from './types'
 
 export type { StorageProvider }
 export { LocalStorageProvider }

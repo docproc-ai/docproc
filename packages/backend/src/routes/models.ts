@@ -1,4 +1,4 @@
-import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
+import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
 
 // OpenRouter model interface
 interface OpenRouterModel {
@@ -65,10 +65,12 @@ const modelResponse = z.object({
   id: z.string(),
   name: z.string(),
   contextLength: z.number(),
-  pricing: z.object({
-    prompt: z.string(),
-    completion: z.string(),
-  }).optional(),
+  pricing: z
+    .object({
+      prompt: z.string(),
+      completion: z.string(),
+    })
+    .optional(),
 })
 
 const searchModelResponse = z.object({
@@ -83,7 +85,8 @@ const listRoute = createRoute({
   path: '/',
   tags: ['Models'],
   summary: 'List all vision-capable models',
-  description: 'Returns models filtered for document processing (image input support)',
+  description:
+    'Returns models filtered for document processing (image input support)',
   responses: {
     200: {
       description: 'List of vision-capable models',
