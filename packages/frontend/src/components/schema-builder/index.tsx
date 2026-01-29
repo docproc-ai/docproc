@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -20,6 +21,10 @@ export function SchemaBuilder({
   onChange,
   path = '',
 }: SchemaBuilderProps) {
+  const typeId = useId()
+  const titleId = useId()
+  const descriptionId = useId()
+
   const updateSchema = (updates: Partial<JsonSchema>) => {
     const newSchema = { ...schema } as Record<string, unknown>
 
@@ -38,7 +43,7 @@ export function SchemaBuilder({
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <Field>
-          <FieldLabel htmlFor="type">Type</FieldLabel>
+          <FieldLabel htmlFor={typeId}>Type</FieldLabel>
           <Select
             value={
               Array.isArray(schema.type)
@@ -56,7 +61,7 @@ export function SchemaBuilder({
               updateSchema(updates)
             }}
           >
-            <SelectTrigger id="type" className="w-full">
+            <SelectTrigger id={typeId} className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -70,9 +75,9 @@ export function SchemaBuilder({
           </Select>
         </Field>
         <Field>
-          <FieldLabel htmlFor="title">Title</FieldLabel>
+          <FieldLabel htmlFor={titleId}>Title</FieldLabel>
           <Input
-            id="title"
+            id={titleId}
             value={schema.title ?? ''}
             onChange={(e) =>
               updateSchema({ title: e.target.value || undefined })
@@ -83,9 +88,9 @@ export function SchemaBuilder({
       </div>
 
       <Field>
-        <FieldLabel htmlFor="description">Description</FieldLabel>
+        <FieldLabel htmlFor={descriptionId}>Description</FieldLabel>
         <Input
-          id="description"
+          id={descriptionId}
           value={schema.description ?? ''}
           onChange={(e) =>
             updateSchema({ description: e.target.value || undefined })

@@ -1,5 +1,5 @@
 import { Plus } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
@@ -21,6 +21,7 @@ export function ObjectFieldBuilder({
   onChange,
   children,
 }: ObjectFieldBuilderProps) {
+  const additionalPropertiesId = useId()
   const [expandedProperties, setExpandedProperties] = useState<
     Record<string, boolean>
   >({})
@@ -230,12 +231,12 @@ export function ObjectFieldBuilder({
     <div className="space-y-4">
       <div className="flex items-center space-x-2">
         <Checkbox
-          id="additional-properties"
+          id={additionalPropertiesId}
           checked={schema.additionalProperties === true}
           onCheckedChange={handleAdditionalPropertiesChange}
         />
         <Label
-          htmlFor="additional-properties"
+          htmlFor={additionalPropertiesId}
           className="cursor-pointer text-sm"
         >
           Allow extra properties (AI can add properties not listed below)
