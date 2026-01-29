@@ -1,43 +1,51 @@
-FROM node:22-alpine AS base
+# Build stage
+FROM oven/bun:1 AS builder
 
-FROM base AS deps
-# RUN apk add --no-cache libc6-compat
 WORKDIR /app
-COPY package*.json ./
-RUN npm install --omit=dev
 
+# Copy package files
+COPY package.json bun.lock ./
+COPY packages/backend/package.json ./packages/backend/
+COPY packages/frontend/package.json ./packages/frontend/
 
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+# Install dependencies
+RUN bun install --frozen-lockfile
+
+# Copy source code
 COPY . .
-RUN npm run build
 
+# Build frontend only
+RUN bun run --cwd packages/frontend build
 
-FROM base AS runner
+# Production stage - bun runtime
+FROM oven/bun:1-slim AS runner
 
 WORKDIR /app
+
+# Use existing bun user (UID/GID 1000) from base image
+
+# Copy node_modules (includes sharp native bindings)
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/packages/backend/node_modules ./packages/backend/node_modules
+
+# Copy backend source
+COPY --from=builder /app/packages/backend ./packages/backend
+
+# Copy frontend build
+COPY --from=builder /app/dist/frontend ./dist/frontend
+
+# Copy drizzle migrations
+COPY --from=builder /app/drizzle ./drizzle
+
+# Create documents directory
+RUN mkdir -p /documents && chown -R bun:bun /documents /app
+
 ENV NODE_ENV="production"
+ENV STORAGE_LOCAL_DIR="/documents"
+ENV PORT=3000
 
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nextjs -u 1001
-
-COPY --from=builder /app/public ./public
-
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-
-COPY ./drizzle ./drizzle
-
-# Create data directory with proper permissions
-RUN mkdir -p /documents && chown -R nextjs:nodejs /documents
-ENV DOCUMENT_STORAGE_DIR="/documents"
-
-USER nextjs
+USER bun
 
 EXPOSE 3000
 
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
-
-CMD ["node", "server.js"]
+CMD ["bun", "run", "packages/backend/src/index.ts"]

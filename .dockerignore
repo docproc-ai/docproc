@@ -1,37 +1,30 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# Dependencies
+node_modules
+.bun
 
-# dependencies
-/node_modules
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# env files
-.env*
-
-# vercel
-.vercel
-
-# typescript
+# Build outputs
+dist
+packages/frontend/dist
 *.tsbuildinfo
-next-env.d.ts
 
-# data directory (filesystem storage)
-/data/
-
-/.clinerules/
-
-Dockerfile
-.dockerignore
+# Development
 .git
-compose.yml
+.gitignore
+.env*
+!.env.example
+*.md
+.vscode
+.idea
+
+# Legacy
+_legacy
+
+# Testing
+coverage
+*.test.*
+*.spec.*
+
+# Misc
+.DS_Store
+*.log
+.playwright-mcp

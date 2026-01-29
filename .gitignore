@@ -1,14 +1,14 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
 # dependencies
-/node_modules
+node_modules
 
-# next.js
-/.next/
-/out/
-
-# production
+# build output
+dist
+dist-ssr
 /build
+
+# env files
+.env
+*.local
 
 # debug
 npm-debug.log*
@@ -16,15 +16,26 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files
-.env
-
-# vercel
-.vercel
-
 # typescript
 *.tsbuildinfo
-next-env.d.ts
 
 # data directory (filesystem storage)
 /data/
+
+# legacy code (local reference only)
+/_legacy/
+
+# shadcn creates this but we manage deps at root
+src/frontend/bun.lock
+src/frontend/node_modules
+
+# misc
+.DS_Store
+.nitro
+.tanstack
+.wrangler
+count.txtllms.txt
+
+.playwright-mcp/
+
+.documents/
