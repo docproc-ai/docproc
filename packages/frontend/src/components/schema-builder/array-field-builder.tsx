@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -21,6 +22,9 @@ export function ArrayFieldBuilder({
   onChange,
   children,
 }: ArrayFieldBuilderProps) {
+  const pivotedId = useId()
+  const displayTemplateId = useId()
+
   if (schema.type !== 'array') return null
 
   const isObjectArray = schema.items?.type === 'object'
@@ -51,13 +55,13 @@ export function ArrayFieldBuilder({
         <Field>
           <div className="flex items-center gap-2">
             <Checkbox
-              id="pivoted"
+              id={pivotedId}
               checked={schema['ui:pivoted'] ?? false}
               onCheckedChange={(checked) =>
                 onChange({ 'ui:pivoted': checked === true })
               }
             />
-            <FieldLabel htmlFor="pivoted" className="!mb-0 cursor-pointer">
+            <FieldLabel htmlFor={pivotedId} className="!mb-0 cursor-pointer">
               Default to pivoted view
             </FieldLabel>
           </div>
@@ -68,7 +72,7 @@ export function ArrayFieldBuilder({
       )}
       {isObjectArray && schema['ui:widget'] !== 'table' && (
         <Field>
-          <FieldLabel htmlFor="displayTemplate">
+          <FieldLabel htmlFor={displayTemplateId}>
             Item Display Template
           </FieldLabel>
           <FieldDescription>
@@ -76,7 +80,7 @@ export function ArrayFieldBuilder({
             {`{{firstName}} {{lastName}}`}
           </FieldDescription>
           <Input
-            id="displayTemplate"
+            id={displayTemplateId}
             value={schema.items?.['ui:displayTemplate'] ?? ''}
             onChange={(e) => {
               const value = e.target.value || undefined
