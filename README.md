@@ -84,7 +84,7 @@ _Intuitive form interface for reviewing and editing extracted data_
 
 ### 📄 Human-in-the-Loop Document Extraction
 
-- **AI-Powered Extraction**: Extract structured data from documents using Anthropic's Claude models
+- **AI-Powered Extraction**: Extract structured data from documents using AI vision models via OpenRouter
 - **Custom JSON Schemas**: Define extraction schemas tailored to your specific document types
 - **Human Review & Approval**: Manual verification and correction of AI-extracted data
 - **Multi-Format Support**: Process PDFs and images with built-in document viewer
@@ -165,7 +165,7 @@ _Intuitive form interface for reviewing and editing extracted data_
 1. **Install dependencies**
 
    ```bash
-   npm install
+   bun install
    ```
 
 2. **Start PostgreSQL** (if running locally)
@@ -180,19 +180,21 @@ _Intuitive form interface for reviewing and editing extracted data_
 3. **Push database schema**
 
    ```bash
-   npm run db:push
+   bun run db:push
    ```
 
 4. **Start development server**
 
    ```bash
-   npm run dev
+   bun run dev
    ```
 
 ## 🙏 Acknowledgments
 
-- [Next.js](https://nextjs.org/) - React framework
-- [Anthropic](https://www.anthropic.com/) - AI processing capabilities
+- [Bun](https://bun.sh/) - JavaScript runtime
+- [Hono](https://hono.dev/) - Web framework
+- [Vite](https://vite.dev/) - Frontend build tool
+- [OpenRouter](https://openrouter.ai/) - AI model routing
 - [Shadcn/ui](https://ui.shadcn.com/) - UI component library
 - [Drizzle ORM](https://orm.drizzle.team/) - Database ORM
 - [Better-auth](https://www.better-auth.com/) - Authentication solution
