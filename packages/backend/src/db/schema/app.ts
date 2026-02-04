@@ -1,13 +1,15 @@
 import {
   index,
-  json,
   pgEnum,
   pgTable,
   text,
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core'
+
 import { user } from './auth'
+// Custom json() to avoid double-encoding with Bun SQL driver (see custom-types.ts)
+import { json } from './custom-types'
 
 export const documentType = pgTable('document_type', {
   id: uuid('id').primaryKey().defaultRandom(),
