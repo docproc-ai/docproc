@@ -5,6 +5,7 @@ import { DocumentTypeForm } from '@/components/document-type-form'
 import type { JsonSchema } from '@/components/schema-builder'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { WebhookConfig } from '@/components/webhook-config'
 import {
@@ -158,9 +159,9 @@ export default function DocumentTypeSettingsPage() {
           </Button>
           <h1 className="text-xl font-semibold">Edit Document Type</h1>
         </header>
-        <main className="flex-grow overflow-auto p-6 pb-96">
-          {renderSkeleton()}
-        </main>
+        <ScrollArea className="flex-grow">
+          <main className="p-6 pb-96">{renderSkeleton()}</main>
+        </ScrollArea>
       </div>
     )
   }
@@ -216,19 +217,21 @@ export default function DocumentTypeSettingsPage() {
         </div>
       )}
 
-      <main className="flex-grow overflow-auto p-6 pb-96">
-        <DocumentTypeForm
-          initialData={{
-            name: docType.name,
-            validationInstructions: docType.validationInstructions || null,
-            modelName: docType.modelName || '',
-            slugPattern: docType.slugPattern || null,
-            schema: docType.schema as JsonSchema,
-            webhookConfig: docType.webhookConfig as WebhookConfig | null,
-          }}
-          onFormDataChange={setFormData}
-        />
-      </main>
+      <ScrollArea className="flex-grow">
+        <main className="p-6 pb-96">
+          <DocumentTypeForm
+            initialData={{
+              name: docType.name,
+              validationInstructions: docType.validationInstructions || null,
+              modelName: docType.modelName || '',
+              slugPattern: docType.slugPattern || null,
+              schema: docType.schema as JsonSchema,
+              webhookConfig: docType.webhookConfig as WebhookConfig | null,
+            }}
+            onFormDataChange={setFormData}
+          />
+        </main>
+      </ScrollArea>
     </div>
   )
 }

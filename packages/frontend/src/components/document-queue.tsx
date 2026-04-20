@@ -37,7 +37,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { useDebounce } from '@/lib/hooks'
 import {
   useActiveJobs,
@@ -58,12 +65,12 @@ const statusConfig: Record<
   pending: { icon: File, className: 'text-muted-foreground', title: 'Pending' },
   processing: {
     icon: Loader2,
-    className: 'text-blue-500 animate-spin',
+    className: 'text-info animate-spin',
     title: 'Processing',
   },
-  processed: { icon: FileJson, className: 'text-blue-500', title: 'Processed' },
-  approved: { icon: FileCheck, className: 'text-green-500', title: 'Approved' },
-  rejected: { icon: FileX, className: 'text-red-500', title: 'Rejected' },
+  processed: { icon: FileJson, className: 'text-info', title: 'Processed' },
+  approved: { icon: FileCheck, className: 'text-success', title: 'Approved' },
+  rejected: { icon: FileX, className: 'text-destructive', title: 'Rejected' },
 }
 
 function StatusIcon({ status, size = 16 }: { status: string; size?: number }) {
@@ -357,51 +364,78 @@ export function DocumentQueue({
     <div className="h-full flex flex-col bg-background">
       {/* Status filter */}
       <div className="flex flex-col gap-2 p-2 border-b">
-        <ToggleGroup
-          type="single"
-          value={urlStatus}
-          onValueChange={(value: string) => {
-            if (value) onStatusChange(value)
-          }}
-          size="sm"
-          className="w-full border"
-        >
-          <ToggleGroupItem
-            value="all"
-            className="flex-1"
-            aria-label="All documents"
+        <TooltipProvider>
+          <ToggleGroup
+            type="single"
+            value={urlStatus}
+            onValueChange={(value: string) => {
+              if (value) onStatusChange(value)
+            }}
+            size="sm"
+            className="w-full border"
           >
-            <Files className="h-4 w-4" />
-          </ToggleGroupItem>
-          <ToggleGroupItem
-            value="pending"
-            className="flex-1"
-            aria-label="Pending"
-          >
-            <StatusIcon status="pending" size={14} />
-          </ToggleGroupItem>
-          <ToggleGroupItem
-            value="processed"
-            className="flex-1"
-            aria-label="Processed"
-          >
-            <StatusIcon status="processed" size={14} />
-          </ToggleGroupItem>
-          <ToggleGroupItem
-            value="approved"
-            className="flex-1"
-            aria-label="Approved"
-          >
-            <StatusIcon status="approved" size={14} />
-          </ToggleGroupItem>
-          <ToggleGroupItem
-            value="rejected"
-            className="flex-1"
-            aria-label="Rejected"
-          >
-            <StatusIcon status="rejected" size={14} />
-          </ToggleGroupItem>
-        </ToggleGroup>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <ToggleGroupItem
+                  value="all"
+                  className="flex-1"
+                  aria-label="All documents"
+                >
+                  <Files className="h-4 w-4" />
+                </ToggleGroupItem>
+              </TooltipTrigger>
+              <TooltipContent>All</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <ToggleGroupItem
+                  value="pending"
+                  className="flex-1"
+                  aria-label="Pending"
+                >
+                  <StatusIcon status="pending" size={14} />
+                </ToggleGroupItem>
+              </TooltipTrigger>
+              <TooltipContent>Pending</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <ToggleGroupItem
+                  value="processed"
+                  className="flex-1"
+                  aria-label="Processed"
+                >
+                  <StatusIcon status="processed" size={14} />
+                </ToggleGroupItem>
+              </TooltipTrigger>
+              <TooltipContent>Processed</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <ToggleGroupItem
+                  value="approved"
+                  className="flex-1"
+                  aria-label="Approved"
+                >
+                  <StatusIcon status="approved" size={14} />
+                </ToggleGroupItem>
+              </TooltipTrigger>
+              <TooltipContent>Approved</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <ToggleGroupItem
+                  value="rejected"
+                  className="flex-1"
+                  aria-label="Rejected"
+                >
+                  <StatusIcon status="rejected" size={14} />
+                </ToggleGroupItem>
+              </TooltipTrigger>
+              <TooltipContent>Rejected</TooltipContent>
+            </Tooltip>
+          </ToggleGroup>
+        </TooltipProvider>
 
         {/* Search bar with checkbox and actions */}
         <div className="flex items-center gap-2">
@@ -425,7 +459,7 @@ export function DocumentQueue({
               <button
                 type="button"
                 onClick={handleCancelAllProcessing}
-                className="group flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                className="group flex items-center gap-1 text-xs text-info hover:text-destructive transition-colors"
                 title="Click to cancel all processing"
               >
                 <Loader2 className="w-3.5 h-3.5 animate-spin group-hover:hidden" />
@@ -481,19 +515,19 @@ export function DocumentQueue({
                     <DropdownMenuItem
                       onClick={() => handleBulkSetStatus('processed')}
                     >
-                      <FileJson className="mr-2 h-4 w-4 text-blue-500" />
+                      <FileJson className="mr-2 h-4 w-4 text-info" />
                       Mark as Processed
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => handleBulkSetStatus('approved')}
                     >
-                      <FileCheck className="mr-2 h-4 w-4 text-green-500" />
+                      <FileCheck className="mr-2 h-4 w-4 text-success" />
                       Mark as Approved
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => handleBulkSetStatus('rejected')}
                     >
-                      <FileX className="mr-2 h-4 w-4 text-red-500" />
+                      <FileX className="mr-2 h-4 w-4 text-destructive" />
                       Mark as Rejected
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
@@ -514,7 +548,7 @@ export function DocumentQueue({
 
       {/* Document list (dropzone) */}
       <div
-        className={`flex-1 overflow-y-auto relative transition-colors ${
+        className={`flex-1 min-h-0 relative transition-colors ${
           isDragOver ? 'bg-primary/5' : ''
         }`}
         onDrop={(e) => {
@@ -542,27 +576,29 @@ export function DocumentQueue({
             </span>
           </div>
         )}
-        {documents.length === 0
-          ? null
-          : documents.map((doc) => (
-              <DocumentListItem
-                key={doc.id}
-                doc={doc}
-                isSelected={selectedDocId === doc.id}
-                isChecked={checkedDocIds.has(doc.id)}
-                isProcessing={processingDocIds.has(doc.id)}
-                onSelect={() => onDocumentSelect(doc.id)}
-                onCheck={(checked) => handleToggleCheck(doc.id, checked)}
-                onCancelJob={() => handleCancelJob(doc.id)}
-                registerRef={(id, el) => {
-                  if (el) {
-                    documentRefs.current.set(id, el)
-                  } else {
-                    documentRefs.current.delete(id)
-                  }
-                }}
-              />
-            ))}
+        <ScrollArea className="h-full">
+          {documents.length === 0
+            ? null
+            : documents.map((doc) => (
+                <DocumentListItem
+                  key={doc.id}
+                  doc={doc}
+                  isSelected={selectedDocId === doc.id}
+                  isChecked={checkedDocIds.has(doc.id)}
+                  isProcessing={processingDocIds.has(doc.id)}
+                  onSelect={() => onDocumentSelect(doc.id)}
+                  onCheck={(checked) => handleToggleCheck(doc.id, checked)}
+                  onCancelJob={() => handleCancelJob(doc.id)}
+                  registerRef={(id, el) => {
+                    if (el) {
+                      documentRefs.current.set(id, el)
+                    } else {
+                      documentRefs.current.delete(id)
+                    }
+                  }}
+                />
+              ))}
+        </ScrollArea>
       </div>
 
       {/* Pagination */}

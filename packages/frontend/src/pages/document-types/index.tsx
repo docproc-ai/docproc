@@ -3,7 +3,7 @@ import {
   ArrowRight,
   File,
   FileCheck,
-  FileClock,
+  FileJson,
   FileText,
   FileX,
   FolderPlus,
@@ -70,29 +70,37 @@ function DocumentTypeCard({
           title="Pending"
         >
           <File className="size-4" />
-          <span className="text-sm">{docType.statusCounts.pending}</span>
+          <span className="text-sm">
+            {docType.statusCounts.pending.toLocaleString()}
+          </span>
         </div>
         <div
-          className="flex items-center gap-1 text-blue-500"
+          className="flex items-center gap-1 text-info"
           title="Ready for review"
         >
-          <FileClock className="size-4" />
-          <span className="text-sm">{docType.statusCounts.processed}</span>
+          <FileJson className="size-4" />
+          <span className="text-sm">
+            {docType.statusCounts.processed.toLocaleString()}
+          </span>
+        </div>
+        <div className="flex items-center gap-1 text-success" title="Approved">
+          <FileCheck className="size-4" />
+          <span className="text-sm">
+            {docType.statusCounts.approved.toLocaleString()}
+          </span>
         </div>
         <div
-          className="flex items-center gap-1 text-green-500"
-          title="Approved"
+          className="flex items-center gap-1 text-destructive"
+          title="Rejected"
         >
-          <FileCheck className="size-4" />
-          <span className="text-sm">{docType.statusCounts.approved}</span>
-        </div>
-        <div className="flex items-center gap-1 text-red-500" title="Rejected">
           <FileX className="size-4" />
-          <span className="text-sm">{docType.statusCounts.rejected}</span>
+          <span className="text-sm">
+            {docType.statusCounts.rejected.toLocaleString()}
+          </span>
         </div>
       </CardContent>
 
-      <CardFooter className="justify-end border-t pt-4">
+      <CardFooter className="justify-end border-t gap-2">
         {canEdit && (
           <Button variant="ghost" size="sm" asChild>
             <Link
