@@ -4,6 +4,7 @@ import { storage } from '../../storage'
 import { getDocument, updateDocument } from '../db/document-operations'
 import { getDocumentType } from '../db/document-type-operations'
 import { generateSlugFromPattern } from '../slug-template'
+import { triggerWebhookAsync } from '../webhooks'
 import {
   getFileExtension,
   getMimeType,
@@ -269,6 +270,10 @@ export async function processAndSaveDocument(
     )
   }
 
+  if (updatedDoc) {
+    triggerWebhookAsync(docType.id, updatedDoc, 'document.processed')
+  }
+
   return { data, document: updatedDoc }
 }
 
@@ -367,12 +372,16 @@ export async function prepareDocumentForStreaming(
         slug = generateSlugFromPattern(docType.slugPattern, data, doc.id)
       }
 
-      await updateDocument(documentId, {
+      const updatedDoc = await updateDocument(documentId, {
         extractedData: data,
         status: 'processed',
         schemaSnapshot: schema,
         ...(slug && { slug }),
       })
+
+      if (updatedDoc) {
+        triggerWebhookAsync(docType.id, updatedDoc, 'document.processed')
+      }
     },
   }
 }

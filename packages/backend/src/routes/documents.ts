@@ -21,6 +21,7 @@ import {
   getDocumentsQuery,
   updateDocumentRequest,
 } from '../schemas'
+import { triggerWebhookAsync } from '../lib/webhooks'
 import { storage } from '../storage'
 
 // Shared schemas
@@ -441,6 +442,15 @@ export const documentsRoutes = new OpenAPIHono()
       if (!result) {
         return c.json({ error: 'Document not found' }, 404)
       }
+
+      if (data.status && data.status !== doc.status) {
+        if (data.status === 'approved') {
+          triggerWebhookAsync(doc.documentTypeId, result, 'document.approved')
+        } else if (doc.status === 'approved') {
+          triggerWebhookAsync(doc.documentTypeId, result, 'document.unapproved')
+        }
+      }
+
       return c.json(result, 200)
     } catch (error) {
       console.error('Failed to update document:', error)
