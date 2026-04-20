@@ -13,7 +13,7 @@ function ResizablePanelGroup({
     <ResizablePrimitive.Group
       data-slot="resizable-panel-group"
       className={cn(
-        'flex h-full w-full select-none aria-[orientation=vertical]:flex-col',
+        'flex h-full w-full aria-[orientation=vertical]:flex-col',
         className,
       )}
       {...props}
