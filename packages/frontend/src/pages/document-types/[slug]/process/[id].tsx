@@ -1,7 +1,6 @@
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router'
 import { XCircle } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
-import { DocumentViewer } from '@/components/document-viewer'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { DataEditorTab } from '@/components/editor-tabs'
 import { FormRenderer } from '@/components/form-renderer'
 import type { JsonSchema } from '@/components/schema-builder/types'
@@ -17,19 +16,13 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from '@/components/ui/resizable'
 import { Spinner } from '@/components/ui/spinner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useDocumentEditorContext } from '@/lib/document-editor-context'
+import { useDocumentEditorStore } from '@/lib/document-editor-store'
 import {
   useDocument,
   useDocuments,
   useDocumentType,
-  useRotateDocument,
   useUpdateDocument,
 } from '@/lib/queries'
 
@@ -51,9 +44,18 @@ export default function DocumentEditorPage() {
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false)
   const [pendingDocId, setPendingDocId] = useState<string | null>(null)
 
-  // Get streaming state from parent context
-  const { streamingData, isStreaming, registerSave, setHasUnsavedChanges } =
-    useDocumentEditorContext()
+  // Get streaming state from store
+  const {
+    streamingData,
+    streamingDocId,
+    isStreaming: isStoreStreaming,
+    registerSave,
+    setHasUnsavedChanges,
+  } = useDocumentEditorStore()
+
+  // Only show streaming state if it's for this document
+  const isStreaming = isStoreStreaming && streamingDocId === documentId
+  const activeStreamingData = isStreaming ? streamingData : null
 
   const { data: docType } = useDocumentType(slug)
   const { data: currentDoc } = useDocument(documentId)
@@ -61,7 +63,6 @@ export default function DocumentEditorPage() {
     status: 'all',
   })
   const updateDocument = useUpdateDocument()
-  const rotateDocument = useRotateDocument()
 
   const filteredDocs = documentsData?.documents || []
 
@@ -72,8 +73,8 @@ export default function DocumentEditorPage() {
 
   // Use streaming data when available, otherwise use document's extracted data
   const displayData =
-    isStreaming && streamingData
-      ? streamingData
+    isStreaming && activeStreamingData
+      ? activeStreamingData
       : (currentDoc?.extractedData as Record<string, unknown> | null) || {}
 
   // Update edited data when document changes or streaming completes
@@ -88,42 +89,38 @@ export default function DocumentEditorPage() {
 
   // Sync streaming data to edited data
   useEffect(() => {
-    if (streamingData) {
-      setEditedData(streamingData)
+    if (activeStreamingData) {
+      setEditedData(activeStreamingData)
     }
-  }, [streamingData])
+  }, [activeStreamingData])
 
-  const handleSave = useCallback(async () => {
+  // Use ref to avoid re-registering on every editedData change
+  const saveRef = useRef<() => Promise<void>>()
+  saveRef.current = async () => {
     if (!currentDoc) return
     await updateDocument.mutateAsync({
       id: currentDoc.id,
       data: { extractedData: editedData },
     })
     setHasChanges(false)
-  }, [currentDoc, editedData, updateDocument])
+  }
 
-  // Register save function with parent context
+  const handleSave = useCallback(async () => {
+    await saveRef.current?.()
+  }, [])
+
+  // Register save function once on mount
   useEffect(() => {
     registerSave(handleSave)
     return () => registerSave(null)
-  }, [handleSave, registerSave])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  // Sync hasChanges to parent context
+  // Sync hasChanges to parent
   useEffect(() => {
     setHasUnsavedChanges(hasChanges)
-  }, [hasChanges, setHasUnsavedChanges])
-
-  const handleRotate = useCallback(
-    async (degrees: number, pageNumber?: number) => {
-      if (!currentDoc) return
-      await rotateDocument.mutateAsync({
-        documentId: currentDoc.id,
-        degrees,
-        pageNumber,
-      })
-    },
-    [currentDoc, rotateDocument],
-  )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasChanges])
 
   // Navigation between documents
   const navigateDocument = useCallback(
@@ -197,114 +194,93 @@ export default function DocumentEditorPage() {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Form + Preview */}
-      <ResizablePanelGroup direction="horizontal" className="flex-1">
-        {/* Form editor */}
-        <ResizablePanel defaultSize={50} minSize={30}>
-          <div className="h-full flex flex-col bg-background">
-            <Tabs
-              defaultValue="form"
-              className="flex-1 min-h-0 flex flex-col p-4 pb-0 gap-4"
-            >
-              <TabsList className="w-full shrink-0">
-                <TabsTrigger value="form">Form</TabsTrigger>
-                <TabsTrigger value="data">Data</TabsTrigger>
-              </TabsList>
+      <Tabs
+        defaultValue="form"
+        className="flex-1 min-h-0 flex flex-col gap-4 pt-4"
+      >
+        <div className="px-4">
+          <TabsList className="w-full">
+            <TabsTrigger value="form">Form</TabsTrigger>
+            <TabsTrigger value="data">Data</TabsTrigger>
+          </TabsList>
+        </div>
 
-              <TabsContent
-                value="form"
-                className="flex-1 min-h-0 overflow-y-auto m-0 -mx-4 px-4"
-              >
-                <div className="max-w-2xl space-y-6 pb-4">
-                  {/* Rejection reason */}
-                  {currentDoc.status === 'rejected' &&
-                    currentDoc.rejectionReason && (
-                      <Alert variant="destructive">
-                        <XCircle className="h-4 w-4" />
-                        <AlertTitle>Rejected</AlertTitle>
-                        <AlertDescription>
-                          {currentDoc.rejectionReason}
-                        </AlertDescription>
-                      </Alert>
-                    )}
-
-                  {/* Streaming indicator */}
-                  {isStreaming && (
-                    <Alert>
-                      <Spinner />
-                      <AlertDescription>Extracting data...</AlertDescription>
-                    </Alert>
-                  )}
-
-                  {/* Form fields */}
-                  <FormRenderer
-                    schema={schema}
-                    data={isStreaming ? displayData : editedData}
-                    onChange={(newData) => {
-                      if (!isStreaming) {
-                        setEditedData(newData as Record<string, unknown>)
-                        setHasChanges(true)
-                      }
-                    }}
-                    isStreaming={isStreaming}
-                  />
-                </div>
-              </TabsContent>
-
-              <TabsContent
-                value="data"
-                className="flex-1 min-h-0 m-0 -mx-4 px-4 pb-4 overflow-hidden"
-              >
-                <DataEditorTab
-                  value={JSON.stringify(
-                    isStreaming ? displayData : editedData,
-                    null,
-                    2,
-                  )}
-                  onChange={(value) => {
-                    if (!isStreaming && value) {
-                      try {
-                        const parsed = JSON.parse(value)
-                        setEditedData(parsed)
-                        setHasChanges(true)
-                      } catch {
-                        // Invalid JSON, ignore
-                      }
-                    }
-                  }}
-                />
-              </TabsContent>
-            </Tabs>
-
-            {/* Save bar - fixed at bottom */}
-            {hasChanges && !isStreaming && (
-              <div className="shrink-0 py-2 px-3 bg-muted/80 border-t flex items-center justify-between gap-2">
-                <span className="text-sm text-muted-foreground">
-                  Unsaved changes
-                </span>
-                <Button
-                  size="sm"
-                  onClick={handleSave}
-                  disabled={updateDocument.isPending}
-                >
-                  {updateDocument.isPending ? 'Saving...' : 'Save'}
-                </Button>
-              </div>
+        <TabsContent
+          value="form"
+          className="flex-1 min-h-0 m-0 overflow-y-auto overflow-x-hidden"
+        >
+          <div className="px-4 pb-4 space-y-6">
+            {/* Rejection reason */}
+            {currentDoc.status === 'rejected' && currentDoc.rejectionReason && (
+              <Alert variant="destructive">
+                <XCircle className="h-4 w-4" />
+                <AlertTitle>Rejected</AlertTitle>
+                <AlertDescription>
+                  {currentDoc.rejectionReason}
+                </AlertDescription>
+              </Alert>
             )}
+
+            {/* Streaming indicator */}
+            {isStreaming && (
+              <Alert>
+                <Spinner />
+                <AlertDescription>Extracting data...</AlertDescription>
+              </Alert>
+            )}
+            {/* Form fields */}
+            <FormRenderer
+              schema={schema}
+              data={isStreaming ? displayData : editedData}
+              onChange={(newData) => {
+                if (!isStreaming) {
+                  setEditedData(newData as Record<string, unknown>)
+                  setHasChanges(true)
+                }
+              }}
+              isStreaming={isStreaming}
+            />
           </div>
-        </ResizablePanel>
+        </TabsContent>
 
-        <ResizableHandle />
-
-        {/* Document preview */}
-        <ResizablePanel defaultSize={50} minSize={30}>
-          <DocumentViewer
-            documentId={currentDoc.id}
-            filename={currentDoc.filename}
-            onRotate={handleRotate}
+        <TabsContent
+          value="data"
+          className="flex-1 min-h-0 m-0 px-4 pb-4 overflow-hidden"
+        >
+          <DataEditorTab
+            value={JSON.stringify(
+              isStreaming ? displayData : editedData,
+              null,
+              2,
+            )}
+            onChange={(value) => {
+              if (!isStreaming && value) {
+                try {
+                  const parsed = JSON.parse(value)
+                  setEditedData(parsed)
+                  setHasChanges(true)
+                } catch {
+                  // Invalid JSON, ignore
+                }
+              }
+            }}
           />
-        </ResizablePanel>
-      </ResizablePanelGroup>
+        </TabsContent>
+      </Tabs>
+
+      {/* Save bar - fixed at bottom */}
+      {hasChanges && !isStreaming && (
+        <div className="shrink-0 py-2 px-3 bg-muted/80 border-t flex items-center justify-between gap-2">
+          <span className="text-sm text-muted-foreground">Unsaved changes</span>
+          <Button
+            size="sm"
+            onClick={handleSave}
+            disabled={updateDocument.isPending}
+          >
+            {updateDocument.isPending ? 'Saving...' : 'Save'}
+          </Button>
+        </div>
+      )}
 
       {/* Unsaved changes dialog */}
       <AlertDialog open={showUnsavedDialog} onOpenChange={setShowUnsavedDialog}>
