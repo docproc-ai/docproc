@@ -12,11 +12,10 @@ import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { Moon, ShieldX, Sun } from 'lucide-react'
 import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
-
+import { ThemeProvider, useTheme } from './components/theme-provider'
 import { Button } from './components/ui/button'
 import * as TanStackQueryProvider from './integrations/tanstack-query/root-provider.tsx'
 import { authClient, signOut, useSession } from './lib/auth'
-import { ThemeProvider, useTheme } from './lib/theme'
 import DocumentTypesPage from './pages/document-types'
 import ProcessLayout from './pages/document-types/[slug]/process'
 import DocumentEditorPage from './pages/document-types/[slug]/process/[id]'
@@ -123,7 +122,7 @@ function LogoMark({ className }: { className?: string }) {
 
 // Theme toggle button
 function ThemeToggle() {
-  const { theme, toggleTheme } = useTheme()
+  const { resolvedTheme, toggleTheme } = useTheme()
 
   return (
     <Button
@@ -131,9 +130,9 @@ function ThemeToggle() {
       size="icon"
       onClick={toggleTheme}
       className="h-9 w-9"
-      aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+      aria-label={`Switch to ${resolvedTheme === 'dark' ? 'light' : 'dark'} mode`}
     >
-      {theme === 'dark' ? (
+      {resolvedTheme === 'dark' ? (
         <Sun className="size-18px" />
       ) : (
         <Moon className="size-18px" />

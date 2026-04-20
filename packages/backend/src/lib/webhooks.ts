@@ -4,6 +4,14 @@
  */
 
 import { getDocumentType } from './db/document-type-operations'
+
+const insecureTls = process.env.WEBHOOK_INSECURE_TLS === 'true'
+
+if (insecureTls) {
+  console.warn(
+    '[Webhook] WEBHOOK_INSECURE_TLS=true — TLS certificate validation disabled. Do not use in production.',
+  )
+}
 import type {
   DocumentWebhookConfig,
   DocumentWebhookEventName,
@@ -91,6 +99,8 @@ export async function triggerWebhook(
       method: eventConfig.method || 'POST',
       headers,
       body: JSON.stringify(payload),
+      // @ts-expect-error Bun-specific fetch extension
+      tls: insecureTls ? { rejectUnauthorized: false } : undefined,
     })
 
     if (!response.ok) {

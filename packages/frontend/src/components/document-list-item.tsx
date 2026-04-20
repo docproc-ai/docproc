@@ -11,10 +11,10 @@ import { Checkbox } from '@/components/ui/checkbox'
 
 const statusConfig: Record<string, { icon: LucideIcon; className: string }> = {
   pending: { icon: File, className: 'text-muted-foreground' },
-  processing: { icon: Loader2, className: 'text-blue-500 animate-spin' },
-  processed: { icon: FileJson, className: 'text-blue-500' },
-  approved: { icon: FileCheck, className: 'text-green-500' },
-  rejected: { icon: FileX, className: 'text-red-500' },
+  processing: { icon: Loader2, className: 'text-info animate-spin' },
+  processed: { icon: FileJson, className: 'text-info' },
+  approved: { icon: FileCheck, className: 'text-success' },
+  rejected: { icon: FileX, className: 'text-destructive' },
 }
 
 export interface DocumentListItemProps {
@@ -51,11 +51,11 @@ export function DocumentListItem({
     <div
       ref={(el) => registerRef(doc.id, el)}
       className={`flex items-center w-full border-b transition-colors relative ${
-        isSelected ? 'bg-primary/10' : 'hover:bg-muted/50'
+        isSelected ? 'bg-muted' : 'hover:bg-muted/50'
       }`}
     >
       {isSelected && (
-        <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-primary" />
+        <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-primary/50" />
       )}
       <div className="pl-2 py-2 self-center">
         <Checkbox
@@ -76,8 +76,8 @@ export function DocumentListItem({
             className="group"
             title="Click to cancel"
           >
-            <Loader2 className="h-4 w-4 text-blue-500 animate-spin group-hover:hidden" />
-            <X className="h-4 w-4 text-red-500 hidden group-hover:block" />
+            <Loader2 className="h-4 w-4 text-info animate-spin group-hover:hidden" />
+            <X className="h-4 w-4 text-destructive hidden group-hover:block" />
           </button>
         ) : (
           <StatusIcon className={`h-4 w-4 ${config.className}`} />

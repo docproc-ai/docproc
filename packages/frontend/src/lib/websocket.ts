@@ -54,9 +54,7 @@ function notifyStatusChange(status: ConnectionStatus) {
 
 function getWebSocketUrl(): string {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  // In dev, backend is on port 3001
-  const host = import.meta.env.DEV ? 'localhost:3001' : window.location.host
-  return `${protocol}//${host}/ws`
+  return `${protocol}//${window.location.host}/ws`
 }
 
 function connect() {

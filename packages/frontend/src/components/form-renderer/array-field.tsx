@@ -30,6 +30,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import type { JsonSchema } from '../schema-builder/types'
 import { BooleanField } from './boolean-field'
@@ -636,17 +642,26 @@ function ArrayTableField({
             <FieldDescription>{schema.description}</FieldDescription>
           )}
         </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => setIsPivoted(!isPivoted)}
-          title={isPivoted ? 'Switch to normal view' : 'Switch to pivoted view'}
-        >
-          <ArrowLeftRight className="h-4 w-4" />
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsPivoted(!isPivoted)}
+              >
+                <ArrowLeftRight className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {isPivoted ? 'Switch to normal view' : 'Switch to pivoted view'}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
       {isPivoted ? renderPivotedTable() : renderNormalTable()}
+
       {!isPivoted && !isStreaming && (
         <Button
           type="button"

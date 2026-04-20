@@ -11,6 +11,7 @@ import {
   updateDocumentType,
 } from '../lib/db/document-type-operations'
 import { createBatch } from '../lib/db/job-operations'
+import { triggerWebhookAsync } from '../lib/webhooks'
 import {
   requireApiKeyOrAuth,
   requireAuth,
@@ -458,6 +459,8 @@ export const documentTypesRoutes = new OpenAPIHono()
             storagePath: storageKey,
             createdBy: user?.id,
           })
+
+          triggerWebhookAsync(docType.id, document, 'document.uploaded')
 
           results.push({
             filename: file.name,

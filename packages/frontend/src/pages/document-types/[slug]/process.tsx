@@ -6,22 +6,26 @@ import {
   useSearch,
 } from '@tanstack/react-router'
 import {
+  Bot,
   Check,
   ChevronDown,
   ChevronLeft,
   Keyboard,
   Save,
+  Zap,
   Settings,
   Square,
   Trash2,
   Undo2,
   XCircle,
 } from 'lucide-react'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useLocalStorage } from 'react-use'
 import {
   DocumentQueue,
   useDocumentProcessingState,
 } from '@/components/document-queue'
+import { DocumentViewer } from '@/components/document-viewer'
 import { ModelSelector } from '@/components/model-selector'
 import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
@@ -44,12 +48,13 @@ import {
   ResizablePanelGroup,
 } from '@/components/ui/resizable'
 import { useSession } from '@/lib/auth'
-import { DocumentEditorProvider } from '@/lib/document-editor-context'
+import { useDocumentEditorStore } from '@/lib/document-editor-store'
 import {
   useCancelJob,
   useDocument,
   useDocumentType,
   useProcessDocumentStreaming,
+  useRotateDocument,
   useUpdateDocument,
 } from '@/lib/queries'
 import { useDocumentTypeLiveUpdates } from '@/lib/websocket'
@@ -69,25 +74,30 @@ export default function ProcessLayout() {
     from: '/document-types/$slug/process',
   })
 
-  // Document action state (for header controls)
-  const [isStreaming, setIsStreaming] = useState(false)
-  const [streamingDocId, setStreamingDocId] = useState<string | null>(null)
+  // Document editor store (shared with child route)
+  const {
+    streamingData,
+    streamingDocId,
+    isStreaming,
+    hasUnsavedChanges,
+    saveFn,
+    setStreamingData,
+    setStreamingDocId,
+    setIsStreaming,
+    registerProcess,
+  } = useDocumentEditorStore()
+
+  // Local state for this route only
   const [streamingJobId, setStreamingJobId] = useState<string | null>(null)
   const [modelOverride, setModelOverride] = useState('')
-  const [streamingData, setStreamingData] = useState<Record<
-    string,
-    unknown
-  > | null>(null)
   const abortStreamRef = useRef<(() => void) | null>(null)
 
-  // Editor context state (lifted from child)
-  const [editorSaveFn, setEditorSaveFn] = useState<
-    (() => Promise<void>) | null
-  >(null)
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
-  const registerSave = useCallback((fn: (() => Promise<void>) | null) => {
-    setEditorSaveFn(() => fn)
-  }, [])
+  // Panel layout persistence (numbers are percentages 0-100 at the Group level)
+  const defaultLayout = { queue: 20, editor: 40, preview: 40 }
+  const [panelLayout, setPanelLayout] = useLocalStorage(
+    'docproc:panel-sizes',
+    defaultLayout,
+  )
 
   const { data: session } = useSession()
   const isAdmin = session?.user?.role === 'admin'
@@ -98,6 +108,7 @@ export default function ProcessLayout() {
   const { processWithStreaming, abort: abortStreaming } =
     useProcessDocumentStreaming()
   const updateDocument = useUpdateDocument()
+  const rotateDocument = useRotateDocument()
 
   // Track processing state for the selected document
   const { isProcessing: isDocProcessing, activeJobsMap } =
@@ -164,31 +175,48 @@ export default function ProcessLayout() {
   // Document Action Handlers (Header Controls)
   // ============================================
 
-  const handleProcess = useCallback(async () => {
-    if (!currentDoc) return
+  const handleProcess = useCallback(
+    async (skipValidation = false) => {
+      if (!currentDoc) return
 
-    setIsStreaming(true)
-    setStreamingDocId(currentDoc.id)
-    setStreamingJobId(null)
-    setStreamingData({})
-    abortStreamRef.current = abortStreaming
-
-    try {
-      await processWithStreaming(
-        currentDoc.id,
-        modelOverride || undefined,
-        (jobId) => setStreamingJobId(jobId),
-        (partialData) => setStreamingData({ ...partialData }),
-        (completeData) => setStreamingData({ ...completeData }),
-        (error) => console.error('Processing error:', error),
-      )
-    } finally {
-      setIsStreaming(false)
-      setStreamingDocId(null)
+      setIsStreaming(true)
+      setStreamingDocId(currentDoc.id)
       setStreamingJobId(null)
-      abortStreamRef.current = null
-    }
-  }, [currentDoc, modelOverride, processWithStreaming, abortStreaming])
+      setStreamingData({})
+      abortStreamRef.current = abortStreaming
+
+      try {
+        await processWithStreaming(
+          currentDoc.id,
+          modelOverride || undefined,
+          (jobId) => setStreamingJobId(jobId),
+          (partialData) => setStreamingData({ ...partialData }),
+          (completeData) => setStreamingData({ ...completeData }),
+          (error) => console.error('Processing error:', error),
+          skipValidation,
+        )
+      } finally {
+        setIsStreaming(false)
+        setStreamingDocId(null)
+        setStreamingJobId(null)
+        abortStreamRef.current = null
+      }
+    },
+    [
+      currentDoc,
+      modelOverride,
+      processWithStreaming,
+      abortStreaming,
+      setIsStreaming,
+      setStreamingDocId,
+      setStreamingData,
+    ],
+  )
+
+  useEffect(() => {
+    registerProcess(handleProcess)
+    return () => registerProcess(null)
+  }, [handleProcess, registerProcess])
 
   const handleStop = useCallback(async () => {
     // Stop streaming if active
@@ -237,8 +265,8 @@ export default function ProcessLayout() {
   }, [currentDoc, updateDocument])
 
   const handleSaveFromHeader = useCallback(async () => {
-    if (editorSaveFn) await editorSaveFn()
-  }, [editorSaveFn])
+    if (saveFn) await saveFn()
+  }, [saveFn])
 
   const handleClear = useCallback(async () => {
     if (!currentDoc) return
@@ -247,6 +275,18 @@ export default function ProcessLayout() {
       data: { extractedData: {} },
     })
   }, [currentDoc, updateDocument])
+
+  const handleRotate = useCallback(
+    async (degrees: number, pageNumber?: number) => {
+      if (!currentDoc) return
+      await rotateDocument.mutateAsync({
+        documentId: currentDoc.id,
+        degrees,
+        pageNumber,
+      })
+    },
+    [currentDoc, rotateDocument],
+  )
 
   // ============================================
   // Render
@@ -324,24 +364,25 @@ export default function ProcessLayout() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleProcess}
+                  onClick={() => handleProcess(false)}
                   disabled={!currentDoc}
                 >
+                  <Bot className="h-4 w-4" />
                   Process
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="outline"
-                      size="icon"
-                      className="h-8 w-8"
+                      size="icon-sm"
                       disabled={!currentDoc}
                     >
                       <ChevronDown className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={handleProcess}>
+                    <DropdownMenuItem onSelect={() => handleProcess(true)}>
+                      <Zap className="h-4 w-4" />
                       Force Process
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -363,11 +404,10 @@ export default function ProcessLayout() {
                 </Button>
               ) : (
                 <Button
+                  variant="default"
                   size="sm"
                   onClick={handleApprove}
                   disabled={updateDocument.isPending || isSelectedDocProcessing}
-                  className=" text-white"
-                  variant="default"
                 >
                   <Check className="h-4 w-4" />
                   Approve
@@ -376,11 +416,10 @@ export default function ProcessLayout() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
-                    size="icon"
-                    className="h-8 w-8"
                     variant={
                       currentDoc.status === 'approved' ? 'secondary' : 'default'
                     }
+                    size="icon-sm"
                     disabled={
                       updateDocument.isPending || isSelectedDocProcessing
                     }
@@ -393,22 +432,19 @@ export default function ProcessLayout() {
                     onClick={handleSaveFromHeader}
                     disabled={!hasUnsavedChanges}
                   >
-                    <Save className="mr-2 h-4 w-4" />
+                    <Save className="h-4 w-4" />
                     Save
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
+                    variant="destructive"
                     onClick={handleReject}
-                    className="text-red-600 focus:text-red-600 focus:bg-red-50"
                   >
-                    <XCircle className="mr-2 h-4 w-4" />
+                    <XCircle className="h-4 w-4" />
                     Reject
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={handleClear}
-                    className="text-orange-600 focus:text-orange-600 focus:bg-orange-50"
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
+                  <DropdownMenuItem variant="destructive" onClick={handleClear}>
+                    <Trash2 className="h-4 w-4" />
                     Clear Data
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -475,12 +511,13 @@ export default function ProcessLayout() {
 
       {/* 3-pane layout */}
       <ResizablePanelGroup
-        direction="horizontal"
+        orientation="horizontal"
         className="flex-1"
-        autoSaveId="docproc:panel-sizes"
+        defaultLayout={panelLayout ?? defaultLayout}
+        onLayoutChanged={setPanelLayout}
       >
         {/* Left: Document queue */}
-        <ResizablePanel defaultSize={20} minSize={15} maxSize={30}>
+        <ResizablePanel id="queue" minSize="15%" maxSize="30%">
           <DocumentQueue
             documentTypeId={docType.id}
             documentTypeSlug={docType.slug}
@@ -497,19 +534,26 @@ export default function ProcessLayout() {
 
         <ResizableHandle />
 
-        {/* Middle + Right: Child route (editor + preview) */}
-        <ResizablePanel defaultSize={80} minSize={50}>
-          <DocumentEditorProvider
-            streamingData={
-              streamingDocId === selectedDocId ? streamingData : null
-            }
-            isStreaming={isSelectedDocProcessing}
-            registerSave={registerSave}
-            hasUnsavedChanges={hasUnsavedChanges}
-            setHasUnsavedChanges={setHasUnsavedChanges}
-          >
-            <Outlet />
-          </DocumentEditorProvider>
+        {/* Middle: Editor form */}
+        <ResizablePanel id="editor" minSize="25%">
+          <Outlet />
+        </ResizablePanel>
+
+        <ResizableHandle />
+
+        {/* Right: Document preview */}
+        <ResizablePanel id="preview" minSize="25%">
+          {currentDoc ? (
+            <DocumentViewer
+              documentId={currentDoc.id}
+              filename={currentDoc.filename}
+              onRotate={handleRotate}
+            />
+          ) : (
+            <div className="h-full flex items-center justify-center text-muted-foreground">
+              Select a document to preview
+            </div>
+          )}
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>
