@@ -51,11 +51,11 @@ export function DocumentListItem({
     <div
       ref={(el) => registerRef(doc.id, el)}
       className={`flex items-center w-full border-b transition-colors relative ${
-        isSelected ? 'bg-primary/10' : 'hover:bg-muted/50'
+        isSelected ? 'bg-muted' : 'hover:bg-muted/50'
       }`}
     >
       {isSelected && (
-        <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-primary" />
+        <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-primary/50" />
       )}
       <div className="pl-2 py-2 self-center">
         <Checkbox
