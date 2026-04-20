@@ -2,7 +2,7 @@ import { Editor as MonacoEditor, type OnMount } from '@monaco-editor/react'
 import type * as monaco from 'monaco-editor'
 import { useEffect, useRef } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useTheme } from '@/lib/theme'
+import { useTheme } from '@/components/theme-provider'
 
 interface EditorProps {
   value: string
@@ -15,7 +15,7 @@ export default function Editor({
   onChange,
   language = 'json',
 }: EditorProps) {
-  const { theme } = useTheme()
+  const { resolvedTheme } = useTheme()
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
 
   const handleEditorDidMount: OnMount = (editor) => {
@@ -35,7 +35,7 @@ export default function Editor({
         defaultValue={value}
         onChange={onChange}
         onMount={handleEditorDidMount}
-        theme={theme === 'dark' ? 'vs-dark' : 'light'}
+        theme={resolvedTheme === 'dark' ? 'vs-dark' : 'light'}
         options={{
           minimap: { enabled: false },
           fontSize: 14,
