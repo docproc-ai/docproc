@@ -266,6 +266,7 @@ export function useProcessDocumentStreaming() {
     onPartial: (data: Record<string, unknown>) => void,
     onComplete: (data: Record<string, unknown>) => void,
     onError: (error: string) => void,
+    skipValidation?: boolean,
   ): Promise<void> => {
     // Create new abort controller for this request
     abortControllerRef.current = new AbortController()
@@ -275,7 +276,7 @@ export function useProcessDocumentStreaming() {
       fetch('/api/process/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ documentId, model }),
+        body: JSON.stringify({ documentId, model, skipValidation }),
         credentials: 'include',
         signal: abortControllerRef.current?.signal,
       })

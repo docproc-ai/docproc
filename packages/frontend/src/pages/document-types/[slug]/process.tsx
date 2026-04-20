@@ -19,7 +19,7 @@ import {
   Undo2,
   XCircle,
 } from 'lucide-react'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocalStorage } from 'react-use'
 import {
   DocumentQueue,
@@ -84,6 +84,7 @@ export default function ProcessLayout() {
     setStreamingData,
     setStreamingDocId,
     setIsStreaming,
+    registerProcess,
   } = useDocumentEditorStore()
 
   // Local state for this route only
@@ -174,31 +175,48 @@ export default function ProcessLayout() {
   // Document Action Handlers (Header Controls)
   // ============================================
 
-  const handleProcess = useCallback(async () => {
-    if (!currentDoc) return
+  const handleProcess = useCallback(
+    async (skipValidation = false) => {
+      if (!currentDoc) return
 
-    setIsStreaming(true)
-    setStreamingDocId(currentDoc.id)
-    setStreamingJobId(null)
-    setStreamingData({})
-    abortStreamRef.current = abortStreaming
-
-    try {
-      await processWithStreaming(
-        currentDoc.id,
-        modelOverride || undefined,
-        (jobId) => setStreamingJobId(jobId),
-        (partialData) => setStreamingData({ ...partialData }),
-        (completeData) => setStreamingData({ ...completeData }),
-        (error) => console.error('Processing error:', error),
-      )
-    } finally {
-      setIsStreaming(false)
-      setStreamingDocId(null)
+      setIsStreaming(true)
+      setStreamingDocId(currentDoc.id)
       setStreamingJobId(null)
-      abortStreamRef.current = null
-    }
-  }, [currentDoc, modelOverride, processWithStreaming, abortStreaming])
+      setStreamingData({})
+      abortStreamRef.current = abortStreaming
+
+      try {
+        await processWithStreaming(
+          currentDoc.id,
+          modelOverride || undefined,
+          (jobId) => setStreamingJobId(jobId),
+          (partialData) => setStreamingData({ ...partialData }),
+          (completeData) => setStreamingData({ ...completeData }),
+          (error) => console.error('Processing error:', error),
+          skipValidation,
+        )
+      } finally {
+        setIsStreaming(false)
+        setStreamingDocId(null)
+        setStreamingJobId(null)
+        abortStreamRef.current = null
+      }
+    },
+    [
+      currentDoc,
+      modelOverride,
+      processWithStreaming,
+      abortStreaming,
+      setIsStreaming,
+      setStreamingDocId,
+      setStreamingData,
+    ],
+  )
+
+  useEffect(() => {
+    registerProcess(handleProcess)
+    return () => registerProcess(null)
+  }, [handleProcess, registerProcess])
 
   const handleStop = useCallback(async () => {
     // Stop streaming if active
@@ -346,7 +364,7 @@ export default function ProcessLayout() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleProcess}
+                  onClick={() => handleProcess(false)}
                   disabled={!currentDoc}
                 >
                   <Bot className="h-4 w-4" />
@@ -363,7 +381,7 @@ export default function ProcessLayout() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={handleProcess}>
+                    <DropdownMenuItem onSelect={() => handleProcess(true)}>
                       <Zap className="h-4 w-4" />
                       Force Process
                     </DropdownMenuItem>

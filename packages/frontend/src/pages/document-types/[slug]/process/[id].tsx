@@ -1,10 +1,15 @@
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router'
-import { XCircle } from 'lucide-react'
+import { XCircle, Zap } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { DataEditorTab } from '@/components/editor-tabs'
 import { FormRenderer } from '@/components/form-renderer'
 import type { JsonSchema } from '@/components/schema-builder/types'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import {
+  Alert,
+  AlertAction,
+  AlertDescription,
+  AlertTitle,
+} from '@/components/ui/alert'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,6 +56,7 @@ export default function DocumentEditorPage() {
     isStreaming: isStoreStreaming,
     registerSave,
     setHasUnsavedChanges,
+    processFn,
   } = useDocumentEditorStore()
 
   // Only show streaming state if it's for this document
@@ -218,6 +224,17 @@ export default function DocumentEditorPage() {
                 <AlertDescription>
                   {currentDoc.rejectionReason}
                 </AlertDescription>
+                <AlertAction>
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    onClick={() => processFn?.(true)}
+                    disabled={!processFn || isStreaming}
+                  >
+                    <Zap className="h-4 w-4" />
+                    Force Process
+                  </Button>
+                </AlertAction>
               </Alert>
             )}
 

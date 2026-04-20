@@ -67,6 +67,7 @@ const streamProcessRoute = createRoute({
           schema: z.object({
             documentId: z.string().uuid(),
             model: z.string().optional(),
+            skipValidation: z.boolean().optional(),
           }),
         },
       },
@@ -296,7 +297,7 @@ const cancelJobRoute = createRoute({
 export const processingRoutes = new OpenAPIHono()
 
   .openapi(streamProcessRoute, async (c) => {
-    const { documentId, model } = c.req.valid('json')
+    const { documentId, model, skipValidation } = c.req.valid('json')
     const user = c.get('user')
 
     const doc = await getDocument(documentId)
@@ -316,6 +317,7 @@ export const processingRoutes = new OpenAPIHono()
     try {
       const streamingContext = await prepareDocumentForStreaming(documentId, {
         overrideModel: model,
+        skipValidation,
       })
 
       const schemaPrompt = `Please analyze the attached document and extract the data according to the provided schema.
