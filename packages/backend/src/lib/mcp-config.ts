@@ -8,6 +8,9 @@ export type McpConfig =
   | { enabled: true; baseUrl: string; path: string; resource: string }
   | { enabled: false; reason?: string }
 
+/** The config once MCP is known to be on. */
+export type EnabledMcpConfig = Extract<McpConfig, { enabled: true }>
+
 const DEFAULT_MCP_PATH = '/mcp'
 
 /** Paths owned by the app; the MCP endpoint may not be at or under these. */

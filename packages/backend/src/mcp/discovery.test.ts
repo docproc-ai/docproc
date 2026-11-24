@@ -24,6 +24,9 @@ vi.mock('../lib/auth', () => {
   }
 })
 
+// createMcpRoutes also mounts the MCP endpoint, whose user lookup imports the db.
+vi.mock('../lib/db/user-operations', () => ({ getUserAccessRow: vi.fn() }))
+
 import type { McpConfig } from '../lib/mcp-config'
 import { createMcpRoutes, resourceMetadataUrl } from './index'
 

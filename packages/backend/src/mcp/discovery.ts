@@ -2,12 +2,10 @@ import { oauthProviderAuthServerMetadata } from '@better-auth/oauth-provider'
 import { oauthProviderResourceClient } from '@better-auth/oauth-provider/resource-client'
 import { Hono } from 'hono'
 import { auth } from '../lib/auth'
-import type { McpConfig } from '../lib/mcp-config'
-
-type EnabledConfig = Extract<McpConfig, { enabled: true }>
+import type { EnabledMcpConfig } from '../lib/mcp-config'
 
 /** URL clients fetch to learn how to authorize against the MCP endpoint (RFC 9728). */
-export function resourceMetadataUrl(config: EnabledConfig): string {
+export function resourceMetadataUrl(config: EnabledMcpConfig): string {
   return `${config.baseUrl}/.well-known/oauth-protected-resource${config.path}`
 }
 
@@ -16,7 +14,7 @@ export function resourceMetadataUrl(config: EnabledConfig): string {
  * authorization-server metadata under `/api/auth`, but MCP clients look at
  * `/.well-known/*` (RFC 8414 / RFC 9728), so we expose them here.
  */
-export function createDiscoveryRoutes(config: EnabledConfig): Hono {
+export function createDiscoveryRoutes(config: EnabledMcpConfig): Hono {
   const app = new Hono()
   const resourceClient = oauthProviderResourceClient(auth).getActions()
 
