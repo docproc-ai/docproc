@@ -9,12 +9,18 @@ import {
   createDocumentType,
   updateDocumentType,
 } from '../../lib/db/document-type-operations'
+import type { EnabledMcpConfig } from '../../lib/mcp-config'
 import {
   startSingleDocumentProcessing,
   updateDocumentWithWebhooks,
   uploadDocuments,
 } from '../../services/documents'
 import { ServiceError } from '../../services/errors'
+import {
+  createUploadLink,
+  getUploadLinkForUser,
+  uploadLinkStatus,
+} from '../../services/upload-links'
 import type { McpCaller } from '../caller'
 import {
   DOC_NOT_FOUND,
@@ -111,13 +117,17 @@ function validateAgainst(schema: unknown, data: unknown): string[] {
 }
 
 /** Tools that create or change data. Every handler re-checks via `guard`. */
-export function registerWriteTools(server: McpServer, caller: McpCaller): void {
+export function registerWriteTools(
+  server: McpServer,
+  caller: McpCaller,
+  config: EnabledMcpConfig,
+): void {
   server.registerTool(
     'upload_document',
     {
       title: 'Upload document',
       description:
-        'Upload one file (PDF or image) as base64 to a document type, optionally starting extraction. Practical size is small (tens to a few hundred KB); for larger files (hard limit 5 MB) use the DocProc web UI. Requires role: user or admin.',
+        'Upload one small file (PDF or image) as base64 to a document type, optionally starting extraction. Only for tiny files you already have as base64 (a few KB); for a file the user attached or anything larger, use create_upload_link instead (hard limit here 5 MB). Requires role: user or admin.',
       inputSchema: {
         documentType: z.string().describe('Document type slug or id'),
         filename: z.string().min(1),
@@ -183,6 +193,75 @@ export function registerWriteTools(server: McpServer, caller: McpCaller): void {
   )
 
   server.registerTool(
+    'create_upload_link',
+    {
+      title: 'Create upload link',
+      description:
+        "Create a one-time link (valid 15 minutes) for the user to upload a file, such as a PDF, in their browser. Use this instead of upload_document for any file the user has attached or that is larger than a few KB. Give the user the URL, ask them to say when they've uploaded, then call get_upload. Requires role: user or admin.",
+      inputSchema: {
+        documentType: z.string().describe('Document type slug or id'),
+        process: z
+          .boolean()
+          .optional()
+          .describe('Start AI extraction right after the upload'),
+      },
+      annotations: annotations({
+        destructiveHint: false,
+        idempotentHint: false,
+      }),
+    },
+    async ({ documentType, process: autoProcess }) =>
+      guard(caller, 'document', 'create', async () => {
+        const docType = await requireDocumentType(documentType)
+        const link = await createUploadLink({
+          userId: caller.id,
+          documentTypeId: docType.id,
+          autoProcess: autoProcess ?? false,
+        })
+        return toolJson({
+          uploadId: link.id,
+          uploadUrl: `${config.baseUrl}/upload/${link.token}`,
+          expiresAt: link.expiresAt.toISOString(),
+        })
+      }),
+  )
+
+  server.registerTool(
+    'get_upload',
+    {
+      title: 'Get upload',
+      description:
+        'Check an upload link from create_upload_link: pending, completed (with documentId, and jobId if processing was requested) or expired. Requires role: user or admin.',
+      inputSchema: {
+        uploadId: z.string().describe('uploadId from create_upload_link'),
+      },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ uploadId }) =>
+      guard(caller, 'document', 'create', async () => {
+        const link = await getUploadLinkForUser(uploadId, caller.id)
+        if (!link) return toolError('Upload not found.')
+        const docType = await requireDocumentType(link.documentTypeId)
+        const status = uploadLinkStatus(link)
+        return toolJson({
+          status,
+          expiresAt: link.expiresAt.toISOString(),
+          ...(link.documentId ? { documentId: link.documentId } : {}),
+          ...(link.jobId ? { jobId: link.jobId } : {}),
+          documentType: { slug: docType.slug },
+          ...(status === 'pending'
+            ? { message: 'Not uploaded yet; ask the user to finish uploading.' }
+            : {}),
+        })
+      }),
+  )
+
+  server.registerTool(
     'process_document',
     {
       title: 'Process document',
@@ -204,10 +283,9 @@ export function registerWriteTools(server: McpServer, caller: McpCaller): void {
           userId: caller.id,
           model,
         })
-        // A late failure after the timeout is logged, never unhandled.
-        done.catch((error) =>
-          console.error('[mcp] process_document finished with error:', error),
-        )
+        // No catch needed here: the service already attaches one and logs
+        // failures, so a failure after we stop waiting is neither unhandled
+        // nor silent (an earlier one is also returned to the caller below).
 
         let timer: ReturnType<typeof setTimeout> | undefined
         const timeout = new Promise<'timeout'>((resolve) => {

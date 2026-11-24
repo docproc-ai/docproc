@@ -10,6 +10,7 @@
     "build": "bun run --cwd packages/frontend build",
     "preview": "bun run --cwd packages/frontend preview",
     "test": "vitest run",
+    "test:db": "vitest run .db.test.ts",
     "format": "biome format",
     "lint": "biome lint",
     "check": "biome check",

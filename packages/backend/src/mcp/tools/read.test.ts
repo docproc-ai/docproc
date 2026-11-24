@@ -31,6 +31,13 @@ import { storage } from '../../storage'
 import { checkPermission, type McpCaller } from '../caller'
 import { createMcpServer } from '../server'
 
+const CONFIG = {
+  enabled: true as const,
+  baseUrl: 'https://d.example',
+  path: '/mcp',
+  resource: 'https://d.example/mcp',
+}
+
 const check = vi.mocked(checkPermission)
 const USER: McpCaller = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -41,7 +48,7 @@ const USER: McpCaller = {
 const ADMIN: McpCaller = { ...USER, role: 'admin' }
 
 async function connect(caller: McpCaller = USER) {
-  const server = createMcpServer(caller)
+  const server = createMcpServer(caller, CONFIG)
   const [clientT, serverT] = InMemoryTransport.createLinkedPair()
   await server.connect(serverT)
   const client = new Client({ name: 'test', version: '1' })

@@ -55,6 +55,8 @@ describe('getMcpConfig', () => {
     '/a b',
     '/oauth',
     '/users/x',
+    '/upload',
+    '/upload/x',
   ])('is disabled with a reason naming MCP_PATH for %j', (path) => {
     const config = getMcpConfig({
       MCP_ENABLED: 'true',

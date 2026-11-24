@@ -154,6 +154,8 @@ DocProc can expose an optional [MCP](https://modelcontextprotocol.io) server so 
 
 claude.ai needs the server reachable over public HTTPS; Claude Code can use a local URL such as `http://localhost:3000/mcp`.
 
+Attaching a PDF in chat works too: Claude creates a one-time upload link, you open it, sign in and drop the file, and Claude picks up the uploaded document.
+
 What Claude can do equals your DocProc role, and it is checked on every call. If an admin changes your role, the change applies on Claude's next request. See [docs/spec-target/11-mcp.md](docs/spec-target/11-mcp.md) for details.
 
 ## 🔧 API Reference

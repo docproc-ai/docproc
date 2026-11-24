@@ -23,6 +23,11 @@ vi.mock('./caller', () => ({
 // A stand-in tool that echoes the caller it was built for, so a tools/call
 // proves which user the per-request server received.
 vi.mock('./tools/write', () => ({ registerWriteTools: vi.fn() }))
+// The upload-link API (which loads the db) is covered by upload-routes.test.ts.
+vi.mock('./upload-routes', async () => {
+  const { Hono } = await import('hono')
+  return { createUploadRoutes: () => new Hono() }
+})
 vi.mock('./tools/read', () => ({
   registerReadTools: (
     server: import('@modelcontextprotocol/sdk/server/mcp.js').McpServer,

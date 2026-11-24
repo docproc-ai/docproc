@@ -28,6 +28,11 @@ vi.mock('../lib/auth', () => {
 vi.mock('../lib/db/user-operations', () => ({ getUserAccessRow: vi.fn() }))
 vi.mock('./tools/read', () => ({ registerReadTools: vi.fn() }))
 vi.mock('./tools/write', () => ({ registerWriteTools: vi.fn() }))
+// The upload-link API (which loads the db) is covered by upload-routes.test.ts.
+vi.mock('./upload-routes', async () => {
+  const { Hono } = await import('hono')
+  return { createUploadRoutes: () => new Hono() }
+})
 
 import type { McpConfig } from '../lib/mcp-config'
 import { createMcpRoutes, resourceMetadataUrl } from './index'

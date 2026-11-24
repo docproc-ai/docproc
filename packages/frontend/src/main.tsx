@@ -24,6 +24,7 @@ import NewDocumentTypePage from './pages/document-types/new'
 // Page components
 import LoginPage from './pages/login'
 import ConsentPage from './pages/oauth/consent'
+import UploadPage from './pages/upload'
 import UsersPage from './pages/users'
 
 import './styles.css'
@@ -272,6 +273,7 @@ function RootLayout() {
     hasAnyAccess &&
     (pathname === '/login' ||
       pathname === '/oauth/consent' ||
+      pathname.startsWith('/upload/') ||
       pathname.includes('/process') ||
       pathname.includes('/settings'))
 
@@ -312,6 +314,13 @@ const consentRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/oauth/consent',
   component: ConsentPage,
+})
+
+// Outside AuthGuard: the page sends signed-out users to /login?next=...
+const uploadRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/upload/$token',
+  component: UploadPage,
 })
 
 const documentTypesRoute = createRoute({
@@ -380,6 +389,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
   consentRoute,
+  uploadRoute,
   documentTypesRoute,
   usersRoute,
   newDocumentTypeRoute,

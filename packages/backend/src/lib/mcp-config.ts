@@ -22,6 +22,7 @@ const RESERVED_PREFIXES = [
   '/health',
   '/login',
   '/oauth',
+  '/upload',
   '/users',
   '/document-types',
 ]

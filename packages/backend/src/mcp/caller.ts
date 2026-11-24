@@ -35,7 +35,7 @@ export async function loadActiveUser(
 
 /** Live permission check via better-auth's access control; false on any error. */
 export async function checkPermission(
-  caller: McpCaller,
+  caller: Pick<McpCaller, 'id'>,
   resource: McpResource,
   action: McpAction,
 ): Promise<boolean> {

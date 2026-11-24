@@ -1,5 +1,6 @@
-import { AlertCircle, Loader2, ShieldCheck } from 'lucide-react'
+import { Loader2, ShieldCheck } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { ErrorMessage, CenteredCard as Shell } from '@/components/centered-card'
 import { Button } from '@/components/ui/button'
 import { authClient, useSession } from '@/lib/auth'
 import { describeAccess, describeDestination } from './consent-text'
@@ -13,27 +14,6 @@ type ClientState =
   | { status: 'loading' }
   | { status: 'ready'; name: string }
   | { status: 'error' }
-
-function Shell({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-6">
-      <div className="relative w-full max-w-md">
-        <div className="bg-card border rounded-2xl p-8 shadow-lg shadow-black/5">
-          {children}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function ErrorMessage({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex items-start gap-3 bg-destructive/10 text-destructive rounded-lg p-4 text-sm">
-      <AlertCircle className="size-[18px] flex-shrink-0 mt-0.5" />
-      <span>{children}</span>
-    </div>
-  )
-}
 
 export default function ConsentPage() {
   const { data: session, isPending } = useSession()

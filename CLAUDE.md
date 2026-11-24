@@ -28,6 +28,7 @@ bun run db:generate      # Generate migrations
 
 # Testing
 bun run test             # Run vitest
+TEST_DATABASE_URL=postgres://... bun run test:db  # DB-backed tests (*.db.test.ts) against a migrated Postgres; skipped without TEST_DATABASE_URL
 
 # Production
 bun run build            # Build frontend for production

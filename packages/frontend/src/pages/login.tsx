@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { signIn, useSession } from '@/lib/auth'
+import { safeNextPath } from '@/lib/next-path'
 
 interface AuthConfig {
   socialProviders: string[]
@@ -15,6 +16,11 @@ interface AuthConfig {
 /** True when the page was reached from an OAuth authorize redirect. */
 function hasSignedOAuthQuery(): boolean {
   return new URLSearchParams(window.location.search).has('sig')
+}
+
+/** A validated `?next=` destination (upload-link pages only), or null. */
+function nextPath(): string | null {
+  return safeNextPath(new URLSearchParams(window.location.search).get('next'))
 }
 
 export default function LoginPage() {
@@ -46,11 +52,19 @@ export default function LoginPage() {
     fetchAuthConfig()
   }, [])
 
+  // After sign-in: a validated `next` page, else home. A signed OAuth query
+  // always takes precedence (handled before this is called).
+  const continueAfterSignIn = () => {
+    const next = nextPath()
+    if (next) navigate({ href: next })
+    else navigate({ to: '/' })
+  }
+
   // Redirect if already logged in. During an OAuth flow, keep showing the
   // form: the plugin sends signed-in users here for prompt=login / max_age,
   // and re-submitting the form lets it continue the flow.
   if (session?.user && !hasSignedOAuthQuery()) {
-    navigate({ to: '/' })
+    continueAfterSignIn()
     return null
   }
 
@@ -79,7 +93,7 @@ export default function LoginPage() {
           )
         }
       } else {
-        navigate({ to: '/' })
+        continueAfterSignIn()
       }
     } catch {
       setError('An unexpected error occurred')
@@ -98,7 +112,7 @@ export default function LoginPage() {
         // Keep the signed OAuth query so the flow resumes after the provider
         callbackURL: hasSignedOAuthQuery()
           ? `${window.location.pathname}${window.location.search}`
-          : '/',
+          : (nextPath() ?? '/'),
       })
 
       if (result.error) {

@@ -193,7 +193,7 @@ async function authorizeAndServe(
   }
   Object.assign(log, describeBody(parsedBody, req))
 
-  const server = createMcpServer(caller)
+  const server = createMcpServer(caller, config)
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
     enableJsonResponse: true,

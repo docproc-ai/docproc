@@ -23,6 +23,12 @@ vi.mock('../../lib/db/job-operations', () => ({
   getBatchWithJobs: vi.fn(),
 }))
 vi.mock('../../storage', () => ({ storage: { download: vi.fn() } }))
+vi.mock('../../db', () => ({ db: {} }))
+vi.mock('../../services/upload-links', async (importActual) => ({
+  ...(await importActual<typeof import('../../services/upload-links')>()),
+  createUploadLink: vi.fn(),
+  getUploadLinkForUser: vi.fn(),
+}))
 
 import { getDocumentBySlugOrId } from '../../lib/db/document-operations'
 import {
@@ -36,8 +42,19 @@ import {
   uploadDocuments,
 } from '../../services/documents'
 import { ServiceError } from '../../services/errors'
+import {
+  createUploadLink,
+  getUploadLinkForUser,
+} from '../../services/upload-links'
 import { checkPermission, type McpCaller } from '../caller'
 import { createMcpServer } from '../server'
+
+const CONFIG = {
+  enabled: true as const,
+  baseUrl: 'https://d.example',
+  path: '/mcp',
+  resource: 'https://d.example/mcp',
+}
 
 const check = vi.mocked(checkPermission)
 const upload = vi.mocked(uploadDocuments)
@@ -56,7 +73,7 @@ const USER: McpCaller = {
 }
 
 async function connect(caller: McpCaller = USER) {
-  const server = createMcpServer(caller)
+  const server = createMcpServer(caller, CONFIG)
   const [clientT, serverT] = InMemoryTransport.createLinkedPair()
   await server.connect(serverT)
   const client = new Client({ name: 'test', version: '1' })
@@ -520,6 +537,159 @@ describe('write tools', () => {
         updatedBy: USER.id,
       })
       expect(text(res)).not.toContain('secret')
+    })
+  })
+})
+
+describe('upload link tools', () => {
+  const createLink = vi.mocked(createUploadLink)
+  const getLink = vi.mocked(getUploadLinkForUser)
+  const LINK_ID = '33333333-3333-4333-8333-333333333333'
+  const expiresAt = new Date(Date.now() + 15 * 60_000)
+  const row = (over: Record<string, unknown> = {}) =>
+    ({
+      id: LINK_ID,
+      tokenHash: 'h',
+      userId: USER.id,
+      documentTypeId: 't1',
+      autoProcess: false,
+      expiresAt,
+      usedAt: null,
+      documentId: null,
+      jobId: null,
+      createdAt: new Date(),
+      ...over,
+    }) as never
+
+  let h: Awaited<ReturnType<typeof connect>>
+  beforeEach(async () => {
+    for (const m of [check, getType, createLink, getLink]) m.mockReset()
+    check.mockResolvedValue(true)
+    getType.mockResolvedValue(TYPE as never)
+    h = await connect()
+  })
+  afterEach(async () => {
+    await h.close()
+  })
+
+  const call = (name: string, args: Record<string, unknown>) =>
+    h.client.callTool({ name, arguments: args })
+  const json = (res: unknown) => JSON.parse(text(res))
+
+  it('registers both tools with the right hints', async () => {
+    const { tools } = await h.client.listTools()
+    const create = tools.find((t) => t.name === 'create_upload_link')
+    expect(create?.annotations).toEqual({
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: false,
+    })
+    expect(create?.description).toContain('valid 15 minutes')
+    const get = tools.find((t) => t.name === 'get_upload')
+    expect(get?.annotations).toEqual({
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    })
+    const legacy = tools.find((t) => t.name === 'upload_document')
+    expect(legacy?.description).toContain('create_upload_link')
+  })
+
+  describe('create_upload_link', () => {
+    it('returns an upload URL under baseUrl/upload/', async () => {
+      createLink.mockResolvedValue({ id: LINK_ID, token: 'tok_1', expiresAt })
+      const res = await call('create_upload_link', {
+        documentType: 'invoices',
+        process: true,
+      })
+      expect(res.isError).toBeFalsy()
+      expect(check).toHaveBeenCalledWith(USER, 'document', 'create')
+      expect(createLink).toHaveBeenCalledWith({
+        userId: USER.id,
+        documentTypeId: 't1',
+        autoProcess: true,
+      })
+      const out = json(res)
+      expect(out).toEqual({
+        uploadId: LINK_ID,
+        uploadUrl: 'https://d.example/upload/tok_1',
+        expiresAt: expiresAt.toISOString(),
+      })
+      expect(out.uploadUrl.startsWith(`${CONFIG.baseUrl}/upload/`)).toBe(true)
+    })
+
+    it('defaults process to false', async () => {
+      createLink.mockResolvedValue({ id: LINK_ID, token: 't', expiresAt })
+      await call('create_upload_link', { documentType: 'invoices' })
+      expect(createLink.mock.calls[0][0].autoProcess).toBe(false)
+    })
+
+    it('is refused without document:create', async () => {
+      check.mockResolvedValue(false)
+      const res = await call('create_upload_link', { documentType: 'invoices' })
+      expect(res.isError).toBe(true)
+      expect(text(res)).toContain('document:create')
+      expect(createLink).not.toHaveBeenCalled()
+    })
+
+    it('says document type not found for an unknown type', async () => {
+      getType.mockResolvedValue(null)
+      const res = await call('create_upload_link', { documentType: 'nope' })
+      expect(res.isError).toBe(true)
+      expect(text(res)).toBe('Document type not found')
+      expect(createLink).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('get_upload', () => {
+    it("says Upload not found for another user's link", async () => {
+      getLink.mockResolvedValue(null)
+      const res = await call('get_upload', { uploadId: LINK_ID })
+      expect(getLink).toHaveBeenCalledWith(LINK_ID, USER.id)
+      expect(res.isError).toBe(true)
+      expect(text(res)).toBe('Upload not found.')
+    })
+
+    it('is refused without document:create', async () => {
+      check.mockResolvedValue(false)
+      const res = await call('get_upload', { uploadId: LINK_ID })
+      expect(res.isError).toBe(true)
+      expect(getLink).not.toHaveBeenCalled()
+    })
+
+    it('reports pending with a message', async () => {
+      getLink.mockResolvedValue(row())
+      expect(json(await call('get_upload', { uploadId: LINK_ID }))).toEqual({
+        status: 'pending',
+        expiresAt: expiresAt.toISOString(),
+        documentType: { slug: 'invoices' },
+        message: 'Not uploaded yet; ask the user to finish uploading.',
+      })
+    })
+
+    it('reports completed with documentId and jobId', async () => {
+      getLink.mockResolvedValue(
+        row({ usedAt: new Date(), documentId: 'd1', jobId: 'j1' }),
+      )
+      expect(json(await call('get_upload', { uploadId: LINK_ID }))).toEqual({
+        status: 'completed',
+        expiresAt: expiresAt.toISOString(),
+        documentId: 'd1',
+        jobId: 'j1',
+        documentType: { slug: 'invoices' },
+      })
+    })
+
+    it('reports expired', async () => {
+      const past = new Date(Date.now() - 1000)
+      getLink.mockResolvedValue(row({ expiresAt: past }))
+      expect(json(await call('get_upload', { uploadId: LINK_ID }))).toEqual({
+        status: 'expired',
+        expiresAt: past.toISOString(),
+        documentType: { slug: 'invoices' },
+      })
     })
   })
 })
