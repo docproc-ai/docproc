@@ -12,6 +12,11 @@ interface AuthConfig {
   emailPasswordEnabled: boolean
 }
 
+/** True when the page was reached from an OAuth authorize redirect. */
+function hasSignedOAuthQuery(): boolean {
+  return new URLSearchParams(window.location.search).has('sig')
+}
+
 export default function LoginPage() {
   const navigate = useNavigate()
   const { data: session } = useSession()
@@ -41,8 +46,10 @@ export default function LoginPage() {
     fetchAuthConfig()
   }, [])
 
-  // Redirect if already logged in
-  if (session?.user) {
+  // Redirect if already logged in. During an OAuth flow, keep showing the
+  // form: the plugin sends signed-in users here for prompt=login / max_age,
+  // and re-submitting the form lets it continue the flow.
+  if (session?.user && !hasSignedOAuthQuery()) {
     navigate({ to: '/' })
     return null
   }
@@ -60,6 +67,17 @@ export default function LoginPage() {
 
       if (result.error) {
         setError(result.error.message || 'Login failed')
+      } else if (hasSignedOAuthQuery()) {
+        // The OAuth plugin answers a sign-in that carries a signed authorize
+        // query with the next hop (the consent page, a same-origin path).
+        const next = (result.data as { url?: string } | null)?.url
+        if (next) {
+          window.location.href = next
+        } else {
+          setError(
+            'Could not continue the connection. Please start again from the app.',
+          )
+        }
       } else {
         navigate({ to: '/' })
       }
@@ -77,7 +95,10 @@ export default function LoginPage() {
     try {
       const result = await signIn.social({
         provider: provider as 'github' | 'google' | 'microsoft',
-        callbackURL: '/',
+        // Keep the signed OAuth query so the flow resumes after the provider
+        callbackURL: hasSignedOAuthQuery()
+          ? `${window.location.pathname}${window.location.search}`
+          : '/',
       })
 
       if (result.error) {

@@ -23,6 +23,7 @@ import DocumentTypeSettingsPage from './pages/document-types/[slug]/settings'
 import NewDocumentTypePage from './pages/document-types/new'
 // Page components
 import LoginPage from './pages/login'
+import ConsentPage from './pages/oauth/consent'
 import UsersPage from './pages/users'
 
 import './styles.css'
@@ -270,6 +271,7 @@ function RootLayout() {
   const hideHeader =
     hasAnyAccess &&
     (pathname === '/login' ||
+      pathname === '/oauth/consent' ||
       pathname.includes('/process') ||
       pathname.includes('/settings'))
 
@@ -304,6 +306,12 @@ const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
   component: LoginPage,
+})
+
+const consentRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/oauth/consent',
+  component: ConsentPage,
 })
 
 const documentTypesRoute = createRoute({
@@ -371,6 +379,7 @@ const documentTypeSettingsRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
+  consentRoute,
   documentTypesRoute,
   usersRoute,
   newDocumentTypeRoute,

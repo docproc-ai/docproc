@@ -1,5 +1,6 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
 import { auth } from '../lib/auth'
+import { mcpConfig } from '../lib/mcp-config'
 
 const configRoute = createRoute({
   method: 'get',
@@ -15,6 +16,7 @@ const configRoute = createRoute({
           schema: z.object({
             socialProviders: z.array(z.string()),
             emailPasswordEnabled: z.boolean(),
+            mcpEnabled: z.boolean(),
           }),
         },
       },
@@ -68,6 +70,7 @@ const authRoutes = new OpenAPIHono()
     return c.json({
       socialProviders,
       emailPasswordEnabled,
+      mcpEnabled: mcpConfig.enabled,
     })
   })
 
