@@ -6,9 +6,9 @@ import type { McpConfig } from '../lib/mcp-config'
 
 type EnabledConfig = Extract<McpConfig, { enabled: true }>
 
-/** URL clients fetch to learn how to authorize against `/mcp` (RFC 9728). */
+/** URL clients fetch to learn how to authorize against the MCP endpoint (RFC 9728). */
 export function resourceMetadataUrl(config: EnabledConfig): string {
-  return `${config.baseUrl}/.well-known/oauth-protected-resource/mcp`
+  return `${config.baseUrl}/.well-known/oauth-protected-resource${config.path}`
 }
 
 /**
@@ -44,7 +44,7 @@ export function createDiscoveryRoutes(config: EnabledConfig): Hono {
   })
 
   app.get('/.well-known/oauth-protected-resource', () => protectedResource())
-  app.get('/.well-known/oauth-protected-resource/mcp', () =>
+  app.get(`/.well-known/oauth-protected-resource${config.path}`, () =>
     protectedResource(),
   )
   app.get('/.well-known/oauth-authorization-server', (c) =>

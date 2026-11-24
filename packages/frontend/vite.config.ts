@@ -37,7 +37,7 @@ export default defineConfig({
         changeOrigin: true,
       },
       // MCP endpoint and OAuth discovery documents
-      '/mcp': {
+      [process.env.MCP_PATH || '/mcp']: {
         target: 'http://localhost:3001',
         changeOrigin: true,
       },

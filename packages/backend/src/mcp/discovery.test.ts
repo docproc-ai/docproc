@@ -30,6 +30,7 @@ import { createMcpRoutes, resourceMetadataUrl } from './index'
 const enabled: Extract<McpConfig, { enabled: true }> = {
   enabled: true,
   baseUrl: 'https://d.example',
+  path: '/mcp',
   resource: 'https://d.example/mcp',
 }
 
@@ -80,5 +81,42 @@ describe('createMcpRoutes', () => {
         expect(body.code_challenge_methods_supported).toContain('S256')
       })
     }
+  })
+})
+
+describe('createMcpRoutes with a custom path', () => {
+  const custom: Extract<McpConfig, { enabled: true }> = {
+    enabled: true,
+    baseUrl: 'https://d.example',
+    path: '/connectors/docproc',
+    resource: 'https://d.example/connectors/docproc',
+  }
+  const app = createMcpRoutes(custom)
+  if (!app) throw new Error('expected routes')
+
+  it('builds the metadata URL from the configured path', () => {
+    expect(resourceMetadataUrl(custom)).toBe(
+      'https://d.example/.well-known/oauth-protected-resource/connectors/docproc',
+    )
+  })
+
+  it('serves metadata at the configured path', async () => {
+    const res = await app.request(
+      '/.well-known/oauth-protected-resource/connectors/docproc',
+    )
+    expect(res.status).toBe(200)
+    expect((await res.json()).resource).toBe(
+      'https://d.example/connectors/docproc',
+    )
+  })
+
+  it('serves the bare well-known path too', async () => {
+    const res = await app.request('/.well-known/oauth-protected-resource')
+    expect(res.status).toBe(200)
+  })
+
+  it('does not serve the default /mcp metadata path', async () => {
+    const res = await app.request('/.well-known/oauth-protected-resource/mcp')
+    expect(res.status).toBe(404)
   })
 })
