@@ -27,6 +27,7 @@
     "concurrently": "^9.2.1",
     "drizzle-kit": "^0.31.8",
     "jsdom": "^27.4.0",
+    "postgres": "^3.4.8",
     "typescript": "^5.9.3",
     "vitest": "^4.0.16",
     "web-vitals": "^5.1.0"
