@@ -29,6 +29,7 @@ This directory contains the target architecture specification for DocProc v2.0, 
 | [Webhooks](./08-webhooks.md) | Event system (unchanged) |
 | [Storage](./09-storage.md) | S3-compatible + DB blob options |
 | [UI & Components](./10-ui-components.md) | TanStack Router integration |
+| [MCP Server](./11-mcp.md) | Optional MCP endpoint for Claude |
 
 ## Version
 

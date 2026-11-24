@@ -142,6 +142,20 @@ _Intuitive form interface for reviewing and editing extracted data_
    - Open [http://localhost:3000](http://localhost:3000)
    - Login with your configured admin credentials
 
+## 🔌 Connect from Claude
+
+DocProc can expose an optional [MCP](https://modelcontextprotocol.io) server so Claude can list document types, upload and process documents, and approve results on your behalf. It is off by default.
+
+1. Set `MCP_ENABLED=true` and set `BETTER_AUTH_URL` to the public URL of your DocProc server.
+2. Add DocProc to Claude using `https://<host>/mcp` (`MCP_PATH` changes the path):
+   - **claude.ai / Claude Desktop**: Settings → Connectors → Add custom connector → `https://<host>/mcp`
+   - **Claude Code**: `claude mcp add --transport http docproc https://<host>/mcp`, then run `/mcp` to sign in
+3. Sign in to DocProc in the browser window and approve the connection.
+
+claude.ai needs the server reachable over public HTTPS; Claude Code can use a local URL such as `http://localhost:3000/mcp`.
+
+What Claude can do equals your DocProc role, and it is checked on every call. If an admin changes your role, the change applies on Claude's next request. See [docs/spec-target/11-mcp.md](docs/spec-target/11-mcp.md) for details.
+
 ## 🔧 API Reference
 
 ### Document Types
