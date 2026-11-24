@@ -7,6 +7,7 @@
     "start": "bun src/index.ts"
   },
   "dependencies": {
+    "@better-auth/oauth-provider": "1.7.28",
     "@hono/swagger-ui": "^0.5.3",
     "@hono/zod-openapi": "^1.2.0",
     "@openrouter/ai-sdk-provider": "^1.5.4",
