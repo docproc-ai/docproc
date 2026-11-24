@@ -1,4 +1,5 @@
 import {
+  boolean,
   index,
   pgEnum,
   pgTable,
@@ -76,8 +77,33 @@ export const document = pgTable(
   ],
 )
 
+/**
+ * One-time browser upload links created by the MCP `create_upload_link` tool.
+ * Only a SHA-256 hash of the token is stored; the link is bound to its user.
+ */
+export const mcpUploadLink = pgTable('mcp_upload_link', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tokenHash: text('token_hash').notNull().unique(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  documentTypeId: uuid('document_type_id')
+    .notNull()
+    .references(() => documentType.id, { onDelete: 'cascade' }),
+  autoProcess: boolean('auto_process').notNull().default(false),
+  expiresAt: timestamp('expires_at').notNull(),
+  usedAt: timestamp('used_at'),
+  // No FK on purpose: if the document is deleted later, the link still
+  // records that the upload completed (get_document then says not found).
+  documentId: uuid('document_id'),
+  // Processing jobs are in-memory with nanoid ids, hence text.
+  jobId: text('job_id'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+})
+
 // Type exports
 export type DocumentTypeSelect = typeof documentType.$inferSelect
 export type DocumentTypeInsert = typeof documentType.$inferInsert
 export type DocumentSelect = typeof document.$inferSelect
 export type DocumentInsert = typeof document.$inferInsert
+export type McpUploadLinkSelect = typeof mcpUploadLink.$inferSelect

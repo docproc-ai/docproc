@@ -6,10 +6,21 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { signIn, useSession } from '@/lib/auth'
+import { safeNextPath } from '@/lib/next-path'
 
 interface AuthConfig {
   socialProviders: string[]
   emailPasswordEnabled: boolean
+}
+
+/** True when the page was reached from an OAuth authorize redirect. */
+function hasSignedOAuthQuery(): boolean {
+  return new URLSearchParams(window.location.search).has('sig')
+}
+
+/** A validated `?next=` destination (upload-link pages only), or null. */
+function nextPath(): string | null {
+  return safeNextPath(new URLSearchParams(window.location.search).get('next'))
 }
 
 export default function LoginPage() {
@@ -41,9 +52,19 @@ export default function LoginPage() {
     fetchAuthConfig()
   }, [])
 
-  // Redirect if already logged in
-  if (session?.user) {
-    navigate({ to: '/' })
+  // After sign-in: a validated `next` page, else home. A signed OAuth query
+  // always takes precedence (handled before this is called).
+  const continueAfterSignIn = () => {
+    const next = nextPath()
+    if (next) navigate({ href: next })
+    else navigate({ to: '/' })
+  }
+
+  // Redirect if already logged in. During an OAuth flow, keep showing the
+  // form: the plugin sends signed-in users here for prompt=login / max_age,
+  // and re-submitting the form lets it continue the flow.
+  if (session?.user && !hasSignedOAuthQuery()) {
+    continueAfterSignIn()
     return null
   }
 
@@ -60,8 +81,19 @@ export default function LoginPage() {
 
       if (result.error) {
         setError(result.error.message || 'Login failed')
+      } else if (hasSignedOAuthQuery()) {
+        // The OAuth plugin answers a sign-in that carries a signed authorize
+        // query with the next hop (the consent page, a same-origin path).
+        const next = (result.data as { url?: string } | null)?.url
+        if (next) {
+          window.location.href = next
+        } else {
+          setError(
+            'Could not continue the connection. Please start again from the app.',
+          )
+        }
       } else {
-        navigate({ to: '/' })
+        continueAfterSignIn()
       }
     } catch {
       setError('An unexpected error occurred')
@@ -77,7 +109,10 @@ export default function LoginPage() {
     try {
       const result = await signIn.social({
         provider: provider as 'github' | 'google' | 'microsoft',
-        callbackURL: '/',
+        // Keep the signed OAuth query so the flow resumes after the provider
+        callbackURL: hasSignedOAuthQuery()
+          ? `${window.location.pathname}${window.location.search}`
+          : (nextPath() ?? '/'),
       })
 
       if (result.error) {

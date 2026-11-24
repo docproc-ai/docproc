@@ -28,6 +28,7 @@ bun run db:generate      # Generate migrations
 
 # Testing
 bun run test             # Run vitest
+TEST_DATABASE_URL=postgres://... bun run test:db  # DB-backed tests (*.db.test.ts) against a migrated Postgres; skipped without TEST_DATABASE_URL
 
 # Production
 bun run build            # Build frontend for production
@@ -56,6 +57,8 @@ packages/
 Key files:
 - `src/index.ts` - Server entry, route registration, WebSocket setup
 - `src/routes/` - API route handlers (documents, document-types, processing, users)
+- `src/services/` - Shared business logic used by REST routes and MCP tools
+- `src/mcp/` - Optional MCP server (OAuth via better-auth, stateless endpoint, tools)
 - `src/lib/processing/` - AI document extraction logic
 - `src/db/schema/` - Drizzle schema definitions
 
@@ -103,6 +106,8 @@ Required:
 Optional:
 - `AUTH_ADMIN_EMAIL`/`AUTH_ADMIN_PASSWORD` - Creates default admin on startup
 - OAuth provider credentials for GitHub, Google, Microsoft
+- `MCP_ENABLED` - Set to `true` to serve the MCP server (requires `BETTER_AUTH_URL` to be the public URL)
+- `MCP_PATH` - MCP endpoint path (default `/mcp`); changing it requires clients to reconnect
 
 ## Development Notes
 

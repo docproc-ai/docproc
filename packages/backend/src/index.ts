@@ -8,7 +8,9 @@ import { logger } from 'hono/logger'
 import { nanoid } from 'nanoid'
 import { runMigrations } from './db/migrate'
 import { initDefaultUser } from './lib/init-default-user'
+import { mcpConfig } from './lib/mcp-config'
 import { createWebSocketHandler, type WebSocketData } from './lib/websocket'
+import { createMcpRoutes } from './mcp'
 import { requireAuthOrRedirect } from './middleware/auth'
 import { authRoutes } from './routes/auth'
 import { documentTypesRoutes } from './routes/document-types'
@@ -49,6 +51,12 @@ baseApp.doc('/api/doc', {
   },
 })
 baseApp.get('/api/docs', swaggerUI({ url: '/api/doc' }))
+
+// MCP server + OAuth discovery (only when MCP_ENABLED); must precede the SPA fallback
+const mcpRoutes = createMcpRoutes(mcpConfig)
+if (mcpRoutes) {
+  baseApp.route('/', mcpRoutes)
+}
 
 // In production, serve static frontend files
 if (process.env.NODE_ENV === 'production') {

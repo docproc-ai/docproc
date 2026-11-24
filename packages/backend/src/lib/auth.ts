@@ -3,17 +3,27 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { admin as adminPlugin } from 'better-auth/plugins'
 import { db } from '../db'
 import * as schema from '../db/schema/auth'
+import { buildMcpAuthOptions } from './auth/mcp-plugins'
 import { ac, roles } from './auth/permissions'
 import { checkGitHubAuth } from './auth/providers/github'
 import { checkGoogleAuth } from './auth/providers/google'
 import { checkMicrosoftAuth } from './auth/providers/microsoft'
+import { mcpConfig } from './mcp-config'
 
 const ADMIN_EMAILS = process.env.AUTH_ADMIN_EMAILS?.split(',') || []
 
+const mcp = buildMcpAuthOptions(mcpConfig)
+
+const trustedOrigins = process.env.BETTER_AUTH_URL
+  ? [process.env.BETTER_AUTH_URL]
+  : ['http://localhost:3000']
+for (const origin of mcp.trustedOrigins) {
+  if (!trustedOrigins.includes(origin)) trustedOrigins.push(origin)
+}
+
 export const auth = betterAuth({
-  trustedOrigins: process.env.BETTER_AUTH_URL
-    ? [process.env.BETTER_AUTH_URL]
-    : ['http://localhost:3000'],
+  trustedOrigins,
+  disabledPaths: mcp.disabledPaths,
   database: drizzleAdapter(db, {
     provider: 'pg',
     schema: schema,
@@ -24,6 +34,7 @@ export const auth = betterAuth({
       roles,
       defaultRole: 'none',
     }),
+    ...mcp.plugins,
   ],
   emailAndPassword: {
     enabled: process.env.AUTH_EMAIL_PASSWORD_ENABLED !== 'false',
