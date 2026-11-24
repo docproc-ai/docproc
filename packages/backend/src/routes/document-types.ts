@@ -1,8 +1,5 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
-import {
-  createDocument,
-  getDocumentsByType,
-} from '../lib/db/document-operations'
+import { getDocumentsByType } from '../lib/db/document-operations'
 import {
   createDocumentType,
   deleteDocumentType,
@@ -10,8 +7,6 @@ import {
   getDocumentTypes,
   updateDocumentType,
 } from '../lib/db/document-type-operations'
-import { createBatch } from '../lib/db/job-operations'
-import { triggerWebhookAsync } from '../lib/webhooks'
 import {
   requireApiKeyOrAuth,
   requireAuth,
@@ -21,8 +16,8 @@ import {
   createDocumentTypeRequest,
   updateDocumentTypeRequest,
 } from '../schemas'
+import { uploadDocuments } from '../services/documents'
 import { storage } from '../storage'
-import { processBatchInBackground } from './processing'
 
 // Shared schemas
 const slugOrIdParam = z.object({
@@ -408,124 +403,21 @@ export const documentTypesRoutes = new OpenAPIHono()
         return c.json({ error: 'No files provided' }, 400)
       }
 
-      const allowedTypes = [
-        'application/pdf',
-        'image/jpeg',
-        'image/png',
-        'image/gif',
-        'image/webp',
-        'image/tiff',
-      ]
-
-      const extToMime: Record<string, string> = {
-        pdf: 'application/pdf',
-        jpg: 'image/jpeg',
-        jpeg: 'image/jpeg',
-        png: 'image/png',
-        gif: 'image/gif',
-        webp: 'image/webp',
-        tiff: 'image/tiff',
-        tif: 'image/tiff',
-      }
-
-      const results: Array<{
-        filename: string
-        success: boolean
-        documentId?: string
-        error?: string
-      }> = []
-
-      for (const file of files) {
-        try {
-          const ext = file.name.split('.').pop()?.toLowerCase() || ''
-          const mimeType = file.type || extToMime[ext] || ''
-
-          if (!allowedTypes.includes(mimeType)) {
-            results.push({
-              filename: file.name,
-              success: false,
-              error: `Unsupported file type: ${mimeType || 'unknown'}`,
-            })
-            continue
-          }
-
-          const buffer = Buffer.from(await file.arrayBuffer())
-
-          const storageKey = await storage.upload(buffer, file.name, mimeType)
-
-          const document = await createDocument({
-            documentTypeId: docType.id,
-            filename: file.name,
-            storagePath: storageKey,
-            createdBy: user?.id,
-          })
-
-          triggerWebhookAsync(docType.id, document, 'document.uploaded')
-
-          results.push({
-            filename: file.name,
-            success: true,
-            documentId: document.id,
-          })
-        } catch (error) {
-          console.error('Failed to upload file:', file.name, error)
-          results.push({
-            filename: file.name,
-            success: false,
-            error: error instanceof Error ? error.message : 'Upload failed',
-          })
-        }
-      }
-
-      const successful = results.filter((r) => r.success).length
-      const failed = results.filter((r) => !r.success).length
-
-      const uploadedDocumentIds = results
-        .filter((r) => r.success && r.documentId)
-        .map((r) => r.documentId as string)
-
-      let jobIds: string[] = []
-      let batchId: string | undefined
-
-      if (autoProcess && uploadedDocumentIds.length > 0) {
-        try {
-          const { batch, jobs } = await createBatch({
-            documentTypeId: docType.id,
-            documentIds: uploadedDocumentIds,
-            createdBy: user?.id,
-          })
-
-          jobIds = jobs.map((j) => j.id)
-          batchId = batch.id
-
-          processBatchInBackground(
-            batch.id,
-            docType.id,
-            uploadedDocumentIds,
-            undefined,
-            undefined,
-            overrideModel,
-          )
-        } catch (processError) {
-          console.error('Failed to queue processing jobs:', processError)
-        }
-      }
-
-      return c.json(
-        {
-          success: true,
-          documentTypeId: docType.id,
-          documentTypeSlug: docType.slug,
-          results,
-          ...(autoProcess && jobIds.length > 0 ? { jobIds, batchId } : {}),
-          summary: {
-            total: files.length,
-            uploaded: successful,
-            failed,
-          },
-        },
-        200,
+      const uploadFiles = await Promise.all(
+        files.map(async (file) => ({
+          name: file.name,
+          type: file.type,
+          buffer: Buffer.from(await file.arrayBuffer()),
+        })),
       )
+
+      const result = await uploadDocuments(docType, uploadFiles, {
+        userId: user?.id,
+        autoProcess,
+        model: overrideModel,
+      })
+
+      return c.json({ success: true, ...result }, 200)
     } catch (error) {
       console.error('Upload API error:', error)
       return c.json({ error: 'Internal server error' }, 500)

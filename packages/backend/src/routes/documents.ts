@@ -8,7 +8,6 @@ import {
   getDocument,
   getDocumentBySlugOrId,
   getDocuments,
-  updateDocument,
 } from '../lib/db/document-operations'
 import {
   requireApiKeyOrAuth,
@@ -21,7 +20,7 @@ import {
   getDocumentsQuery,
   updateDocumentRequest,
 } from '../schemas'
-import { triggerWebhookAsync } from '../lib/webhooks'
+import { updateDocumentWithWebhooks } from '../services/documents'
 import { storage } from '../storage'
 
 // Shared schemas
@@ -427,7 +426,7 @@ export const documentsRoutes = new OpenAPIHono()
         return c.json({ error: 'Document not found' }, 404)
       }
 
-      const result = await updateDocument(doc.id, {
+      const result = await updateDocumentWithWebhooks(doc, {
         extractedData: data.extractedData as
           | Record<string, unknown>
           | undefined,
@@ -441,14 +440,6 @@ export const documentsRoutes = new OpenAPIHono()
 
       if (!result) {
         return c.json({ error: 'Document not found' }, 404)
-      }
-
-      if (data.status && data.status !== doc.status) {
-        if (data.status === 'approved') {
-          triggerWebhookAsync(doc.documentTypeId, result, 'document.approved')
-        } else if (doc.status === 'approved') {
-          triggerWebhookAsync(doc.documentTypeId, result, 'document.unapproved')
-        }
       }
 
       return c.json(result, 200)
