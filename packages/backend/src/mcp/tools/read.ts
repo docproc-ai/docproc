@@ -1,21 +1,20 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
-import {
-  getDocumentBySlugOrId,
-  getDocuments,
-} from '../../lib/db/document-operations'
-import {
-  getDocumentTypeBySlugOrId,
-  getDocumentTypes,
-} from '../../lib/db/document-type-operations'
+import { getDocuments } from '../../lib/db/document-operations'
+import { getDocumentTypes } from '../../lib/db/document-type-operations'
 import { getBatchWithJobs, getJob } from '../../lib/db/job-operations'
 import { ServiceError } from '../../services/errors'
 import { storage } from '../../storage'
 import type { McpCaller } from '../caller'
-import { guard, toolError, toolJson } from './helpers'
-
-const MAX_FILE_BYTES = 5 * 1024 * 1024
+import {
+  guard,
+  MAX_FILE_BYTES,
+  requireDocument,
+  requireDocumentType,
+  toolError,
+  toolJson,
+} from './helpers'
 
 const annotations = {
   readOnlyHint: true,
@@ -23,9 +22,6 @@ const annotations = {
   idempotentHint: true,
   openWorldHint: false,
 } as const
-
-const DOC_TYPE_NOT_FOUND = 'Document type not found'
-const DOC_NOT_FOUND = 'Document not found'
 
 function topLevelFields(schema: unknown): string[] {
   if (schema && typeof schema === 'object') {
@@ -50,18 +46,6 @@ function projectJob(j: JobRow) {
     startedAt: j.startedAt,
     completedAt: j.completedAt,
   }
-}
-
-async function requireDocument(ref: string) {
-  const doc = await getDocumentBySlugOrId(ref)
-  if (!doc) throw new ServiceError('not_found', DOC_NOT_FOUND)
-  return doc
-}
-
-async function requireDocumentType(ref: string) {
-  const t = await getDocumentTypeBySlugOrId(ref)
-  if (!t) throw new ServiceError('not_found', DOC_TYPE_NOT_FOUND)
-  return t
 }
 
 /** Read-only tools. Every handler re-checks permission via `guard`. */

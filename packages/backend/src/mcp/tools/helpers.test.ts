@@ -1,6 +1,12 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../caller', () => ({ checkPermission: vi.fn() }))
+vi.mock('../../lib/db/document-operations', () => ({
+  getDocumentBySlugOrId: vi.fn(),
+}))
+vi.mock('../../lib/db/document-type-operations', () => ({
+  getDocumentTypeBySlugOrId: vi.fn(),
+}))
 
 import { ServiceError } from '../../services/errors'
 import { checkPermission, type McpCaller } from '../caller'

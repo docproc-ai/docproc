@@ -3,6 +3,7 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../caller', () => ({ checkPermission: vi.fn() }))
+vi.mock('./write', () => ({ registerWriteTools: vi.fn() }))
 vi.mock('../../lib/db/document-operations', () => ({
   getDocuments: vi.fn(),
   getDocumentBySlugOrId: vi.fn(),

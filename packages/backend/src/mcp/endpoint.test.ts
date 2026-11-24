@@ -22,6 +22,7 @@ vi.mock('./caller', () => ({
 }))
 // A stand-in tool that echoes the caller it was built for, so a tools/call
 // proves which user the per-request server received.
+vi.mock('./tools/write', () => ({ registerWriteTools: vi.fn() }))
 vi.mock('./tools/read', () => ({
   registerReadTools: (
     server: import('@modelcontextprotocol/sdk/server/mcp.js').McpServer,

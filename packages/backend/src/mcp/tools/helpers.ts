@@ -1,4 +1,6 @@
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
+import { getDocumentBySlugOrId } from '../../lib/db/document-operations'
+import { getDocumentTypeBySlugOrId } from '../../lib/db/document-type-operations'
 import { ServiceError } from '../../services/errors'
 import {
   checkPermission,
@@ -6,6 +8,26 @@ import {
   type McpCaller,
   type McpResource,
 } from '../caller'
+
+/** Largest file a tool will send or accept (5 MB). */
+export const MAX_FILE_BYTES = 5 * 1024 * 1024
+
+export const DOC_TYPE_NOT_FOUND = 'Document type not found'
+export const DOC_NOT_FOUND = 'Document not found'
+
+/** Looks up a document by slug or id; not_found if missing. */
+export async function requireDocument(ref: string) {
+  const doc = await getDocumentBySlugOrId(ref)
+  if (!doc) throw new ServiceError('not_found', DOC_NOT_FOUND)
+  return doc
+}
+
+/** Looks up a document type by slug or id; not_found if missing. */
+export async function requireDocumentType(ref: string) {
+  const t = await getDocumentTypeBySlugOrId(ref)
+  if (!t) throw new ServiceError('not_found', DOC_TYPE_NOT_FOUND)
+  return t
+}
 
 /** A tool-level failure the model can read and act on. */
 export function toolError(text: string): CallToolResult {
